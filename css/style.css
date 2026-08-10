@@ -703,6 +703,11 @@ body {
   flex-direction: column;
 }
 
+/* Must re-assert hidden: display:flex above overrides the UA [hidden] rule */
+.custom-select-dropdown[hidden] {
+  display: none;
+}
+
 .custom-select-option {
   width: 100%;
   padding: 10px 14px;
