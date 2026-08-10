@@ -4,7 +4,7 @@
 
 const Bookmarks = (() => {
   const bookmarksList = document.getElementById('bookmarks-list');
-  const MAX_ITEMS = 24;
+  const MAX_ITEMS = 6;
 
   async function load() {
     try {
@@ -110,32 +110,36 @@ const Bookmarks = (() => {
     });
   }
 
+  /* Render favicon as a colored letter avatar. Works in every browser without
+     any cross-origin requests or chrome:// / edge:// resource loads. */
   function renderFavicon(url) {
-    if (typeof chrome !== 'undefined' && chrome.runtime) {
-      try {
-        const safeUrl = escapeAttr(url);
-        return `<img class="bookmark-favicon" src="chrome://favicon/${safeUrl}" alt="" loading="lazy">`;
-      } catch {
-        return renderDefaultFavicon();
-      }
-    }
-    return renderDefaultFavicon();
+    const domain = getDomain(url);
+    const initial = (domain.charAt(0) || '?').toUpperCase();
+    /* Deterministic background color from domain hash */
+    const hue = hashHue(domain);
+    const bg = `hsl(${hue} 35% 28%)`;
+    const fg = `hsl(${hue} 60% 78%)`;
+    return `<div class="bookmark-favicon-letter" style="background:${bg};color:${fg}">${escapeHtml(initial)}</div>`;
   }
 
-  function renderDefaultFavicon() {
-    return `<div class="bookmark-favicon-placeholder"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div>`;
+  function hashHue(str) {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) {
+      h = ((h << 5) - h) + str.charCodeAt(i);
+      h |= 0;
+    }
+    return Math.abs(h) % 360;
   }
 
   function getDomain(url) {
     try {
       return new URL(url).hostname.replace(/^www\./, '');
     } catch {
-      return url;
+      return url || '';
     }
   }
 
-  /* escapeHtml escapes & < > into HTML entities; sufficient for content and attribute values
-     since both contexts use double-quoted attributes with " replaced below */
+  /* escapeHtml escapes & < > into HTML entities; sufficient for content and attribute values */
   function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str;
