@@ -199,25 +199,92 @@ const Search = (() => {
     let data;
     try {
       data = JSON.parse(text);
-    } catch {
-      /* Strip JSONP wrapper – extract the first top-level (...) payload */
-      const start = text.indexOf('(');
-      const end = text.lastIndexOf(')');
-      if (start !== -1 && end !== -1 && end > start) {
-        try {
-          data = JSON.parse(text.slice(start + 1, end));
-        } catch (e2) {
-          handleFetchError('Unparseable JSONP response');
-          return;
+    } catch (e1) {
+      /* Baidu returns JS object literal syntax with unquoted keys, e.g.:
+            window.baidu.sug({q:"x",p:false,s:["a","b"]});
+         JSON.parse requires quoted keys. We strip the wrapper, then quote
+         any unquoted identifier keys to make it valid JSON. */
+      const callMatch = text.match(/^[^(]*\(/);
+      const start = callMatch ? text.indexOf('(', callMatch.index) : text.indexOf('(');
+      let end = -1;
+      if (start !== -1) {
+        let depth = 0;
+        for (let i = start; i < text.length; i++) {
+          const ch = text.charCodeAt(i);
+          if (ch === 40) depth++;        // (
+          else if (ch === 41) {         // )
+            depth--;
+            if (depth === 0) { end = i; break; }
+          }
         }
-      } else {
+      }
+      if (start === -1 || end === -1 || end <= start) {
+        console.warn('UniTab: No JSONP wrapper. text[0..200]=', text.slice(0, 200));
         handleFetchError('Unparseable response');
+        return;
+      }
+      const payload = text.slice(start + 1, end);
+      try {
+        data = JSON.parse(quoteKeys(payload));
+      } catch (e2) {
+        console.warn('UniTab: JSONP parse failed. payload[0..200]=', payload.slice(0, 200), 'err:', e2.message);
+        handleFetchError('Unparseable JSONP response');
         return;
       }
     }
     suggestions = engine.parser(data) || [];
     activeIndex = -1;
     renderSuggestions();
+  }
+
+  /* Quote unquoted object keys so JS object literal becomes valid JSON.
+     Matches an identifier followed by a colon that is NOT inside a string. */
+  function quoteKeys(input) {
+    const out = [];
+    let i = 0;
+    let inString = false;
+    let quote = '';
+    let depth = 0;
+    while (i < input.length) {
+      const ch = input[i];
+      if (inString) {
+        out.push(ch);
+        if (ch === '\\' && i + 1 < input.length) {
+          out.push(input[i + 1]);
+          i += 2;
+          continue;
+        }
+        if (ch === quote) inString = false;
+        i++;
+        continue;
+      }
+      if (ch === '"' || ch === '\'') {
+        inString = true;
+        quote = ch;
+        out.push(ch);
+        i++;
+        continue;
+      }
+      if (ch === '{' || ch === '[' || ch === '(') depth++;
+      else if (ch === '}' || ch === ']' || ch === ')') depth--;
+      /* Detect identifier followed by colon — only at depth that allows object keys */
+      if (/[A-Za-z_$]/.test(ch) && (i === 0 || /[^A-Za-z0-9_$]/.test(input[i - 1]))) {
+        /* Scan identifier */
+        let j = i;
+        while (j < input.length && /[A-Za-z0-9_$]/.test(input[j])) j++;
+        /* Skip whitespace */
+        let k = j;
+        while (k < input.length && /\s/.test(input[k])) k++;
+        if (k < input.length && input[k] === ':' && depth > 0) {
+          out.push('"' + input.slice(i, j) + '"');
+          i = j;
+          continue;
+        }
+      }
+      out.push(ch);
+      i++;
+    }
+    return out.join('');
   }
 
   function handleFetchError(msg) {
