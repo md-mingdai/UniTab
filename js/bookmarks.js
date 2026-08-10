@@ -1,31 +1,51 @@
 /* ============================================
-   UniTab - Browser Bookmarks
+   UniTab - Browser Bookmarks & Top Sites
    ============================================ */
 
 const Bookmarks = (() => {
   const bookmarksList = document.getElementById('bookmarks-list');
+  const MAX_ITEMS = 24;
 
   async function load() {
     try {
-      let barBookmarks = [];
+      let bookmarks = [];
+      let topSites = [];
 
+      /* Fetch bookmarks bar */
       if (typeof chrome !== 'undefined' && chrome.bookmarks) {
-        /* Chrome / Edge: get bookmarks bar children */
-        const tree = await chrome.bookmarks.getTree();
-        const barNode = findBookmarksBar(tree);
-        if (barNode && barNode.children) {
-          barBookmarks = barNode.children.filter(b => b.url);
+        try {
+          const tree = await chrome.bookmarks.getTree();
+          const barNode = findBookmarksBar(tree);
+          if (barNode && barNode.children) {
+            bookmarks = barNode.children.filter(b => b.url);
+          }
+        } catch (e) {
+          console.warn('UniTab: bookmarks access failed:', e.message);
         }
       } else if (typeof browser !== 'undefined' && browser.bookmarks) {
-        /* Firefox */
-        const tree = await browser.bookmarks.getTree();
-        const barNode = findBookmarksBar(tree);
-        if (barNode && barNode.children) {
-          barBookmarks = barNode.children.filter(b => b.url);
+        try {
+          const tree = await browser.bookmarks.getTree();
+          const barNode = findBookmarksBar(tree);
+          if (barNode && barNode.children) {
+            bookmarks = barNode.children.filter(b => b.url);
+          }
+        } catch (e) {
+          console.warn('UniTab: bookmarks access failed:', e.message);
         }
       }
 
-      render(barBookmarks);
+      /* Fetch top sites (most visited) */
+      if (typeof chrome !== 'undefined' && chrome.topSites) {
+        try {
+          topSites = await chrome.topSites.get();
+        } catch (e) {
+          console.warn('UniTab: topSites access failed:', e.message);
+        }
+      }
+
+      /* Combine: bookmarks first, then top sites to fill remaining slots */
+      const combined = mergeUnique(bookmarks, topSites).slice(0, MAX_ITEMS);
+      render(combined);
     } catch (err) {
       console.warn('UniTab: Could not load bookmarks:', err.message);
       bookmarksList.innerHTML = '';
@@ -34,7 +54,6 @@ const Bookmarks = (() => {
 
   function findBookmarksBar(nodes) {
     for (const node of nodes) {
-      /* The bookmarks bar node usually has id '2' or title 'Bookmarks Bar' / '书签栏' */
       if (node.title === 'Bookmarks bar' || node.title === 'Bookmarks Bar'
         || node.title === '书签栏' || node.title === '书签'
         || node.id === '2' || node.id === 'toolbar_____') {
@@ -48,73 +67,85 @@ const Bookmarks = (() => {
     return null;
   }
 
-  function render(bookmarks) {
-    if (!bookmarks || bookmarks.length === 0) {
+  function mergeUnique(primary, secondary) {
+    const seen = new Set();
+    const result = [];
+    const normalize = (url) => {
+      try {
+        const u = new URL(url);
+        return (u.hostname + u.pathname).replace(/\/$/, '');
+      } catch {
+        return url;
+      }
+    };
+    for (const item of [...primary, ...secondary]) {
+      if (!item.url) continue;
+      const key = normalize(item.url);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push(item);
+    }
+    return result;
+  }
+
+  function render(items) {
+    if (!items || items.length === 0) {
       bookmarksList.innerHTML = '';
       return;
     }
 
-    bookmarksList.innerHTML = bookmarks.map(bookmark => `
-      <a class="bookmark-item"
-         href="${escapeAttr(bookmark.url)}"
-         title="${escapeAttr(bookmark.title)}"
-         draggable="false">
-        ${renderFavicon(bookmark)}
-        <span class="bookmark-title">${escapeHtml(bookmark.title)}</span>
-      </a>
-    `).join('');
+    bookmarksList.innerHTML = items.map(item => {
+      const safeTitle = escapeHtml(item.title || getDomain(item.url));
+      const safeUrlAttr = escapeAttr(item.url);
+      const safeTitleAttr = escapeAttr(item.title || getDomain(item.url));
+      return `<a class="bookmark-item" href="${safeUrlAttr}" title="${safeTitleAttr}" draggable="false">${renderFavicon(item.url)}<span class="bookmark-title">${safeTitle}</span></a>`;
+    }).join('');
 
-    /* Middle-click to open in new tab */
+    /* Click handler — open in current tab */
     bookmarksList.querySelectorAll('.bookmark-item').forEach(item => {
       item.addEventListener('click', (e) => {
         e.preventDefault();
         window.location.href = item.href;
       });
-      item.addEventListener('auxclick', (e) => {
-        /* Middle click - let browser handle, open in new tab */
-        e.stopPropagation();
-      });
     });
   }
 
-  function renderFavicon(bookmark) {
-    const url = bookmark.url || '';
-    let domain = '';
-    try {
-      domain = new URL(url).origin;
-    } catch {
-      return `<div class="bookmark-favicon-placeholder">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-      </div>`;
-    }
-
-    /* Chrome favicon API */
+  function renderFavicon(url) {
     if (typeof chrome !== 'undefined' && chrome.runtime) {
       try {
-        const faviconUrl = 'chrome://favicon/' + url;
-        return `<img class="bookmark-favicon" src="${escapeAttr(faviconUrl)}" alt="" loading="lazy" onerror="this.parentElement.innerHTML='${escapeAttr(renderDefaultFavicon())}'">`;
+        const safeUrl = escapeAttr(url);
+        return `<img class="bookmark-favicon" src="chrome://favicon/${safeUrl}" alt="" loading="lazy">`;
       } catch {
         return renderDefaultFavicon();
       }
     }
-
     return renderDefaultFavicon();
   }
 
   function renderDefaultFavicon() {
-    return `<div class="bookmark-favicon-placeholder">
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>
-    </div>`;
+    return `<div class="bookmark-favicon-placeholder"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div>`;
   }
 
+  function getDomain(url) {
+    try {
+      return new URL(url).hostname.replace(/^www\./, '');
+    } catch {
+      return url;
+    }
+  }
+
+  /* escapeHtml escapes & < > into HTML entities; sufficient for content and attribute values
+     since both contexts use double-quoted attributes with " replaced below */
   function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
   }
 
+  /* Double-quote attribute escape – applied after escapeHtml */
+  const QUOT_ENTITY = String.fromCharCode(38, 113, 117, 111, 116, 59); // "
   function escapeAttr(str) {
-    return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return escapeHtml(str).replace(/"/g, QUOT_ENTITY);
   }
 
   return { load };

@@ -7,9 +7,13 @@
   "chrome_url_overrides": {
     "newtab": "newtab.html"
   },
+  "background": {
+    "service_worker": "background.js"
+  },
   "permissions": [
     "storage",
-    "bookmarks"
+    "bookmarks",
+    "topSites"
   ],
   "host_permissions": [
     "https://suggestqueries.google.com/*",

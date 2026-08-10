@@ -20,14 +20,18 @@ const Search = (() => {
     sogou: {
       name: '搜狗',
       searchUrl: 'https://www.sogou.com/web?query=',
-      suggestUrl: null, /* Sogou uses JSONP with dynamic callback */
+      suggestUrl: null, // 搜狗暂无公开 Suggestion API
       parser: null
     },
     baidu: {
       name: '百度',
       searchUrl: 'https://www.baidu.com/s?wd=',
-      suggestUrl: null,
-      parser: null
+      // Baidu returns JSONP text: window.baidu.sug({...});
+      // The SW proxy returns the raw text, which we strip in processResponse().
+      suggestUrl: 'https://suggestion.baidu.com/su?wd=',
+      parser: (data) => {
+        return (data && Array.isArray(data.s)) ? data.s : [];
+      }
     }
   };
 
@@ -126,13 +130,20 @@ const Search = (() => {
     performSearch(query);
   }
 
-  /* --- Fetch suggestions --- */
+  /* --- Fetch suggestions ---
+     All engines route through the background service worker for cross-origin
+     fetches. The SW has privileged access via host_permissions that bypasses
+     CORS for cross-origin hosts in the extension's manifest. This avoids both
+     the CSP block on external <script> tags (which prevents JSONP injection)
+     and the CORS block on direct fetch() from the new tab page. */
+  let currentFetchToken = 0;
+
   function debounceFetch(query) {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchSuggestions(query), 150);
   }
 
-  async function fetchSuggestions(query) {
+  function fetchSuggestions(query) {
     const engine = ENGINES[currentEngine];
     if (!engine.suggestUrl) {
       hideSuggestions();
@@ -143,34 +154,78 @@ const Search = (() => {
       abortController.abort();
     }
     abortController = new AbortController();
+    const signal = abortController.signal;
 
-    try {
-      const url = engine.suggestUrl + encodeURIComponent(query);
-      const resp = await fetch(url, { signal: abortController.signal });
-      if (!resp.ok) throw new Error('Suggestion fetch failed');
+    const token = ++currentFetchToken;
 
-      const text = await resp.text();
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch {
-        /* JSONP fallback */
-        const match = text.match(/^[^(]*\((\[.*\])\)\s*;?\s*$/s);
-        if (match) {
-          data = JSON.parse(match[1]);
-        } else {
-          throw new Error('Unparseable suggestion response');
+    /* Try background SW proxy first — this is the only reliable way to bypass CORS */
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+      chrome.runtime.sendMessage(
+        { type: 'fetch_jsonp', url: engine.suggestUrl + encodeURIComponent(query) },
+        (response) => {
+          if (token !== currentFetchToken) return; // stale
+          if (signal.aborted) return;
+          if (chrome.runtime.lastError || !response || !response.ok) {
+            handleFetchError(response && response.error || 'SW fetch failed');
+            return;
+          }
+          processResponse(response.text, engine);
         }
-      }
+      );
+      return;
+    }
 
-      suggestions = engine.parser(data) || [];
-      activeIndex = -1;
-      renderSuggestions();
+    /* Fallback: direct fetch (works for engines that DO send CORS headers,
+       i.e. Google and Bing) */
+    fetchDirect(engine.suggestUrl + encodeURIComponent(query), engine, token, signal);
+  }
+
+  async function fetchDirect(url, engine, token, signal) {
+    try {
+      const resp = await fetch(url, { signal });
+      if (token !== currentFetchToken) return;
+      if (!resp.ok) throw new Error('Suggestion fetch failed');
+      const text = await resp.text();
+      if (token !== currentFetchToken) return;
+      processResponse(text, engine);
     } catch (err) {
-      if (err.name !== 'AbortError') {
-        suggestions = [];
-        hideSuggestions();
+      if (token !== currentFetchToken) return;
+      if (err.name === 'AbortError') return;
+      handleFetchError(err.message);
+    }
+  }
+
+  function processResponse(text, engine) {
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      /* Strip JSONP wrapper – extract the first top-level (...) payload */
+      const start = text.indexOf('(');
+      const end = text.lastIndexOf(')');
+      if (start !== -1 && end !== -1 && end > start) {
+        try {
+          data = JSON.parse(text.slice(start + 1, end));
+        } catch (e2) {
+          handleFetchError('Unparseable JSONP response');
+          return;
+        }
+      } else {
+        handleFetchError('Unparseable response');
+        return;
       }
+    }
+    suggestions = engine.parser(data) || [];
+    activeIndex = -1;
+    renderSuggestions();
+  }
+
+  function handleFetchError(msg) {
+    suggestions = [];
+    hideSuggestions();
+    /* Avoid noisy console output for expected CORS cases */
+    if (msg && msg.indexOf('CORS') === -1 && msg.indexOf('Failed to fetch') === -1) {
+      console.warn('UniTab: suggestion fetch failed:', msg);
     }
   }
 

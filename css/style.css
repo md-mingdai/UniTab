@@ -322,9 +322,24 @@ body {
   left: 0;
   right: 0;
   z-index: 1;
-  padding: 0 16px;
-  padding-bottom: max(16px, env(safe-area-inset-bottom));
+  padding: 14px 16px;
+  padding-bottom: max(14px, env(safe-area-inset-bottom));
   pointer-events: none;
+}
+
+.bookmarks-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 12px 16px;
+  background: var(--glass-bg-light);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--glass-border-light);
+  border-radius: 18px;
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    0 4px 24px var(--glass-shadow);
+  pointer-events: auto;
 }
 
 .bookmarks-list {
@@ -332,8 +347,6 @@ body {
   flex-wrap: wrap;
   justify-content: center;
   gap: 6px;
-  max-width: 900px;
-  margin: 0 auto;
 }
 
 .bookmark-item {
@@ -341,18 +354,15 @@ body {
   align-items: center;
   gap: 7px;
   padding: 7px 14px;
-  border-radius: 12px;
-  background: var(--glass-bg-light);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid var(--glass-border-light);
+  border-radius: 10px;
+  background: transparent;
+  border: 1px solid transparent;
   color: var(--text-secondary);
   text-decoration: none;
   font-size: 13px;
   font-weight: 400;
   font-family: inherit;
   cursor: pointer;
-  pointer-events: auto;
   white-space: nowrap;
   max-width: 200px;
   overflow: hidden;
@@ -362,13 +372,12 @@ body {
     color 0.2s var(--ease-out-expo),
     border-color 0.2s var(--ease-out-expo),
     transform 0.15s var(--ease-out-expo);
-  box-shadow: inset 0 1px 0 var(--glass-highlight);
 }
 
 .bookmark-item:hover {
-  background: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.12);
   color: var(--text-primary);
-  border-color: rgba(255, 255, 255, 0.28);
+  border-color: rgba(255, 255, 255, 0.22);
   transform: translateY(-1px);
 }
 
@@ -895,7 +904,7 @@ body {
     border-color: var(--glass-border-dark);
   }
 
-  .bookmark-item {
+  .bookmarks-container {
     background: var(--glass-bg-dark);
     border-color: var(--glass-border-dark);
   }
@@ -923,6 +932,8 @@ body {
   }
 
   .bookmark-item {
+
+  .bookmarks-container {
     background: rgba(30, 34, 48, 0.96);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
@@ -996,8 +1007,13 @@ body {
   }
 
   .bookmarks-bar {
-    padding: 0 8px;
-    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    padding: 10px 8px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+  }
+
+  .bookmarks-container {
+    padding: 8px 10px;
+    border-radius: 14px;
   }
 
   .settings-header {
