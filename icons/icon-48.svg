@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4a5a80"/>
+      <stop offset="1" stop-color="#1e2230"/>
+    </linearGradient>
+  </defs>
+  <rect width="48" height="48" rx="12" fill="url(#bg)"/>
+  <rect x="0.75" y="0.75" width="46.5" height="46.5" rx="11.25" stroke="white" stroke-opacity="0.22"/>
+  <rect x="1" y="1" width="46" height="46" rx="11" stroke="white" stroke-opacity="0.08"/>
+  <text x="24" y="32" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="26" font-weight="400" fill="white" fill-opacity="0.9">U</text>
+</svg>

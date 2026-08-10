@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "UniTab",
+  "version": "1.0.0",
+  "description": "极简毛玻璃新标签页，可自定义背景与搜索引擎，支持搜索词条预测。",
+  "author": "UniTab",
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  },
+  "permissions": [
+    "storage",
+    "bookmarks"
+  ],
+  "host_permissions": [
+    "https://suggestqueries.google.com/*",
+    "https://api.bing.com/*",
+    "https://www.baidu.com/*",
+    "https://suggestion.baidu.com/*",
+    "https://www.sogou.com/*"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; img-src 'self' data: https: http: blob: chrome-extension: chrome-favicon:; connect-src https://suggestqueries.google.com https://api.bing.com https://www.baidu.com https://suggestion.baidu.com https://www.sogou.com"
+  },
+  "icons": {
+    "16": "icons/icon-16.svg",
+    "48": "icons/icon-48.svg",
+    "128": "icons/icon-128.svg"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "unitab@browser.extension",
+      "strict_min_version": "109.0"
+    }
+  }
+}
