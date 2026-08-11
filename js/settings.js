@@ -15,7 +15,8 @@ const Settings = (() => {
     bgBingUrl: null,      // 必应壁纸 URL（仅 bgSource === 'bing' 时使用）
     bgBingCopyright: '',  // 必应壁纸标题 + 版权信息（持久化，刷新页面也显示）
     bgColor: '#1a1d24',   // 纯色（仅 bgSource === 'color' 时使用）
-    showSeconds: true
+    showSeconds: true,
+    showBookmarks: true   // 底部常用网址 Dock 栏开关
   };
 
   /* --- State --- */
@@ -33,6 +34,7 @@ const Settings = (() => {
   let overlayColorSwatches, customColorTrigger, overlayColorInput, colorHexDisplay;
   let engineSelectWrapper, engineSelectTrigger, engineSelectDropdown, engineSelectLabel, engineSelectNative;
   let showSecondsToggle;
+  let showBookmarksToggle;
   let resetBtn;
 
   function init() {
@@ -100,6 +102,7 @@ const Settings = (() => {
 
     /* Display */
     showSecondsToggle = document.getElementById('show-seconds-toggle');
+    showBookmarksToggle = document.getElementById('show-bookmarks-toggle');
 
     resetBtn = document.getElementById('settings-reset');
   }
@@ -159,6 +162,10 @@ const Settings = (() => {
           state.bgColor = DEFAULTS.bgColor;
           saveSettings();
         }
+        if (parsed && typeof parsed === 'object' && !('showBookmarks' in parsed)) {
+          state.showBookmarks = DEFAULTS.showBookmarks;
+          saveSettings();
+        }
       }
     } catch {
       /* ignore */
@@ -192,6 +199,9 @@ const Settings = (() => {
 
     /* Show seconds toggle */
     updateShowSecondsToggle(state.showSeconds);
+
+    /* Bookmarks bar toggle */
+    updateShowBookmarksToggle(state.showBookmarks);
 
     /* Background source radios */
     updateBgSourceRadios(state.bgSource);
@@ -245,6 +255,11 @@ const Settings = (() => {
           Clock.setShowSeconds(value);
         }
         break;
+      case 'showBookmarks':
+        if (typeof Bookmarks !== 'undefined' && Bookmarks.setVisible) {
+          Bookmarks.setVisible(value);
+        }
+        break;
     }
   }
 
@@ -255,6 +270,7 @@ const Settings = (() => {
     applyToDom('bgColor', state.bgColor);
     applyToDom('engine', state.engine);
     applyToDom('showSeconds', state.showSeconds);
+    applyToDom('showBookmarks', state.showBookmarks);
   }
 
   function applyBackground() {
@@ -324,6 +340,12 @@ const Settings = (() => {
     if (!showSecondsToggle) return;
     showSecondsToggle.classList.toggle('on', !!on);
     showSecondsToggle.setAttribute('aria-checked', on ? 'true' : 'false');
+  }
+
+  function updateShowBookmarksToggle(on) {
+    if (!showBookmarksToggle) return;
+    showBookmarksToggle.classList.toggle('on', !!on);
+    showBookmarksToggle.setAttribute('aria-checked', on ? 'true' : 'false');
   }
 
   /* --- Events --- */
@@ -530,6 +552,20 @@ const Settings = (() => {
       if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault();
         showSecondsToggle.click();
+      }
+    });
+
+    /* --- Show bookmarks bar toggle --- */
+    showBookmarksToggle.addEventListener('click', () => {
+      state.showBookmarks = !state.showBookmarks;
+      updateShowBookmarksToggle(state.showBookmarks);
+      applyToDom('showBookmarks', state.showBookmarks);
+      saveSettings();
+    });
+    showBookmarksToggle.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        showBookmarksToggle.click();
       }
     });
 

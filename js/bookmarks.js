@@ -4,7 +4,13 @@
 
 const Bookmarks = (() => {
   const bookmarksList = document.getElementById('bookmarks-list');
+  const bookmarksBar = document.getElementById('bookmarks-bar');
   const MAX_ITEMS = 6;
+
+  function setVisible(visible) {
+    if (!bookmarksBar) return;
+    bookmarksBar.hidden = !visible;
+  }
 
   async function load() {
     try {
@@ -152,5 +158,5 @@ const Bookmarks = (() => {
     return escapeHtml(str).replace(/"/g, QUOT_ENTITY);
   }
 
-  return { load };
+  return { load, setVisible };
 })();
