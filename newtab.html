@@ -83,19 +83,69 @@
       <section class="settings-section">
         <h3 class="settings-section-title">背景</h3>
 
+        <!-- Background source radio list -->
         <div class="setting-group">
-          <label class="setting-label">上传图片</label>
+          <label class="setting-label">背景来源</label>
+          <div class="radio-list" role="radiogroup" aria-label="背景来源">
+            <!-- 必应每日 -->
+            <button class="radio-option" role="radio" data-bg-source="bing" type="button">
+              <span class="radio-dot">
+                <svg class="radio-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              </span>
+              <span class="radio-label">必应每日壁纸</span>
+            </button>
+            <!-- 自定义图片 -->
+            <button class="radio-option" role="radio" data-bg-source="image" type="button">
+              <span class="radio-dot">
+                <svg class="radio-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              </span>
+              <span class="radio-label">自定义图片</span>
+            </button>
+            <!-- 纯色 -->
+            <button class="radio-option" role="radio" data-bg-source="color" type="button">
+              <span class="radio-dot">
+                <svg class="radio-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              </span>
+              <span class="radio-label">纯色</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 必应每日壁纸 子面板 -->
+        <div class="setting-group bg-sub-panel" data-panel="bing" id="bg-bing-panel" hidden>
+          <button id="bg-bing-refresh" class="setting-btn-secondary setting-btn-bing" type="button">刷新壁纸</button>
+          <div id="bg-bing-meta" class="setting-meta" aria-live="polite"></div>
+        </div>
+
+        <!-- 自定义图片 子面板 -->
+        <div class="setting-group bg-sub-panel" data-panel="image" id="bg-image-panel" hidden>
           <div class="file-upload-wrapper">
             <input type="file" id="bg-file-input" class="file-input" accept="image/*">
             <label for="bg-file-input" class="file-upload-btn">选择图片</label>
             <span id="bg-file-name" class="file-name">未选择文件</span>
           </div>
-        </div>
-
-        <div class="setting-group">
-          <label class="setting-label" for="bg-url-input">或输入图片链接</label>
+          <label class="setting-label setting-label-sub" for="bg-url-input">或输入图片链接</label>
           <input type="url" id="bg-url-input" class="setting-input" placeholder="https://..." autocomplete="off">
           <button id="bg-url-apply" class="setting-btn-secondary">应用</button>
+        </div>
+
+        <!-- 纯色 子面板 -->
+        <div class="setting-group bg-sub-panel" data-panel="color" id="bg-color-panel" hidden>
+          <div class="color-swatch-grid" id="bg-color-swatch-grid">
+            <button class="color-swatch bg-color-swatch" data-color="#1a1d24" style="background:#1a1d24" aria-label="深灰蓝"></button>
+            <button class="color-swatch bg-color-swatch" data-color="#0d1117" style="background:#0d1117" aria-label="GitHub 暗"></button>
+            <button class="color-swatch bg-color-swatch" data-color="#1a1a2e" style="background:#1a1a2e" aria-label="深蓝黑"></button>
+            <button class="color-swatch bg-color-swatch" data-color="#0f1a2e" style="background:#0f1a2e" aria-label="深海蓝"></button>
+            <button class="color-swatch bg-color-swatch" data-color="#2d1a3a" style="background:#2d1a3a" aria-label="深紫"></button>
+            <button class="color-swatch bg-color-swatch" data-color="#1a2a1a" style="background:#1a2a1a" aria-label="深绿"></button>
+            <button class="color-swatch bg-color-swatch" data-color="#3a1a1a" style="background:#3a1a1a" aria-label="深红"></button>
+            <button class="color-swatch bg-color-swatch" data-color="#2a1a2e" style="background:#2a1a2e" aria-label="暗紫"></button>
+            <button class="color-swatch bg-color-swatch custom-swatch" data-color="custom" id="bg-custom-color-trigger" aria-label="自定义颜色">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </button>
+          </div>
+          <input type="color" id="bg-color-input" class="setting-color-hidden" value="#1a1d24">
+          <span id="bg-color-hex" class="color-hex">#1A1D24</span>
         </div>
 
         <div class="setting-group">

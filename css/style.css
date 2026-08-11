@@ -956,6 +956,97 @@ body {
   pointer-events: none;
 }
 
+/* Background Source Radio List */
+.radio-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.radio-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    border-color 0.2s var(--ease-out-expo),
+    background 0.2s var(--ease-out-expo),
+    color 0.2s var(--ease-out-expo),
+    box-shadow 0.2s var(--ease-out-expo);
+  outline: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.radio-option:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.radio-option:focus-visible {
+  box-shadow: 0 0 0 3px rgba(139, 157, 195, 0.25);
+}
+
+.radio-option.checked {
+  border-color: var(--accent);
+  background: rgba(139, 157, 195, 0.12);
+  color: var(--text-primary);
+}
+
+.radio-dot {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s var(--ease-out-expo), background 0.2s var(--ease-out-expo);
+}
+
+.radio-option.checked .radio-dot {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.radio-check {
+  opacity: 0;
+  transform: scale(0);
+  color: #fff;
+  transition: opacity 0.15s var(--ease-out-expo), transform 0.15s var(--ease-out-expo);
+}
+
+.radio-option.checked .radio-check {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.radio-label {
+  line-height: 1;
+}
+
+/* Sub-panels (show/hide based on selected radio) */
+.bg-sub-panel {
+  padding-left: 4px;
+}
+
+.bg-sub-panel[hidden] {
+  display: none;
+}
+
+.setting-label-sub {
+  margin-top: 8px;
+}
+
 /* File Upload */
 .file-upload-wrapper {
   display: flex;
@@ -1015,6 +1106,26 @@ body {
 
 .setting-btn-secondary:hover {
   background: rgba(255, 255, 255, 0.14);
+}
+
+.setting-btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.setting-btn-bing {
+  gap: 8px;
+  width: 100%;
+  justify-content: center;
+}
+
+/* Meta line under a setting (e.g. Bing wallpaper headline / copyright) */
+.setting-meta {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-tertiary);
+  word-break: break-word;
 }
 
 /* Reset Button */

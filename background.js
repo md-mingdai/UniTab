@@ -14,7 +14,11 @@ const UTF8_DECODER = new TextDecoder('utf-8');
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message && message.type === 'fetch_jsonp' && message.url) {
-    fetch(message.url)
+    const init = {};
+    if (message.headers && typeof message.headers === 'object') {
+      init.headers = message.headers;
+    }
+    fetch(message.url, init)
       .then(async (resp) => {
         if (!resp.ok) {
           sendResponse({ ok: false, status: resp.status });

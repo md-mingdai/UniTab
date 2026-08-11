@@ -9,7 +9,9 @@ const Settings = (() => {
     bgBlur: 0,
     overlayOpacity: 0,
     overlayColor: '#000000',
-    bgImageData: null,
+    bgSource: 'bing',     // 'bing' | 'image' | 'color'
+    bgImageData: null,    // 仅 bgSource === 'image' 时使用
+    bgColor: '#1a1d24',   // 仅 bgSource === 'color' 时使用
     showSeconds: true
   };
 
@@ -21,8 +23,11 @@ const Settings = (() => {
 
   /* Form elements */
   let bgFileInput, bgFileName, bgUrlInput, bgUrlApply;
+  let bgBingRefresh, bgBingMeta, bgBingPanel, bgImagePanel, bgColorPanel;
+  let bgColorSwatches, bgCustomColorTrigger, bgColorInput, bgColorHex;
+  let bgSourceOptions;
   let blurSlider, blurDisplay, opacitySlider, opacityDisplay;
-  let colorSwatches, customColorTrigger, overlayColorInput, colorHexDisplay;
+  let overlayColorSwatches, customColorTrigger, overlayColorInput, colorHexDisplay;
   let engineSelectWrapper, engineSelectTrigger, engineSelectDropdown, engineSelectLabel, engineSelectNative;
   let showSecondsToggle;
   let resetBtn;
@@ -32,6 +37,12 @@ const Settings = (() => {
     loadSettings();
     bindEvents();
     applyBackground();
+
+    /* Auto-fetch Bing wallpaper if that's the active source but no
+       image has been fetched yet (e.g. first-time install). */
+    if (state.bgSource === 'bing' && !state.bgImageData && bgBingRefresh) {
+      bgBingRefresh.click();
+    }
   }
 
   function cacheDom() {
@@ -40,22 +51,43 @@ const Settings = (() => {
     closeBtn = document.getElementById('settings-close');
     overlayEl = document.getElementById('settings-overlay');
 
+    /* Background source radios */
+    bgSourceOptions = document.querySelectorAll('.radio-option[data-bg-source]');
+
+    /* Background sub-panels */
+    bgBingPanel = document.getElementById('bg-bing-panel');
+    bgImagePanel = document.getElementById('bg-image-panel');
+    bgColorPanel = document.getElementById('bg-color-panel');
+
+    /* Image sub-panel */
     bgFileInput = document.getElementById('bg-file-input');
     bgFileName = document.getElementById('bg-file-name');
     bgUrlInput = document.getElementById('bg-url-input');
     bgUrlApply = document.getElementById('bg-url-apply');
+
+    /* Bing sub-panel */
+    bgBingRefresh = document.getElementById('bg-bing-refresh');
+    bgBingMeta = document.getElementById('bg-bing-meta');
+
+    /* Color sub-panel */
+    bgColorSwatches = document.querySelectorAll('.bg-color-swatch[data-color]:not(.custom-swatch)');
+    bgCustomColorTrigger = document.getElementById('bg-custom-color-trigger');
+    bgColorInput = document.getElementById('bg-color-input');
+    bgColorHex = document.getElementById('bg-color-hex');
+
+    /* Blur / Overlay */
     blurSlider = document.getElementById('bg-blur-slider');
     blurDisplay = document.getElementById('blur-value-display');
     opacitySlider = document.getElementById('overlay-opacity-slider');
     opacityDisplay = document.getElementById('opacity-value-display');
 
-    /* Custom color swatches */
-    colorSwatches = document.querySelectorAll('.color-swatch[data-color]:not(.custom-swatch)');
+    /* Overlay color swatches (for mask) */
+    overlayColorSwatches = document.querySelectorAll('.color-swatch[data-color]:not(.custom-swatch):not(.bg-color-swatch)');
     customColorTrigger = document.getElementById('custom-color-trigger');
     overlayColorInput = document.getElementById('overlay-color-input');
     colorHexDisplay = document.getElementById('color-hex-display');
 
-    /* Custom select */
+    /* Custom engine select */
     engineSelectWrapper = document.getElementById('engine-select-wrapper');
     engineSelectTrigger = document.getElementById('engine-select-trigger');
     engineSelectDropdown = document.getElementById('engine-select-dropdown');
@@ -80,17 +112,35 @@ const Settings = (() => {
     } catch {
       state = { ...DEFAULTS };
     }
-    /* Migration: when this version added showSeconds (default true), the
-       field may have been saved as false by an earlier build where it
-       hadn't been declared yet. If showSeconds is missing from saved
-       settings entirely, treat it as the default (true). If it was
-       explicitly saved, respect the user's choice. */
+    /* Migration: pre-bgSource builds stored everything in bgImageData. */
+    if (state.bgSource == null) {
+      const data = state.bgImageData;
+      if (!data) {
+        state.bgSource = 'bing';
+      } else if (typeof data === 'string' && data.startsWith('bing-otd:')) {
+        state.bgSource = 'bing';
+      } else {
+        state.bgSource = 'image';
+      }
+      saveSettings();
+    }
+    /* Migration: 'none' source removed — redirect to 'bing'. */
+    if (state.bgSource === 'none') {
+      state.bgSource = 'bing';
+      state.bgImageData = null;
+      saveSettings();
+    }
+    /* Migration: showSeconds was added later, default to true if missing. */
     try {
       const raw = localStorage.getItem('unitab_settings');
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed && typeof parsed === 'object' && !('showSeconds' in parsed)) {
           state.showSeconds = DEFAULTS.showSeconds;
+          saveSettings();
+        }
+        if (parsed && typeof parsed === 'object' && !('bgColor' in parsed)) {
+          state.bgColor = DEFAULTS.bgColor;
           saveSettings();
         }
       }
@@ -114,8 +164,8 @@ const Settings = (() => {
     opacitySlider.value = state.overlayOpacity;
     opacityDisplay.textContent = state.overlayOpacity + '%';
 
-    /* Color swatches */
-    updateColorSwatches(state.overlayColor);
+    /* Overlay color swatches (mask) */
+    updateOverlayColorSwatches(state.overlayColor);
     overlayColorInput.value = state.overlayColor;
     colorHexDisplay.textContent = state.overlayColor.toUpperCase();
 
@@ -127,7 +177,31 @@ const Settings = (() => {
     /* Show seconds toggle */
     updateShowSecondsToggle(state.showSeconds);
 
-    bgFileName.textContent = state.bgImageData ? '已设置图片' : '未选择文件';
+    /* Background source radios */
+    updateBgSourceRadios(state.bgSource);
+
+    /* Background color swatches */
+    updateBgColorSwatches(state.bgColor);
+    if (bgColorInput) bgColorInput.value = state.bgColor;
+    if (bgColorHex) bgColorHex.textContent = state.bgColor.toUpperCase();
+
+    /* Sub-panel visibility */
+    setPanelVisible('bing', state.bgSource === 'bing');
+    setPanelVisible('image', state.bgSource === 'image');
+    setPanelVisible('color', state.bgSource === 'color');
+
+    /* Image filename hint */
+    if (state.bgImageData) {
+      if (state.bgImageData.startsWith('data:')) {
+        bgFileName.textContent = '已上传图片';
+      } else {
+        bgFileName.textContent = state.bgImageData.length > 40
+          ? state.bgImageData.substring(0, 40) + '...' : state.bgImageData;
+      }
+    } else {
+      bgFileName.textContent = '未选择文件';
+    }
+    setBingMeta('');
   }
 
   /* --- Apply to DOM --- */
@@ -142,6 +216,9 @@ const Settings = (() => {
         break;
       case 'overlayColor':
         root.style.setProperty('--overlay-color', value);
+        break;
+      case 'bgColor':
+        root.style.setProperty('--bg-solid-color', value);
         break;
       case 'engine':
         if (typeof Search !== 'undefined') {
@@ -160,21 +237,56 @@ const Settings = (() => {
     applyToDom('bgBlur', state.bgBlur);
     applyToDom('overlayOpacity', state.overlayOpacity);
     applyToDom('overlayColor', state.overlayColor);
+    applyToDom('bgColor', state.bgColor);
     applyToDom('engine', state.engine);
     applyToDom('showSeconds', state.showSeconds);
   }
 
   function applyBackground() {
     if (typeof Background !== 'undefined') {
-      Background.load(state.bgImageData);
+      Background.load({
+        source: state.bgSource,
+        imageData: state.bgImageData,
+        color: state.bgColor
+      });
     }
   }
 
-  /* --- Color Swatches --- */
-  function updateColorSwatches(activeColor) {
-    colorSwatches.forEach(swatch => {
-      const color = swatch.dataset.color;
-      swatch.classList.toggle('active', color === activeColor);
+  /* --- Sub-panel visibility --- */
+  function setPanelVisible(name, visible) {
+    const map = { bing: bgBingPanel, image: bgImagePanel, color: bgColorPanel };
+    const el = map[name];
+    if (!el) return;
+    if (visible) {
+      el.hidden = false;
+    } else {
+      el.hidden = true;
+    }
+  }
+
+  /* --- Background source radios --- */
+  function updateBgSourceRadios(source) {
+    if (!bgSourceOptions) return;
+    bgSourceOptions.forEach(btn => {
+      const checked = btn.dataset.bgSource === source;
+      btn.classList.toggle('checked', checked);
+      btn.setAttribute('aria-checked', checked ? 'true' : 'false');
+    });
+  }
+
+  /* --- Background color swatches --- */
+  function updateBgColorSwatches(color) {
+    if (!bgColorSwatches) return;
+    bgColorSwatches.forEach(swatch => {
+      swatch.classList.toggle('active', swatch.dataset.color === color);
+    });
+  }
+
+  /* --- Overlay color swatches (mask) --- */
+  function updateOverlayColorSwatches(activeColor) {
+    if (!overlayColorSwatches) return;
+    overlayColorSwatches.forEach(swatch => {
+      swatch.classList.toggle('active', swatch.dataset.color === activeColor);
     });
   }
 
@@ -202,14 +314,97 @@ const Settings = (() => {
     toggle.addEventListener('click', openPanel);
     closeBtn.addEventListener('click', closePanel);
     overlayEl.addEventListener('click', closePanel);
-
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && panel.classList.contains('open')) {
         closePanel();
       }
     });
 
-    /* Blur slider */
+    /* --- Background source radios --- */
+    bgSourceOptions.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = btn.dataset.bgSource;
+        if (val) setBgSource(val);
+      });
+    });
+
+    /* --- Bing refresh --- */
+    bgBingRefresh.addEventListener('click', async () => {
+      if (typeof Background === 'undefined' || !Background.fetchBingOfTheDay) return;
+      bgBingRefresh.disabled = true;
+      setBingMeta('正在获取…');
+      try {
+        const result = await Background.fetchBingOfTheDay();
+        if (!result.ok) {
+          setBingMeta('获取失败：' + (result.error || '未知错误'));
+          return;
+        }
+        state.bgImageData = Background.getBingOtdPrefix() + result.url;
+        saveSettings();
+        applyBackground();
+        setBingMeta(formatBingMeta(result));
+      } finally {
+        bgBingRefresh.disabled = false;
+      }
+    });
+
+    /* --- Image upload --- */
+    bgFileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      bgFileName.textContent = file.name;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        state.bgImageData = ev.target.result;
+        saveSettings();
+        applyBackground();
+      };
+      reader.onerror = () => { bgFileName.textContent = '图片加载失败'; };
+      reader.readAsDataURL(file);
+    });
+
+    /* --- URL apply --- */
+    bgUrlApply.addEventListener('click', () => {
+      const url = bgUrlInput.value.trim();
+      if (!url) return;
+      state.bgImageData = url;
+      saveSettings();
+      applyBackground();
+      bgFileName.textContent = url.length > 40 ? url.substring(0, 40) + '...' : url;
+      setBingMeta('');
+    });
+
+    /* --- Background color swatches --- */
+    bgColorSwatches.forEach(swatch => {
+      swatch.addEventListener('click', () => {
+        const val = swatch.dataset.color;
+        state.bgColor = val;
+        if (bgColorInput) bgColorInput.value = val;
+        if (bgColorHex) bgColorHex.textContent = val.toUpperCase();
+        updateBgColorSwatches(val);
+        applyToDom('bgColor', val);
+        saveSettings();
+        applyBackground();
+      });
+    });
+    if (bgCustomColorTrigger) {
+      bgCustomColorTrigger.addEventListener('click', () => {
+        if (bgColorInput) bgColorInput.click();
+      });
+    }
+    if (bgColorInput) {
+      bgColorInput.addEventListener('input', () => {
+        const val = bgColorInput.value;
+        state.bgColor = val;
+        if (bgColorHex) bgColorHex.textContent = val.toUpperCase();
+        updateBgColorSwatches(val);
+        applyToDom('bgColor', val);
+        saveSettings();
+        applyBackground();
+      });
+    }
+
+    /* --- Blur slider --- */
     blurSlider.addEventListener('input', () => {
       const val = parseInt(blurSlider.value, 10);
       blurDisplay.textContent = val + 'px';
@@ -218,7 +413,7 @@ const Settings = (() => {
       saveSettings();
     });
 
-    /* Overlay opacity slider */
+    /* --- Overlay opacity slider --- */
     opacitySlider.addEventListener('input', () => {
       const val = parseInt(opacitySlider.value, 10);
       opacityDisplay.textContent = val + '%';
@@ -227,34 +422,29 @@ const Settings = (() => {
       saveSettings();
     });
 
-    /* Color swatches */
-    colorSwatches.forEach(swatch => {
+    /* --- Overlay (mask) color swatches --- */
+    overlayColorSwatches.forEach(swatch => {
       swatch.addEventListener('click', () => {
         const val = swatch.dataset.color;
         overlayColorInput.value = val;
         colorHexDisplay.textContent = val.toUpperCase();
         state.overlayColor = val;
-        updateColorSwatches(val);
+        updateOverlayColorSwatches(val);
         applyToDom('overlayColor', val);
         saveSettings();
       });
     });
-
-    /* Custom color trigger */
-    customColorTrigger.addEventListener('click', () => {
-      overlayColorInput.click();
-    });
-
+    customColorTrigger.addEventListener('click', () => { overlayColorInput.click(); });
     overlayColorInput.addEventListener('input', () => {
       const val = overlayColorInput.value;
       colorHexDisplay.textContent = val.toUpperCase();
       state.overlayColor = val;
-      updateColorSwatches(val);
+      updateOverlayColorSwatches(val);
       applyToDom('overlayColor', val);
       saveSettings();
     });
 
-    /* Custom engine select */
+    /* --- Engine select --- */
     engineSelectTrigger.addEventListener('click', (e) => {
       e.stopPropagation();
       const isOpen = !engineSelectDropdown.hidden;
@@ -266,7 +456,6 @@ const Settings = (() => {
         engineSelectTrigger.classList.add('open');
       }
     });
-
     engineSelectDropdown.querySelectorAll('.custom-select-option').forEach(opt => {
       opt.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -281,8 +470,6 @@ const Settings = (() => {
         engineSelectTrigger.classList.remove('open');
       });
     });
-
-    /* Close dropdown on outside click */
     document.addEventListener('click', (e) => {
       if (!e.target.closest('#engine-select-wrapper')) {
         engineSelectDropdown.hidden = true;
@@ -290,7 +477,7 @@ const Settings = (() => {
       }
     });
 
-    /* Show seconds toggle */
+    /* --- Show seconds toggle --- */
     showSecondsToggle.addEventListener('click', () => {
       state.showSeconds = !state.showSeconds;
       updateShowSecondsToggle(state.showSeconds);
@@ -304,51 +491,56 @@ const Settings = (() => {
       }
     });
 
-    /* File upload */
-    bgFileInput.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      bgFileName.textContent = file.name;
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        state.bgImageData = ev.target.result;
-        saveSettings();
-        applyBackground();
-      };
-      reader.onerror = () => {
-        bgFileName.textContent = '图片加载失败';
-      };
-      reader.readAsDataURL(file);
-    });
-
-    /* URL apply */
-    bgUrlApply.addEventListener('click', () => {
-      const url = bgUrlInput.value.trim();
-      if (!url) return;
-      state.bgImageData = url;
-      saveSettings();
-      applyBackground();
-      bgFileName.textContent = url.length > 40 ? url.substring(0, 40) + '...' : url;
-    });
-
-    /* Reset */
+    /* --- Reset --- */
     resetBtn.addEventListener('click', () => {
       state = { ...DEFAULTS };
       saveSettings();
       syncFormToState();
       applyAllToDom();
       applyBackground();
-      bgUrlInput.value = '';
+      if (bgUrlInput) bgUrlInput.value = '';
+      setBingMeta('');
     });
   }
 
+  /* --- Background source selection --- */
+  function setBgSource(val) {
+    if (state.bgSource === val) return; // 已经选中，不重复操作
+    state.bgSource = val;
+    updateBgSourceRadios(val);
+    setPanelVisible('bing', val === 'bing');
+    setPanelVisible('image', val === 'image');
+    setPanelVisible('color', val === 'color');
+
+    /* 切换到必应但还没获取过 ➜ 自动获取一次 */
+    if (val === 'bing' && !state.bgImageData) {
+      saveSettings();
+      bgBingRefresh.click();
+      return;
+    }
+    saveSettings();
+    applyBackground();
+  }
+
+  /* --- Bing meta helpers --- */
+  function setBingMeta(text) {
+    if (bgBingMeta) bgBingMeta.textContent = text || '';
+  }
+
+  function formatBingMeta(result) {
+    if (!result || !result.ok) return '';
+    const parts = [];
+    if (result.headline) parts.push(result.headline);
+    if (result.copyright) parts.push(result.copyright);
+    if (result.startdate) {
+      parts.push(result.startdate.replace(/^(\d{4})(\d{2})(\d{2})$/, '$1-$2-$3'));
+    }
+    return parts.join(' · ');
+  }
+
   function closeAllDropdowns() {
-    if (engineSelectDropdown) {
-      engineSelectDropdown.hidden = true;
-    }
-    if (engineSelectTrigger) {
-      engineSelectTrigger.classList.remove('open');
-    }
+    if (engineSelectDropdown) engineSelectDropdown.hidden = true;
+    if (engineSelectTrigger) engineSelectTrigger.classList.remove('open');
   }
 
   /* --- Panel state --- */
