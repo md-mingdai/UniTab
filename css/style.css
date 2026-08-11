@@ -39,7 +39,6 @@
   /* Sizing */
   --search-max-width: 600px;
   --search-radius: 20px;
-  --suggestion-radius: 16px;
   --settings-width: 380px;
 
   /* Transitions */
@@ -146,6 +145,10 @@ body {
   color: var(--text-primary);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   pointer-events: none;
+  /* Keep digits monospaced so toggling seconds on/off doesn't shift the
+     visible width and re-center the clock slightly on every refresh. */
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
 }
 
 /* ============================================
@@ -258,34 +261,127 @@ body {
 
 /* ============================================
    Suggestions Dropdown
+   Positioned absolutely so it overlays the page
+   instead of pushing the centered search container.
+   Animates in with a soft slide + fade.
    ============================================ */
 
 .suggestions-dropdown {
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 8px 0;
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  /* The dropdown needs a higher alpha than .search-container because
+     the search box visually feels "solid" thanks to its dense opaque
+     content (input, button, placeholder text). The dropdown is mostly
+     empty glass surface — without extra fill weight, it reads as
+     noticeably more transparent. 0.22 brings the perceived density in
+     line with the search box across both light and dark backgrounds. */
+  background: rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--glass-border-light);
+  border-radius: var(--search-radius);
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    0 8px 32px var(--glass-shadow);
+  padding: 6px 0;
   overflow: hidden;
+  opacity: 0;
+  transform: translateY(-6px) scale(0.985);
+  transform-origin: top center;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .suggestions-dropdown {
+    transition:
+      opacity 0.18s var(--ease-out-expo),
+      transform 0.22s var(--ease-out-expo),
+      visibility 0s linear 0.22s;
+  }
+}
+
+.suggestions-dropdown[hidden] {
+  display: none;
+}
+
+/* Show state: applied via JS by removing [hidden] and adding .is-open */
+.suggestions-dropdown.is-open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+  visibility: visible;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .suggestions-dropdown.is-open {
+    transition:
+      opacity 0.18s var(--ease-out-expo),
+      transform 0.22s var(--ease-out-expo),
+      visibility 0s linear 0s;
+  }
 }
 
 .suggestions-list {
   list-style: none;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.suggestions-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.suggestions-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
 }
 
 .suggestion-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 20px;
+  padding: 10px 18px;
   font-size: 16px;
   color: var(--text-secondary);
   cursor: pointer;
-  transition:
-    background 0.12s var(--ease-out-expo),
-    color 0.12s var(--ease-out-expo);
+  opacity: 0;
+  transform: translateY(-4px);
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  .suggestion-item {
+    transition:
+      opacity 0.16s var(--ease-out-expo),
+      transform 0.18s var(--ease-out-expo),
+      background 0.12s var(--ease-out-expo),
+      color 0.12s var(--ease-out-expo);
+  }
+}
+
+.suggestions-dropdown.is-open .suggestion-item {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Stagger each item for a soft cascade */
+.suggestions-dropdown.is-open .suggestion-item:nth-child(1) { transition-delay: 0.00s, 0.00s; }
+.suggestions-dropdown.is-open .suggestion-item:nth-child(2) { transition-delay: 0.02s, 0.02s; }
+.suggestions-dropdown.is-open .suggestion-item:nth-child(3) { transition-delay: 0.04s, 0.04s; }
+.suggestions-dropdown.is-open .suggestion-item:nth-child(4) { transition-delay: 0.06s, 0.06s; }
+.suggestions-dropdown.is-open .suggestion-item:nth-child(5) { transition-delay: 0.08s, 0.08s; }
+.suggestions-dropdown.is-open .suggestion-item:nth-child(6) { transition-delay: 0.10s, 0.10s; }
+.suggestions-dropdown.is-open .suggestion-item:nth-child(7) { transition-delay: 0.12s, 0.12s; }
+.suggestions-dropdown.is-open .suggestion-item:nth-child(8) { transition-delay: 0.14s, 0.14s; }
+.suggestions-dropdown.is-open .suggestion-item:nth-child(9) { transition-delay: 0.16s, 0.16s; }
+.suggestions-dropdown.is-open .suggestion-item:nth-child(10) { transition-delay: 0.18s, 0.18s; }
 
 .suggestion-item:hover,
 .suggestion-item.active {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.10);
   color: var(--text-primary);
 }
 
@@ -584,6 +680,57 @@ body {
   font-weight: 400;
   color: var(--text-secondary);
   margin-bottom: 8px;
+}
+
+/* Inline row: label on the left, control on the right (used by toggles) */
+.setting-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Toggle switch (custom, non-native) */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 38px;
+  height: 22px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background 0.2s var(--ease-out-expo),
+    border-color 0.2s var(--ease-out-expo);
+  flex-shrink: 0;
+  outline: none;
+}
+
+.switch:focus-visible {
+  box-shadow: 0 0 0 3px rgba(139, 157, 195, 0.25);
+}
+
+.switch.on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 50%;
+  transition: transform 0.2s var(--ease-out-expo);
+  pointer-events: none;
+}
+
+.switch.on .switch-knob {
+  transform: translateX(16px);
 }
 
 /* Setting Input */
@@ -919,6 +1066,12 @@ body {
     border-color: var(--glass-border-dark);
   }
 
+  .suggestions-dropdown {
+    /* Same compensation as light mode — dropdown has more empty area. */
+    background: rgba(15, 23, 42, 0.62);
+    border-color: var(--glass-border-dark);
+  }
+
   .bookmarks-container {
     background: var(--glass-bg-dark);
     border-color: var(--glass-border-dark);
@@ -946,7 +1099,11 @@ body {
     -webkit-backdrop-filter: none;
   }
 
-  .bookmark-item {
+  .suggestions-dropdown {
+    background: rgba(30, 34, 48, 0.96);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
 
   .bookmarks-container {
     background: rgba(30, 34, 48, 0.96);

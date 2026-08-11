@@ -94,7 +94,7 @@ const Search = (() => {
   }
 
   function onKeyDown(e) {
-    const isOpen = !suggestionsDropdown.hidden;
+    const isOpen = suggestionsDropdown.classList.contains('is-open');
 
     if (e.key === 'ArrowDown') {
       e.preventDefault();
@@ -322,7 +322,13 @@ const Search = (() => {
       });
     });
 
+    /* Toggle via class so the slide/fade transition can play.
+       Set hidden=false first so display:block takes effect; then add
+       .is-open on the next frame to trigger the transition. */
     suggestionsDropdown.hidden = false;
+    requestAnimationFrame(() => {
+      suggestionsDropdown.classList.add('is-open');
+    });
     activeIndex = -1;
   }
 
@@ -343,13 +349,29 @@ const Search = (() => {
   }
 
   function hideSuggestions() {
-    suggestionsDropdown.hidden = true;
+    /* Defensive guard: hideSuggestions() is called from a few places
+       (setEngine, document click handler, etc.) and historically fired
+       before Search.init() had bound its DOM refs. Bail out if refs
+       aren't ready rather than throwing. */
+    if (!suggestionsDropdown) return;
+    suggestionsDropdown.classList.remove('is-open');
     activeIndex = -1;
+    /* After the transition ends, fully hide so it's removed from layout / a11y tree */
+    const onEnd = () => {
+      if (!suggestionsDropdown.classList.contains('is-open')) {
+        suggestionsDropdown.hidden = true;
+      }
+      suggestionsDropdown.removeEventListener('transitionend', onEnd);
+    };
+    suggestionsDropdown.addEventListener('transitionend', onEnd);
   }
 
   function showSuggestionsIfAvailable() {
-    if (suggestions.length > 0) {
+    if (suggestions.length > 0 && !suggestionsDropdown.classList.contains('is-open')) {
       suggestionsDropdown.hidden = false;
+      requestAnimationFrame(() => {
+        suggestionsDropdown.classList.add('is-open');
+      });
     }
   }
 

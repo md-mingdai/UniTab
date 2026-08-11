@@ -9,7 +9,8 @@ const Settings = (() => {
     bgBlur: 0,
     overlayOpacity: 0,
     overlayColor: '#000000',
-    bgImageData: null
+    bgImageData: null,
+    showSeconds: true
   };
 
   /* --- State --- */
@@ -23,6 +24,7 @@ const Settings = (() => {
   let blurSlider, blurDisplay, opacitySlider, opacityDisplay;
   let colorSwatches, customColorTrigger, overlayColorInput, colorHexDisplay;
   let engineSelectWrapper, engineSelectTrigger, engineSelectDropdown, engineSelectLabel, engineSelectNative;
+  let showSecondsToggle;
   let resetBtn;
 
   function init() {
@@ -60,6 +62,9 @@ const Settings = (() => {
     engineSelectLabel = document.getElementById('engine-select-label');
     engineSelectNative = document.getElementById('engine-select');
 
+    /* Display */
+    showSecondsToggle = document.getElementById('show-seconds-toggle');
+
     resetBtn = document.getElementById('settings-reset');
   }
 
@@ -69,9 +74,28 @@ const Settings = (() => {
       const saved = JSON.parse(localStorage.getItem('unitab_settings'));
       if (saved && typeof saved === 'object') {
         state = { ...DEFAULTS, ...saved };
+      } else {
+        state = { ...DEFAULTS };
       }
     } catch {
       state = { ...DEFAULTS };
+    }
+    /* Migration: when this version added showSeconds (default true), the
+       field may have been saved as false by an earlier build where it
+       hadn't been declared yet. If showSeconds is missing from saved
+       settings entirely, treat it as the default (true). If it was
+       explicitly saved, respect the user's choice. */
+    try {
+      const raw = localStorage.getItem('unitab_settings');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object' && !('showSeconds' in parsed)) {
+          state.showSeconds = DEFAULTS.showSeconds;
+          saveSettings();
+        }
+      }
+    } catch {
+      /* ignore */
     }
     syncFormToState();
   }
@@ -100,6 +124,9 @@ const Settings = (() => {
     updateEngineLabel(state.engine);
     updateEngineDropdown(state.engine);
 
+    /* Show seconds toggle */
+    updateShowSecondsToggle(state.showSeconds);
+
     bgFileName.textContent = state.bgImageData ? '已设置图片' : '未选择文件';
   }
 
@@ -121,6 +148,11 @@ const Settings = (() => {
           Search.setEngine(value, false);
         }
         break;
+      case 'showSeconds':
+        if (typeof Clock !== 'undefined') {
+          Clock.setShowSeconds(value);
+        }
+        break;
     }
   }
 
@@ -129,6 +161,7 @@ const Settings = (() => {
     applyToDom('overlayOpacity', state.overlayOpacity);
     applyToDom('overlayColor', state.overlayColor);
     applyToDom('engine', state.engine);
+    applyToDom('showSeconds', state.showSeconds);
   }
 
   function applyBackground() {
@@ -155,6 +188,12 @@ const Settings = (() => {
     engineSelectDropdown.querySelectorAll('.custom-select-option').forEach(opt => {
       opt.classList.toggle('selected', opt.dataset.value === engineKey);
     });
+  }
+
+  function updateShowSecondsToggle(on) {
+    if (!showSecondsToggle) return;
+    showSecondsToggle.classList.toggle('on', !!on);
+    showSecondsToggle.setAttribute('aria-checked', on ? 'true' : 'false');
   }
 
   /* --- Events --- */
@@ -248,6 +287,20 @@ const Settings = (() => {
       if (!e.target.closest('#engine-select-wrapper')) {
         engineSelectDropdown.hidden = true;
         engineSelectTrigger.classList.remove('open');
+      }
+    });
+
+    /* Show seconds toggle */
+    showSecondsToggle.addEventListener('click', () => {
+      state.showSeconds = !state.showSeconds;
+      updateShowSecondsToggle(state.showSeconds);
+      applyToDom('showSeconds', state.showSeconds);
+      saveSettings();
+    });
+    showSecondsToggle.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        showSecondsToggle.click();
       }
     });
 
