@@ -755,6 +755,15 @@ body {
   background: rgba(255, 255, 255, 0.10);
 }
 
+.setting-input[aria-invalid="true"] {
+  border-color: rgba(224, 114, 124, 0.55);
+  background: rgba(224, 114, 124, 0.08);
+}
+
+.setting-input[aria-invalid="true"]:focus {
+  border-color: rgba(224, 114, 124, 0.75);
+}
+
 .setting-input::placeholder {
   color: var(--text-tertiary);
 }
@@ -1126,6 +1135,14 @@ body {
   line-height: 1.45;
   color: var(--text-tertiary);
   word-break: break-word;
+}
+
+.setting-meta-error {
+  color: #e0727c;
+}
+
+.setting-meta-error[hidden] {
+  display: none;
 }
 
 /* Reset Button */

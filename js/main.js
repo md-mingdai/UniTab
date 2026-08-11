@@ -121,9 +121,12 @@
     if (window.matchMedia) {
       window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
         const s = Settings.getState();
+        const data = s.bgSource === 'image'
+          ? (s.bgImageData || s.bgImageUrl)
+          : s.bgBingUrl;
         Background.load({
           source: s.bgSource || 'bing',
-          imageData: s.bgImageData,
+          imageData: data,
           color: s.bgColor
         });
       });

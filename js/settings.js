@@ -10,8 +10,11 @@ const Settings = (() => {
     overlayOpacity: 0,
     overlayColor: '#000000',
     bgSource: 'bing',     // 'bing' | 'image' | 'color'
-    bgImageData: null,    // 仅 bgSource === 'image' 时使用
-    bgColor: '#1a1d24',   // 仅 bgSource === 'color' 时使用
+    bgImageData: null,    // 自定义图片 base64
+    bgImageUrl: null,     // 自定义图片 URL（仅当 bgSource === 'image' 且用户填了链接时使用）
+    bgBingUrl: null,      // 必应壁纸 URL（仅 bgSource === 'bing' 时使用）
+    bgBingCopyright: '',  // 必应壁纸标题 + 版权信息（持久化，刷新页面也显示）
+    bgColor: '#1a1d24',   // 纯色（仅 bgSource === 'color' 时使用）
     showSeconds: true
   };
 
@@ -22,7 +25,7 @@ const Settings = (() => {
   let panel, toggle, closeBtn, overlayEl;
 
   /* Form elements */
-  let bgFileInput, bgFileName, bgUrlInput, bgUrlApply;
+  let bgFileInput, bgFileName, bgUrlInput, bgUrlApply, bgUrlError;
   let bgBingRefresh, bgBingMeta, bgBingPanel, bgImagePanel, bgColorPanel;
   let bgColorSwatches, bgCustomColorTrigger, bgColorInput, bgColorHex;
   let bgSourceOptions;
@@ -40,7 +43,7 @@ const Settings = (() => {
 
     /* Auto-fetch Bing wallpaper if that's the active source but no
        image has been fetched yet (e.g. first-time install). */
-    if (state.bgSource === 'bing' && !state.bgImageData && bgBingRefresh) {
+    if (state.bgSource === 'bing' && !state.bgBingUrl && bgBingRefresh) {
       bgBingRefresh.click();
     }
   }
@@ -64,6 +67,7 @@ const Settings = (() => {
     bgFileName = document.getElementById('bg-file-name');
     bgUrlInput = document.getElementById('bg-url-input');
     bgUrlApply = document.getElementById('bg-url-apply');
+    bgUrlError = document.getElementById('bg-url-error');
 
     /* Bing sub-panel */
     bgBingRefresh = document.getElementById('bg-bing-refresh');
@@ -119,9 +123,21 @@ const Settings = (() => {
         state.bgSource = 'bing';
       } else if (typeof data === 'string' && data.startsWith('bing-otd:')) {
         state.bgSource = 'bing';
+        state.bgBingUrl = data.slice(Background.getBingOtdPrefix().length);
+        state.bgImageData = null;
       } else {
         state.bgSource = 'image';
       }
+      saveSettings();
+    }
+    /* Migration: pre-bgBingUrl builds stored bing URL inside bgImageData
+       under the bing-otd: prefix. Move it to its own field so the two
+       sources don't trample each other. */
+    if (state.bgBingUrl == null && state.bgImageData
+        && typeof state.bgImageData === 'string'
+        && state.bgImageData.startsWith(Background.getBingOtdPrefix())) {
+      state.bgBingUrl = state.bgImageData.slice(Background.getBingOtdPrefix().length);
+      state.bgImageData = null;
       saveSettings();
     }
     /* Migration: 'none' source removed — redirect to 'bing'. */
@@ -190,18 +206,17 @@ const Settings = (() => {
     setPanelVisible('image', state.bgSource === 'image');
     setPanelVisible('color', state.bgSource === 'color');
 
-    /* Image filename hint */
+    /* Image filename hint — distinguishes between uploaded base64
+       and a user-entered URL, both stored independently under 'image'. */
     if (state.bgImageData) {
-      if (state.bgImageData.startsWith('data:')) {
-        bgFileName.textContent = '已上传图片';
-      } else {
-        bgFileName.textContent = state.bgImageData.length > 40
-          ? state.bgImageData.substring(0, 40) + '...' : state.bgImageData;
-      }
+      bgFileName.textContent = '已上传图片';
+    } else if (state.bgImageUrl) {
+      bgFileName.textContent = state.bgImageUrl.length > 40
+        ? state.bgImageUrl.substring(0, 40) + '...' : state.bgImageUrl;
     } else {
       bgFileName.textContent = '未选择文件';
     }
-    setBingMeta('');
+    setBingMeta(state.bgBingCopyright || '');
   }
 
   /* --- Apply to DOM --- */
@@ -244,9 +259,12 @@ const Settings = (() => {
 
   function applyBackground() {
     if (typeof Background !== 'undefined') {
+      const data = state.bgSource === 'image'
+        ? (state.bgImageData || state.bgImageUrl)
+        : state.bgBingUrl;
       Background.load({
         source: state.bgSource,
-        imageData: state.bgImageData,
+        imageData: data,
         color: state.bgColor
       });
     }
@@ -339,10 +357,11 @@ const Settings = (() => {
           setBingMeta('获取失败：' + (result.error || '未知错误'));
           return;
         }
-        state.bgImageData = Background.getBingOtdPrefix() + result.url;
+        state.bgBingUrl = result.url;
+        state.bgBingCopyright = formatBingMeta(result);
         saveSettings();
         applyBackground();
-        setBingMeta(formatBingMeta(result));
+        setBingMeta(state.bgBingCopyright);
       } finally {
         bgBingRefresh.disabled = false;
       }
@@ -352,10 +371,18 @@ const Settings = (() => {
     bgFileInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) return;
+      if (!file.type.startsWith('image/')) {
+        bgFileName.textContent = '请选择图片文件';
+        bgFileInput.value = '';
+        return;
+      }
       bgFileName.textContent = file.name;
       const reader = new FileReader();
       reader.onload = (ev) => {
+        /* Clear the URL slot so the upload "wins" — having both stored
+           at once caused the two sources to fight for the same field. */
         state.bgImageData = ev.target.result;
+        state.bgImageUrl = null;
         saveSettings();
         applyBackground();
       };
@@ -365,13 +392,28 @@ const Settings = (() => {
 
     /* --- URL apply --- */
     bgUrlApply.addEventListener('click', () => {
-      const url = bgUrlInput.value.trim();
-      if (!url) return;
-      state.bgImageData = url;
+      const raw = bgUrlInput.value.trim();
+      if (!raw) {
+        showUrlError('请输入图片链接');
+        return;
+      }
+      const check = validateImageUrl(raw);
+      if (!check.ok) {
+        showUrlError(check.error);
+        return;
+      }
+      /* Clear the upload slot so the URL "wins". */
+      state.bgImageUrl = check.url;
+      state.bgImageData = null;
       saveSettings();
       applyBackground();
-      bgFileName.textContent = url.length > 40 ? url.substring(0, 40) + '...' : url;
-      setBingMeta('');
+      bgFileName.textContent = check.url.length > 40 ? check.url.substring(0, 40) + '...' : check.url;
+      showUrlError('');
+    });
+
+    /* Clear the error as soon as the user edits the input again. */
+    bgUrlInput.addEventListener('input', () => {
+      if (bgUrlError && !bgUrlError.hidden) showUrlError('');
     });
 
     /* --- Background color swatches --- */
@@ -499,6 +541,7 @@ const Settings = (() => {
       applyAllToDom();
       applyBackground();
       if (bgUrlInput) bgUrlInput.value = '';
+      showUrlError('');
       setBingMeta('');
     });
   }
@@ -513,7 +556,7 @@ const Settings = (() => {
     setPanelVisible('color', val === 'color');
 
     /* 切换到必应但还没获取过 ➜ 自动获取一次 */
-    if (val === 'bing' && !state.bgImageData) {
+    if (val === 'bing' && !state.bgBingUrl) {
       saveSettings();
       bgBingRefresh.click();
       return;
@@ -522,9 +565,42 @@ const Settings = (() => {
     applyBackground();
   }
 
+  /* Validate that a string is a safe http(s) image URL.
+     Rejects javascript:, data:, file:, blob: and other non-http schemes
+     to prevent XSS via the CSS url() setter. Returns { ok, url, error }. */
+  function validateImageUrl(input) {
+    if (typeof input !== 'string' || !input.trim()) {
+      return { ok: false, error: '链接不能为空' };
+    }
+    let parsed;
+    try {
+      parsed = new URL(input);
+    } catch {
+      return { ok: false, error: '链接格式不合法' };
+    }
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return { ok: false, error: '仅支持 http / https 链接' };
+    }
+    return { ok: true, url: parsed.href };
+  }
+
   /* --- Bing meta helpers --- */
   function setBingMeta(text) {
     if (bgBingMeta) bgBingMeta.textContent = text || '';
+  }
+
+  /* Show / clear the URL input error line. Pass empty string to clear. */
+  function showUrlError(text) {
+    if (!bgUrlError) return;
+    if (text) {
+      bgUrlError.textContent = text;
+      bgUrlError.hidden = false;
+      bgUrlInput.setAttribute('aria-invalid', 'true');
+    } else {
+      bgUrlError.textContent = '';
+      bgUrlError.hidden = true;
+      bgUrlInput.removeAttribute('aria-invalid');
+    }
   }
 
   function formatBingMeta(result) {
