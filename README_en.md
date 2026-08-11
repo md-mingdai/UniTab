@@ -2,10 +2,7 @@
 
 > A minimalist, glassmorphism new tab page extension for all major browsers. Centered search box with live suggestions, customizable backgrounds, and a clean frosted-glass interface.
 
-- Author: [mingdai](https://github.com/md-mingdai)
-- Repository: https://github.com/md-mingdai/UniTab
-- License: [MIT](./LICENSE)
-- Version: 0.3.6
+- [![Author](https://img.shields.io/badge/Author-mingdai-green)](https://github.com/md-mingdai) [![Repo](https://img.shields.io/badge/github-repo-blue?logo=github)](https://github.com/md-mingdai/UniTab) [![License](https://img.shields.io/badge/License-MIT-red)](./LICENSE) [![Version](https://img.shields.io/github/v/release/md-mingdai/UniTab)](https://github.com/md-mingdai/UniTab/releases)
 
 [中文](./README.md)
 

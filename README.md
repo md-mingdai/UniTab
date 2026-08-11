@@ -2,10 +2,7 @@
 
 > 一款极简、毛玻璃风格的新标签页美化扩展，兼容主流浏览器。居中的搜索框带实时建议，可自定义背景，整体采用清爽的毛玻璃界面。
 
-- 作者：[mingdai](https://github.com/md-mingdai)
-- 仓库地址：https://github.com/md-mingdai/UniTab
-- 许可证：[MIT](./LICENSE)
-- 当前版本：0.3.6
+- [![Author](https://img.shields.io/badge/Author-mingdai-green)](https://github.com/md-mingdai) [![Repo](https://img.shields.io/badge/github-repo-blue?logo=github)](https://github.com/md-mingdai/UniTab) [![License](https://img.shields.io/badge/License-MIT-red)](./LICENSE) [![Version](https://img.shields.io/github/v/release/md-mingdai/UniTab)](https://github.com/md-mingdai/UniTab/releases)
 
 [English](./README_en.md)
 
