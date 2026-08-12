@@ -5,7 +5,7 @@
 const Settings = (() => {
   /* --- Defaults --- */
   const DEFAULTS = {
-    engine: 'google',
+    engine: 'bing',
     bgBlur: 0,
     overlayOpacity: 0,
     overlayColor: '#000000',
@@ -24,6 +24,9 @@ const Settings = (() => {
 
   /* --- DOM refs --- */
   let panel, toggle, closeBtn, overlayEl;
+
+  /* Tabs */
+  let tabButtons, tabPanels, tabIndicator;
 
   /* Form elements */
   let bgFileInput, bgFileName, bgUrlInput, bgUrlApply, bgUrlError;
@@ -55,6 +58,11 @@ const Settings = (() => {
     toggle = document.getElementById('settings-toggle');
     closeBtn = document.getElementById('settings-close');
     overlayEl = document.getElementById('settings-overlay');
+
+    /* Tabs */
+    tabButtons = panel.querySelectorAll('.settings-tab');
+    tabPanels = panel.querySelectorAll('.settings-tab-panel');
+    tabIndicator = panel.querySelector('.settings-tab-indicator');
 
     /* Background source radios */
     bgSourceOptions = document.querySelectorAll('.radio-option[data-bg-source]');
@@ -348,8 +356,48 @@ const Settings = (() => {
     showBookmarksToggle.setAttribute('aria-checked', on ? 'true' : 'false');
   }
 
+  /* --- Tab switching --- */
+  function switchTab(tabName) {
+    if (!tabButtons || !tabPanels) return;
+    tabButtons.forEach(btn => {
+      const active = btn.dataset.tab === tabName;
+      btn.setAttribute('aria-selected', active ? 'true' : 'false');
+      btn.tabIndex = active ? 0 : -1;
+    });
+    tabPanels.forEach(p => {
+      p.hidden = p.dataset.tabPanel !== tabName;
+    });
+    moveIndicator(tabName);
+  }
+
+  function moveIndicator(tabName) {
+    if (!tabIndicator) return;
+    const activeBtn = panel.querySelector(`.settings-tab[data-tab="${tabName}"]`);
+    if (!activeBtn) return;
+    const tabsRect = activeBtn.parentElement.getBoundingClientRect();
+    const btnRect = activeBtn.getBoundingClientRect();
+    const inset = 14; // px to shrink from each side
+    const left = btnRect.left - tabsRect.left + inset;
+    const width = Math.max(btnRect.width - inset * 2, 20);
+    tabIndicator.style.left = left + 'px';
+    tabIndicator.style.width = width + 'px';
+  }
+
+  function getActiveTab() {
+    if (!tabButtons) return 'bg';
+    const active = panel.querySelector('.settings-tab[aria-selected="true"]');
+    return active ? active.dataset.tab : 'bg';
+  }
+
   /* --- Events --- */
   function bindEvents() {
+    /* Tab switching */
+    if (tabButtons) {
+      tabButtons.forEach(btn => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+      });
+    }
+
     /* Panel open/close */
     toggle.addEventListener('click', openPanel);
     closeBtn.addEventListener('click', closePanel);
@@ -569,16 +617,43 @@ const Settings = (() => {
       }
     });
 
-    /* --- Reset --- */
+    /* --- Reset (per-tab) --- */
     resetBtn.addEventListener('click', () => {
-      state = { ...DEFAULTS };
-      saveSettings();
-      syncFormToState();
-      applyAllToDom();
-      applyBackground();
-      if (bgUrlInput) bgUrlInput.value = '';
-      showUrlError('');
-      setBingMeta('');
+      const activeTab = getActiveTab();
+      switch (activeTab) {
+        case 'bg':
+          state.bgSource = DEFAULTS.bgSource;
+          state.bgBlur = DEFAULTS.bgBlur;
+          state.overlayOpacity = DEFAULTS.overlayOpacity;
+          state.overlayColor = DEFAULTS.overlayColor;
+          state.bgImageData = DEFAULTS.bgImageData;
+          state.bgImageUrl = DEFAULTS.bgImageUrl;
+          state.bgBingUrl = DEFAULTS.bgBingUrl;
+          state.bgBingCopyright = DEFAULTS.bgBingCopyright;
+          state.bgColor = DEFAULTS.bgColor;
+          saveSettings();
+          syncFormToState();
+          applyAllToDom();
+          applyBackground();
+          if (bgUrlInput) bgUrlInput.value = '';
+          showUrlError('');
+          setBingMeta('');
+          break;
+        case 'search':
+          state.engine = DEFAULTS.engine;
+          saveSettings();
+          syncFormToState();
+          applyToDom('engine', state.engine);
+          break;
+        case 'display':
+          state.showSeconds = DEFAULTS.showSeconds;
+          state.showBookmarks = DEFAULTS.showBookmarks;
+          saveSettings();
+          syncFormToState();
+          applyToDom('showSeconds', state.showSeconds);
+          applyToDom('showBookmarks', state.showBookmarks);
+          break;
+      }
     });
   }
 
@@ -659,7 +734,15 @@ const Settings = (() => {
   function openPanel() {
     panel.classList.add('open');
     panel.setAttribute('aria-hidden', 'false');
+    /* Show overlay first, then fade in on next frame so the transition
+       actually plays (setting both at once would skip the animation). */
     overlayEl.hidden = false;
+    requestAnimationFrame(() => {
+      if (overlayEl) overlayEl.style.opacity = '1';
+      /* Position the tab indicator after the panel is visible so
+         getBoundingClientRect returns correct values. */
+      moveIndicator(getActiveTab());
+    });
     toggle.style.opacity = '0';
     toggle.style.pointerEvents = 'none';
   }
@@ -667,7 +750,16 @@ const Settings = (() => {
   function closePanel() {
     panel.classList.remove('open');
     panel.setAttribute('aria-hidden', 'true');
-    overlayEl.hidden = true;
+    if (overlayEl) overlayEl.style.opacity = '0';
+    /* Hide after the fade transition completes — 220ms matches CSS. */
+    if (overlayEl) {
+      setTimeout(() => {
+        /* Guard against reopening during the timeout window. */
+        if (!panel.classList.contains('open')) {
+          overlayEl.hidden = true;
+        }
+      }, 240);
+    }
     toggle.style.opacity = '';
     toggle.style.pointerEvents = '';
     closeAllDropdowns();

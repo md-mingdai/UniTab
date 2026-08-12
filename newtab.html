@@ -78,9 +78,16 @@
       </button>
     </div>
 
+    <div class="settings-tabs" role="tablist" aria-label="设置分类">
+      <button class="settings-tab" role="tab" id="tab-bg" data-tab="bg" aria-selected="true" aria-controls="tab-panel-bg" type="button">背景</button>
+      <button class="settings-tab" role="tab" id="tab-search" data-tab="search" aria-selected="false" aria-controls="tab-panel-search" tabindex="-1" type="button">搜索</button>
+      <button class="settings-tab" role="tab" id="tab-display" data-tab="display" aria-selected="false" aria-controls="tab-panel-display" tabindex="-1" type="button">显示</button>
+      <div class="settings-tab-indicator" aria-hidden="true"></div>
+    </div>
+
     <div class="settings-body">
       <!-- Background Section -->
-      <section class="settings-section">
+      <section class="settings-tab-panel" id="tab-panel-bg" role="tabpanel" aria-labelledby="tab-bg" data-tab-panel="bg">
         <h3 class="settings-section-title">背景</h3>
 
         <!-- Background source radio list -->
@@ -135,12 +142,12 @@
           <div class="color-swatch-grid" id="bg-color-swatch-grid">
             <button class="color-swatch bg-color-swatch" data-color="#1a1d24" style="background:#1a1d24" aria-label="深灰蓝"></button>
             <button class="color-swatch bg-color-swatch" data-color="#0d1117" style="background:#0d1117" aria-label="GitHub 暗"></button>
-            <button class="color-swatch bg-color-swatch" data-color="#1a1a2e" style="background:#1a1a2e" aria-label="深蓝黑"></button>
+            <button class="color-swatch bg-color-swatch" data-color="#1a2a3a" style="background:#1a2a3a" aria-label="钢蓝"></button>
             <button class="color-swatch bg-color-swatch" data-color="#0f1a2e" style="background:#0f1a2e" aria-label="深海蓝"></button>
-            <button class="color-swatch bg-color-swatch" data-color="#2d1a3a" style="background:#2d1a3a" aria-label="深紫"></button>
-            <button class="color-swatch bg-color-swatch" data-color="#1a2a1a" style="background:#1a2a1a" aria-label="深绿"></button>
-            <button class="color-swatch bg-color-swatch" data-color="#3a1a1a" style="background:#3a1a1a" aria-label="深红"></button>
-            <button class="color-swatch bg-color-swatch" data-color="#2a1a2e" style="background:#2a1a2e" aria-label="暗紫"></button>
+            <button class="color-swatch bg-color-swatch" data-color="#1a3a3a" style="background:#1a3a3a" aria-label="深青绿"></button>
+            <button class="color-swatch bg-color-swatch" data-color="#1a2a2e" style="background:#1a2a2e" aria-label="暗青"></button>
+            <button class="color-swatch bg-color-swatch" data-color="#2e1a3a" style="background:#2e1a3a" aria-label="靛紫"></button>
+            <button class="color-swatch bg-color-swatch" data-color="#1a1a3e" style="background:#1a1a3e" aria-label="午夜蓝"></button>
             <button class="color-swatch bg-color-swatch custom-swatch" data-color="custom" id="bg-custom-color-trigger" aria-label="自定义颜色">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
             </button>
@@ -163,13 +170,13 @@
           <label class="setting-label">蒙版颜色</label>
           <div class="color-swatch-grid" id="color-swatch-grid">
             <button class="color-swatch" data-color="#000000" style="background:#000000" aria-label="黑色"></button>
-            <button class="color-swatch" data-color="#1a1a2e" style="background:#1a1a2e" aria-label="深蓝黑"></button>
+            <button class="color-swatch" data-color="#1a2a3a" style="background:#1a2a3a" aria-label="钢蓝"></button>
             <button class="color-swatch" data-color="#0f1a2e" style="background:#0f1a2e" aria-label="深海蓝"></button>
-            <button class="color-swatch" data-color="#1a1a1a" style="background:#1a1a1a" aria-label="深灰"></button>
-            <button class="color-swatch" data-color="#2d1a3a" style="background:#2d1a3a" aria-label="深紫"></button>
-            <button class="color-swatch" data-color="#1a2a1a" style="background:#1a2a1a" aria-label="深绿"></button>
-            <button class="color-swatch" data-color="#3a1a1a" style="background:#3a1a1a" aria-label="深红"></button>
-            <button class="color-swatch" data-color="#1a1a3a" style="background:#1a1a3a" aria-label="深蓝"></button>
+            <button class="color-swatch" data-color="#1a3a3a" style="background:#1a3a3a" aria-label="深青绿"></button>
+            <button class="color-swatch" data-color="#2e1a3a" style="background:#2e1a3a" aria-label="靛紫"></button>
+            <button class="color-swatch" data-color="#1a1a3e" style="background:#1a1a3e" aria-label="午夜蓝"></button>
+            <button class="color-swatch" data-color="#1a2a2e" style="background:#1a2a2e" aria-label="暗青"></button>
+            <button class="color-swatch" data-color="#2a3a4a" style="background:#2a3a4a" aria-label="铅灰蓝"></button>
             <button class="color-swatch custom-swatch" data-color="custom" id="custom-color-trigger" aria-label="自定义颜色">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
             </button>
@@ -180,7 +187,7 @@
       </section>
 
       <!-- Search Section -->
-      <section class="settings-section">
+      <section class="settings-tab-panel" id="tab-panel-search" role="tabpanel" aria-labelledby="tab-search" data-tab-panel="search" hidden>
         <h3 class="settings-section-title">搜索</h3>
 
         <div class="setting-group">
@@ -207,7 +214,7 @@
       </section>
 
       <!-- Display Section -->
-      <section class="settings-section">
+      <section class="settings-tab-panel" id="tab-panel-display" role="tabpanel" aria-labelledby="tab-display" data-tab-panel="display" hidden>
         <h3 class="settings-section-title">显示</h3>
 
         <div class="setting-group">
