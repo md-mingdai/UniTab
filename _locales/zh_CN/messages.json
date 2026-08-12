@@ -1,0 +1,10 @@
+{
+  "extName": {
+    "message": "UniTab",
+    "description": "扩展名称"
+  },
+  "extDescription": {
+    "message": "极简毛玻璃新标签页，可自定义背景与搜索引擎，支持搜索词条预测。",
+    "description": "扩展描述"
+  }
+}
