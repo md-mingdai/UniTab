@@ -146,5 +146,38 @@ const Background = (() => {
     return BING_OTD_PREFIX;
   }
 
-  return { load, clear, fetchBingOfTheDay, getBingOtdPrefix };
+  /* Extract the dominant color from an image URL (or data: URI).
+     Returns a promise that resolves to a CSS hex color string.
+     Samples a downscaled version for performance. */
+  function extractThemeColor(src) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const c = document.createElement('canvas');
+          const size = 32;
+          c.width = size; c.height = size;
+          const cx = c.getContext('2d');
+          cx.drawImage(img, 0, 0, size, size);
+          const data = cx.getImageData(0, 0, size, size).data;
+          let r = 0, g = 0, b = 0, count = 0;
+          for (let i = 0; i < data.length; i += 4) {
+            r += data[i]; g += data[i + 1]; b += data[i + 2];
+            count++;
+          }
+          r = Math.round(r / count);
+          g = Math.round(g / count);
+          b = Math.round(b / count);
+          resolve('#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join(''));
+        } catch {
+          resolve('');
+        }
+      };
+      img.onerror = () => resolve('');
+      img.src = src;
+    });
+  }
+
+  return { load, clear, fetchBingOfTheDay, getBingOtdPrefix, extractThemeColor };
 })();

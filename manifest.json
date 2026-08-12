@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "UniTab",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "description": "极简毛玻璃新标签页，可自定义背景与搜索引擎，支持搜索词条预测。",
   "author": "mingdai",
   "homepage_url": "https://github.com/md-mingdai/UniTab",

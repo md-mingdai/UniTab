@@ -70,7 +70,7 @@ body {
   font-family: 'DingTalk Sans', -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", "Segoe UI", sans-serif;
   color: var(--text-primary);
   overflow: hidden;
-  background: #1a1d24;
+  background: transparent;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -89,6 +89,7 @@ body {
 .background-image {
   position: absolute;
   inset: -10px; /* Bleed to cover blur edge gaps */
+  background-color: var(--bg-theme-color, transparent);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;

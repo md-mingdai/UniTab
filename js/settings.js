@@ -15,8 +15,11 @@ const Settings = (() => {
     bgBingUrl: null,      // 必应壁纸 URL（仅 bgSource === 'bing' 时使用）
     bgBingCopyright: '',  // 必应壁纸标题 + 版权信息（持久化，刷新页面也显示）
     bgColor: '#1a1d24',   // 纯色（仅 bgSource === 'color' 时使用）
+    bgThemeColor: '',     // 图片主题色（用于图片加载前的占位背景）
     showSeconds: true,
-    showBookmarks: true   // 底部常用网址 Dock 栏开关
+    showBookmarks: true,  // 底部常用网址 Dock 栏开关
+    showCursorEffect: false,  // 鼠标粒子特效
+    cursorEffectStyle: 'confetti'  // 'confetti' | 'rain' | 'bubble' | 'star'
   };
 
   /* --- State --- */
@@ -38,6 +41,8 @@ const Settings = (() => {
   let engineSelectWrapper, engineSelectTrigger, engineSelectDropdown, engineSelectLabel, engineSelectNative;
   let showSecondsToggle;
   let showBookmarksToggle;
+  let cursorEffectToggle;
+  let cursorStyleGroup, cursorStyleWrapper, cursorStyleTrigger, cursorStyleDropdown, cursorStyleLabel, cursorStyleNative;
   let resetBtn;
 
   function init() {
@@ -111,6 +116,13 @@ const Settings = (() => {
     /* Display */
     showSecondsToggle = document.getElementById('show-seconds-toggle');
     showBookmarksToggle = document.getElementById('show-bookmarks-toggle');
+    cursorEffectToggle = document.getElementById('cursor-effect-toggle');
+    cursorStyleGroup = document.getElementById('cursor-style-group');
+    cursorStyleWrapper = document.getElementById('cursor-style-wrapper');
+    cursorStyleTrigger = document.getElementById('cursor-style-trigger');
+    cursorStyleDropdown = document.getElementById('cursor-style-dropdown');
+    cursorStyleLabel = document.getElementById('cursor-style-label');
+    cursorStyleNative = document.getElementById('cursor-style-select');
 
     resetBtn = document.getElementById('settings-reset');
   }
@@ -174,6 +186,18 @@ const Settings = (() => {
           state.showBookmarks = DEFAULTS.showBookmarks;
           saveSettings();
         }
+        if (parsed && typeof parsed === 'object' && !('showCursorEffect' in parsed)) {
+          state.showCursorEffect = DEFAULTS.showCursorEffect;
+          saveSettings();
+        }
+        if (parsed && typeof parsed === 'object' && !('cursorEffectStyle' in parsed)) {
+          state.cursorEffectStyle = DEFAULTS.cursorEffectStyle;
+          saveSettings();
+        }
+        if (parsed && typeof parsed === 'object' && !('bgThemeColor' in parsed)) {
+          state.bgThemeColor = DEFAULTS.bgThemeColor;
+          saveSettings();
+        }
       }
     } catch {
       /* ignore */
@@ -210,6 +234,13 @@ const Settings = (() => {
 
     /* Bookmarks bar toggle */
     updateShowBookmarksToggle(state.showBookmarks);
+
+    /* Cursor effect toggle */
+    updateCursorEffectToggle(state.showCursorEffect);
+    setCursorStyleGroupVisible(state.showCursorEffect);
+    cursorStyleNative.value = state.cursorEffectStyle;
+    updateCursorStyleLabel(state.cursorEffectStyle);
+    updateCursorStyleDropdown(state.cursorEffectStyle);
 
     /* Background source radios */
     updateBgSourceRadios(state.bgSource);
@@ -253,6 +284,9 @@ const Settings = (() => {
       case 'bgColor':
         root.style.setProperty('--bg-solid-color', value);
         break;
+      case 'bgThemeColor':
+        root.style.setProperty('--bg-theme-color', value || 'transparent');
+        break;
       case 'engine':
         if (typeof Search !== 'undefined') {
           Search.setEngine(value, false);
@@ -268,6 +302,16 @@ const Settings = (() => {
           Bookmarks.setVisible(value);
         }
         break;
+      case 'showCursorEffect':
+        if (typeof CursorEffect !== 'undefined' && CursorEffect.setVisible) {
+          CursorEffect.setVisible(value);
+        }
+        break;
+      case 'cursorEffectStyle':
+        if (typeof CursorEffect !== 'undefined' && CursorEffect.setStyle) {
+          CursorEffect.setStyle(value);
+        }
+        break;
     }
   }
 
@@ -276,9 +320,12 @@ const Settings = (() => {
     applyToDom('overlayOpacity', state.overlayOpacity);
     applyToDom('overlayColor', state.overlayColor);
     applyToDom('bgColor', state.bgColor);
+    applyToDom('bgThemeColor', state.bgThemeColor);
     applyToDom('engine', state.engine);
     applyToDom('showSeconds', state.showSeconds);
     applyToDom('showBookmarks', state.showBookmarks);
+    applyToDom('showCursorEffect', state.showCursorEffect);
+    applyToDom('cursorEffectStyle', state.cursorEffectStyle);
   }
 
   function applyBackground() {
@@ -354,6 +401,28 @@ const Settings = (() => {
     if (!showBookmarksToggle) return;
     showBookmarksToggle.classList.toggle('on', !!on);
     showBookmarksToggle.setAttribute('aria-checked', on ? 'true' : 'false');
+  }
+
+  function updateCursorEffectToggle(on) {
+    if (!cursorEffectToggle) return;
+    cursorEffectToggle.classList.toggle('on', !!on);
+    cursorEffectToggle.setAttribute('aria-checked', on ? 'true' : 'false');
+  }
+
+  function updateCursorStyleLabel(styleKey) {
+    const opt = cursorStyleNative.querySelector(`option[value="${styleKey}"]`);
+    cursorStyleLabel.textContent = opt ? opt.textContent : styleKey;
+  }
+
+  function updateCursorStyleDropdown(styleKey) {
+    cursorStyleDropdown.querySelectorAll('.custom-select-option').forEach(opt => {
+      opt.classList.toggle('selected', opt.dataset.value === styleKey);
+    });
+  }
+
+  function setCursorStyleGroupVisible(visible) {
+    if (!cursorStyleGroup) return;
+    cursorStyleGroup.hidden = !visible;
   }
 
   /* --- Tab switching --- */
@@ -432,6 +501,7 @@ const Settings = (() => {
         saveSettings();
         applyBackground();
         setBingMeta(state.bgBingCopyright);
+        extractAndSaveThemeColor(result.url);
       } finally {
         bgBingRefresh.disabled = false;
       }
@@ -455,6 +525,7 @@ const Settings = (() => {
         state.bgImageUrl = null;
         saveSettings();
         applyBackground();
+        extractAndSaveThemeColor(ev.target.result);
       };
       reader.onerror = () => { bgFileName.textContent = '图片加载失败'; };
       reader.readAsDataURL(file);
@@ -478,6 +549,7 @@ const Settings = (() => {
       saveSettings();
       applyBackground();
       bgFileName.textContent = check.url.length > 40 ? check.url.substring(0, 40) + '...' : check.url;
+      extractAndSaveThemeColor(check.url);
       showUrlError('');
     });
 
@@ -617,6 +689,50 @@ const Settings = (() => {
       }
     });
 
+    /* --- Cursor effect toggle --- */
+    cursorEffectToggle.addEventListener('click', () => {
+      state.showCursorEffect = !state.showCursorEffect;
+      updateCursorEffectToggle(state.showCursorEffect);
+      setCursorStyleGroupVisible(state.showCursorEffect);
+      applyToDom('showCursorEffect', state.showCursorEffect);
+      saveSettings();
+    });
+    cursorEffectToggle.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        cursorEffectToggle.click();
+      }
+    });
+
+    /* --- Cursor style select --- */
+    cursorStyleTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = !cursorStyleDropdown.hidden;
+      cursorStyleDropdown.hidden = isOpen;
+      cursorStyleTrigger.classList.toggle('open', !isOpen);
+    });
+    cursorStyleDropdown.querySelectorAll('.custom-select-option').forEach(opt => {
+      opt.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const val = opt.dataset.value;
+        cursorStyleNative.value = val;
+        state.cursorEffectStyle = val;
+        updateCursorStyleLabel(val);
+        updateCursorStyleDropdown(val);
+        applyToDom('cursorEffectStyle', val);
+        saveSettings();
+        cursorStyleDropdown.hidden = true;
+        cursorStyleTrigger.classList.remove('open');
+      });
+    });
+    /* Close dropdown on outside click */
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#cursor-style-wrapper')) {
+        cursorStyleDropdown.hidden = true;
+        cursorStyleTrigger.classList.remove('open');
+      }
+    });
+
     /* --- Reset (per-tab) --- */
     resetBtn.addEventListener('click', () => {
       const activeTab = getActiveTab();
@@ -648,11 +764,27 @@ const Settings = (() => {
         case 'display':
           state.showSeconds = DEFAULTS.showSeconds;
           state.showBookmarks = DEFAULTS.showBookmarks;
+          state.showCursorEffect = DEFAULTS.showCursorEffect;
+          state.cursorEffectStyle = DEFAULTS.cursorEffectStyle;
           saveSettings();
           syncFormToState();
           applyToDom('showSeconds', state.showSeconds);
           applyToDom('showBookmarks', state.showBookmarks);
+          applyToDom('showCursorEffect', state.showCursorEffect);
+          applyToDom('cursorEffectStyle', state.cursorEffectStyle);
           break;
+      }
+    });
+  }
+
+  /* Extract theme color from an image source and persist it. */
+  function extractAndSaveThemeColor(src) {
+    if (!Background.extractThemeColor) return;
+    Background.extractThemeColor(src).then((color) => {
+      if (color) {
+        state.bgThemeColor = color;
+        saveSettings();
+        applyToDom('bgThemeColor', color);
       }
     });
   }
@@ -728,6 +860,8 @@ const Settings = (() => {
   function closeAllDropdowns() {
     if (engineSelectDropdown) engineSelectDropdown.hidden = true;
     if (engineSelectTrigger) engineSelectTrigger.classList.remove('open');
+    if (cursorStyleDropdown) cursorStyleDropdown.hidden = true;
+    if (cursorStyleTrigger) cursorStyleTrigger.classList.remove('open');
   }
 
   /* --- Panel state --- */

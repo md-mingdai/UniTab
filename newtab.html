@@ -234,6 +234,39 @@
             </span>
           </label>
         </div>
+
+        <div class="setting-group">
+          <label class="setting-label setting-label-row" for="cursor-effect-toggle">
+            <span>鼠标特效</span>
+            <span class="switch" role="switch" aria-checked="false" tabindex="0" id="cursor-effect-toggle">
+              <span class="switch-knob"></span>
+            </span>
+          </label>
+        </div>
+
+        <div class="setting-group" id="cursor-style-group" hidden>
+          <label class="setting-label" for="cursor-style-select">特效样式</label>
+          <div class="custom-select-wrapper" id="cursor-style-wrapper">
+            <button class="custom-select-trigger" id="cursor-style-trigger" type="button">
+              <span id="cursor-style-label">彩纸</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <div class="custom-select-dropdown" id="cursor-style-dropdown" hidden>
+              <button class="custom-select-option" data-value="confetti">彩纸</button>
+              <button class="custom-select-option" data-value="rain">落雨</button>
+              <button class="custom-select-option" data-value="bubble">气泡</button>
+              <button class="custom-select-option" data-value="star">星光</button>
+              <button class="custom-select-option" data-value="kivotos">基沃托斯</button>
+            </div>
+          </div>
+          <select id="cursor-style-select" class="setting-select-hidden" hidden>
+            <option value="confetti">彩纸</option>
+            <option value="rain">落雨</option>
+            <option value="bubble">气泡</option>
+            <option value="star">星光</option>
+            <option value="kivotos">基沃托斯</option>
+          </select>
+        </div>
       </section>
 
       <!-- Reset -->
@@ -246,10 +279,13 @@
   <!-- Settings Overlay -->
   <div id="settings-overlay" class="settings-overlay" hidden></div>
 
+  <script src="lib/anime.min.js"></script>
+  <script src="js/effect-kivotos.js"></script>
   <script src="js/background.js"></script>
   <script src="js/search.js"></script>
   <script src="js/bookmarks.js"></script>
   <script src="js/settings.js"></script>
+  <script src="js/cursor.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

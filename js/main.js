@@ -100,6 +100,10 @@
     /* 5. Load bookmarks */
     Bookmarks.load();
 
+    /* 6. Init cursor effect (visibility controlled by settings) */
+    const s = Settings.getState();
+    CursorEffect.init(s.showCursorEffect, s.cursorEffectStyle);
+
     /* 6. Focus search input (desktop only) */
     const searchInput = document.getElementById('search-input');
     if (window.innerWidth > 640) {
