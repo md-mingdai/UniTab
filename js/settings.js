@@ -9,7 +9,7 @@ const Settings = (() => {
     bgBlur: 0,
     overlayOpacity: 0,
     overlayColor: '#000000',
-    bgSource: 'bing',     // 'bing' | 'image' | 'color'
+    bgSource: 'bing',     // 'bing' | 'image' | 'color' | 'video'
     bgImageData: null,    // 自定义图片 base64
     bgImageUrl: null,     // 自定义图片 URL（仅当 bgSource === 'image' 且用户填了链接时使用）
     bgBingUrl: null,      // 必应壁纸 URL（仅 bgSource === 'bing' 时使用）
@@ -21,7 +21,12 @@ const Settings = (() => {
     showCursorEffect: false,  // 鼠标粒子特效
     cursorEffectStyle: 'confetti',  // 'confetti' | 'rain' | 'bubble' | 'star'
     glassStyle: 'frosted',    // 'frosted' | 'liquid' — 毛玻璃 / 液态玻璃
-    glassRadius: 20           // 组件圆角 0-32px
+    glassRadius: 20,          // 组件圆角 0-32px
+    bgVideoSoundOn: false,    // 视频壁纸开启声音
+    bgVideoVolume: 50,        // 视频壁纸音量 0-100
+    bgVideoLoop: true,        // 视频壁纸循环播放
+    bgVideoOnEnded: 'black',   // 'loop' | 'pause' | 'restart'
+    bgVideoFileName: ''       // 视频文件名
   };
 
   /* --- State --- */
@@ -35,7 +40,12 @@ const Settings = (() => {
 
   /* Form elements */
   let bgFileInput, bgFileName, bgUrlInput, bgUrlApply, bgUrlError;
-  let bgBingRefresh, bgBingMeta, bgBingPanel, bgImagePanel, bgColorPanel;
+  let bgBingRefresh, bgBingMeta, bgBingPanel, bgImagePanel, bgColorPanel, bgVideoPanel;
+  let bgVideoInput, bgVideoName;
+  let videoSoundToggle, videoVolumeWrapper;
+  let videoVolumeSlider, videoVolumeDisplay;
+  let videoLoopToggle;
+  let videoOnEndedWrapper, videoOnEndedTrigger, videoOnEndedDropdown, videoOnEndedLabel, videoOnEndedNative;
   let bgColorSwatches, bgCustomColorTrigger, bgColorInput, bgColorHex;
   let bgSourceOptions;
   let blurSlider, blurDisplay, opacitySlider, opacityDisplay;
@@ -80,6 +90,19 @@ const Settings = (() => {
     bgBingPanel = document.getElementById('bg-bing-panel');
     bgImagePanel = document.getElementById('bg-image-panel');
     bgColorPanel = document.getElementById('bg-color-panel');
+    bgVideoPanel = document.getElementById('bg-video-panel');
+    bgVideoInput = document.getElementById('bg-video-input');
+    bgVideoName = document.getElementById('bg-video-name');
+    videoSoundToggle = document.getElementById('video-sound-toggle');
+    videoVolumeWrapper = document.getElementById('video-volume-wrapper');
+    videoVolumeSlider = document.getElementById('video-volume-slider');
+    videoVolumeDisplay = document.getElementById('volume-value-display');
+    videoLoopToggle = document.getElementById('video-loop-toggle');
+    videoOnEndedWrapper = document.getElementById('video-onended-wrapper');
+    videoOnEndedTrigger = document.getElementById('video-onended-trigger');
+    videoOnEndedDropdown = document.getElementById('video-onended-dropdown');
+    videoOnEndedLabel = document.getElementById('video-onended-label');
+    videoOnEndedNative = document.getElementById('video-onended-select');
 
     /* Image sub-panel */
     bgFileInput = document.getElementById('bg-file-input');
@@ -138,6 +161,28 @@ const Settings = (() => {
     glassRadiusDisplay = document.getElementById('radius-value-display');
 
     resetBtn = document.getElementById('settings-reset');
+  }
+
+  /* --- Confirm Dialog --- */
+  function showConfirmDialog(message) {
+    return new Promise((resolve) => {
+      const dialog = document.getElementById('confirm-dialog');
+      const msg = document.getElementById('confirm-dialog-msg');
+      const okBtn = document.getElementById('confirm-dialog-ok');
+      const cancelBtn = document.getElementById('confirm-dialog-cancel');
+      msg.textContent = message;
+      dialog.hidden = false;
+      function cleanup(result) {
+        dialog.hidden = true;
+        okBtn.removeEventListener('click', onOk);
+        cancelBtn.removeEventListener('click', onCancel);
+        resolve(result);
+      }
+      function onOk() { cleanup(true); }
+      function onCancel() { cleanup(false); }
+      okBtn.addEventListener('click', onOk);
+      cancelBtn.addEventListener('click', onCancel);
+    });
   }
 
   /* --- Load / Save --- */
@@ -211,12 +256,31 @@ const Settings = (() => {
           state.bgThemeColor = DEFAULTS.bgThemeColor;
           saveSettings();
         }
+        if (parsed && typeof parsed === 'object' && !('bgVideoFileName' in parsed)) {
+          state.bgVideoFileName = DEFAULTS.bgVideoFileName;
+          saveSettings();
+        }
+        if (parsed && typeof parsed === 'object' && !('bgVideoSoundOn' in parsed)) {
+          state.bgVideoSoundOn = DEFAULTS.bgVideoSoundOn;
+          saveSettings();
+        }
         if (parsed && typeof parsed === 'object' && !('glassStyle' in parsed)) {
           state.glassStyle = DEFAULTS.glassStyle;
           saveSettings();
         }
         if (parsed && typeof parsed === 'object' && !('glassRadius' in parsed)) {
           state.glassRadius = DEFAULTS.glassRadius;
+          saveSettings();
+        }
+        if (parsed && typeof parsed === 'object' && !('bgVideoVolume' in parsed)) {
+          state.bgVideoVolume = DEFAULTS.bgVideoVolume;
+          state.bgVideoLoop = DEFAULTS.bgVideoLoop;
+          state.bgVideoOnEnded = DEFAULTS.bgVideoOnEnded;
+          saveSettings();
+        }
+        /* Migrate old on-ended values to new options */
+        if (state.bgVideoOnEnded === 'loop' || state.bgVideoOnEnded === 'pause' || state.bgVideoOnEnded === 'restart') {
+          state.bgVideoOnEnded = 'black';
           saveSettings();
         }
       }
@@ -284,6 +348,7 @@ const Settings = (() => {
     setPanelVisible('bing', state.bgSource === 'bing');
     setPanelVisible('image', state.bgSource === 'image');
     setPanelVisible('color', state.bgSource === 'color');
+    setPanelVisible('video', state.bgSource === 'video');
 
     /* Image filename hint — distinguishes between uploaded base64
        and a user-entered URL, both stored independently under 'image'. */
@@ -296,6 +361,28 @@ const Settings = (() => {
       bgFileName.textContent = '未选择文件';
     }
     setBingMeta(state.bgBingCopyright || '');
+
+    /* Video settings */
+    updateVideoSoundToggle(state.bgVideoSoundOn);
+    if (videoVolumeWrapper) videoVolumeWrapper.hidden = !state.bgVideoSoundOn;
+    if (videoVolumeSlider) videoVolumeSlider.value = state.bgVideoVolume;
+    if (videoVolumeDisplay) videoVolumeDisplay.textContent = state.bgVideoVolume + '%';
+    updateVideoLoopToggle(state.bgVideoLoop);
+    if (videoOnEndedWrapper) videoOnEndedWrapper.hidden = state.bgVideoLoop;
+    if (videoOnEndedNative) videoOnEndedNative.value = state.bgVideoOnEnded;
+    updateVideoOnEndedLabel(state.bgVideoOnEnded);
+    updateVideoOnEndedDropdown(state.bgVideoOnEnded);
+
+    /* Check if video exists in IndexedDB */
+    if (state.bgSource === 'video') {
+      Background.loadVideoBlob().then((blob) => {
+        if (blob) {
+          const sizeMB = (blob.size / (1024 * 1024)).toFixed(1);
+          const name = state.bgVideoFileName || '已存储视频';
+          bgVideoName.textContent = `${name}（${sizeMB}MB）`;
+        }
+      });
+    }
   }
 
   /* --- Apply to DOM --- */
@@ -366,8 +453,48 @@ const Settings = (() => {
     applyToDom('glassRadius', state.glassRadius);
   }
 
+  function getVideoEndCallback() {
+    const behavior = state.bgVideoOnEnded;
+    if (behavior === 'customimage') {
+      return () => {
+        const data = state.bgImageData || state.bgImageUrl;
+        if (data) {
+          Background.load({ source: 'image', imageData: data, color: state.bgColor });
+        }
+      };
+    }
+    if (behavior === 'bing') {
+      return () => {
+        if (state.bgBingUrl) {
+          Background.load({ source: 'bing', imageData: state.bgBingUrl });
+        } else {
+          Background.fetchBingOfTheDay().then((res) => {
+            if (res && res.ok && res.url) {
+              state.bgBingUrl = res.url;
+              state.bgBingCopyright = res.copyright || '';
+              saveSettings();
+              Background.load({ source: 'bing', imageData: res.url });
+            }
+          });
+        }
+      };
+    }
+    return null;
+  }
+
   function applyBackground() {
     if (typeof Background !== 'undefined') {
+      if (state.bgSource === 'video') {
+        Background.load({
+          source: 'video',
+          volume: state.bgVideoVolume,
+          loop: state.bgVideoLoop,
+          onEnded: state.bgVideoOnEnded,
+          soundOn: state.bgVideoSoundOn,
+          onEndCallback: getVideoEndCallback()
+        });
+        return;
+      }
       const data = state.bgSource === 'image'
         ? (state.bgImageData || state.bgImageUrl)
         : state.bgBingUrl;
@@ -381,7 +508,7 @@ const Settings = (() => {
 
   /* --- Sub-panel visibility --- */
   function setPanelVisible(name, visible) {
-    const map = { bing: bgBingPanel, image: bgImagePanel, color: bgColorPanel };
+    const map = { bing: bgBingPanel, image: bgImagePanel, color: bgColorPanel, video: bgVideoPanel };
     const el = map[name];
     if (!el) return;
     if (visible) {
@@ -447,6 +574,12 @@ const Settings = (() => {
     cursorEffectToggle.setAttribute('aria-checked', on ? 'true' : 'false');
   }
 
+  function updateVideoSoundToggle(on) {
+    if (!videoSoundToggle) return;
+    videoSoundToggle.classList.toggle('on', !!on);
+    videoSoundToggle.setAttribute('aria-checked', on ? 'true' : 'false');
+  }
+
   function updateCursorStyleLabel(styleKey) {
     const opt = cursorStyleNative.querySelector(`option[value="${styleKey}"]`);
     cursorStyleLabel.textContent = opt ? opt.textContent : styleKey;
@@ -471,6 +604,23 @@ const Settings = (() => {
   function updateGlassStyleDropdown(styleKey) {
     glassStyleDropdown.querySelectorAll('.custom-select-option').forEach(opt => {
       opt.classList.toggle('selected', opt.dataset.value === styleKey);
+    });
+  }
+
+  function updateVideoLoopToggle(on) {
+    if (!videoLoopToggle) return;
+    videoLoopToggle.classList.toggle('on', !!on);
+    videoLoopToggle.setAttribute('aria-checked', on ? 'true' : 'false');
+  }
+
+  function updateVideoOnEndedLabel(val) {
+    const opt = videoOnEndedNative.querySelector(`option[value="${val}"]`);
+    videoOnEndedLabel.textContent = opt ? opt.textContent : val;
+  }
+
+  function updateVideoOnEndedDropdown(val) {
+    videoOnEndedDropdown.querySelectorAll('.custom-select-option').forEach(opt => {
+      opt.classList.toggle('selected', opt.dataset.value === val);
     });
   }
 
@@ -819,6 +969,105 @@ const Settings = (() => {
       saveSettings();
     });
 
+    /* --- Video wallpaper file input --- */
+    bgVideoInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (!file.type.startsWith('video/')) {
+        bgVideoName.textContent = '请选择视频文件';
+        bgVideoInput.value = '';
+        return;
+      }
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+      if (file.size > 100 * 1024 * 1024) {
+        const ok = await showConfirmDialog(
+          `文件大小 ${sizeMB}MB，较大的视频可能导致浏览器卡顿。是否继续使用？`
+        );
+        if (!ok) {
+          bgVideoInput.value = '';
+          return;
+        }
+      }
+      bgVideoName.textContent = file.name + `（${sizeMB}MB）`;
+      state.bgVideoFileName = file.name;
+      Background.saveVideoBlob(file).then(() => {
+        saveSettings();
+        applyBackground();
+      });
+    });
+
+    /* --- Video sound toggle --- */
+    function toggleVideoSound() {
+      state.bgVideoSoundOn = !state.bgVideoSoundOn;
+      updateVideoSoundToggle(state.bgVideoSoundOn);
+      if (videoVolumeWrapper) videoVolumeWrapper.hidden = !state.bgVideoSoundOn;
+      Background.setMuted(!state.bgVideoSoundOn);
+      saveSettings();
+    }
+    videoSoundToggle.addEventListener('click', toggleVideoSound);
+    videoSoundToggle.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        toggleVideoSound();
+      }
+    });
+
+    /* --- Video volume slider --- */
+    videoVolumeSlider.addEventListener('input', () => {
+      const val = parseInt(videoVolumeSlider.value, 10);
+      videoVolumeDisplay.textContent = val + '%';
+      state.bgVideoVolume = val;
+      Background.setVolume(val);
+      saveSettings();
+    });
+
+    /* --- Video loop toggle --- */
+    videoLoopToggle.addEventListener('click', () => {
+      state.bgVideoLoop = !state.bgVideoLoop;
+      updateVideoLoopToggle(state.bgVideoLoop);
+      if (videoOnEndedWrapper) videoOnEndedWrapper.hidden = state.bgVideoLoop;
+      if (state.bgVideoLoop) {
+        Background.setLoop(true);
+      } else {
+        Background.setOnEnded(state.bgVideoOnEnded, getVideoEndCallback());
+      }
+      saveSettings();
+    });
+    videoLoopToggle.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        videoLoopToggle.click();
+      }
+    });
+
+    /* --- Video on-ended select --- */
+    videoOnEndedTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = !videoOnEndedDropdown.hidden;
+      videoOnEndedDropdown.hidden = isOpen;
+      videoOnEndedTrigger.classList.toggle('open', !isOpen);
+    });
+    videoOnEndedDropdown.querySelectorAll('.custom-select-option').forEach(opt => {
+      opt.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const val = opt.dataset.value;
+        videoOnEndedNative.value = val;
+        state.bgVideoOnEnded = val;
+        updateVideoOnEndedLabel(val);
+        updateVideoOnEndedDropdown(val);
+        Background.setOnEnded(val, getVideoEndCallback());
+        saveSettings();
+        videoOnEndedDropdown.hidden = true;
+        videoOnEndedTrigger.classList.remove('open');
+      });
+    });
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#video-onended-wrapper')) {
+        videoOnEndedDropdown.hidden = true;
+        videoOnEndedTrigger.classList.remove('open');
+      }
+    });
+
     /* --- Reset (per-tab) --- */
     resetBtn.addEventListener('click', () => {
       const activeTab = getActiveTab();
@@ -833,12 +1082,19 @@ const Settings = (() => {
           state.bgBingUrl = DEFAULTS.bgBingUrl;
           state.bgBingCopyright = DEFAULTS.bgBingCopyright;
           state.bgColor = DEFAULTS.bgColor;
+          state.bgVideoVolume = DEFAULTS.bgVideoVolume;
+          state.bgVideoLoop = DEFAULTS.bgVideoLoop;
+          state.bgVideoOnEnded = DEFAULTS.bgVideoOnEnded;
+          state.bgVideoFileName = DEFAULTS.bgVideoFileName;
+          state.bgVideoSoundOn = DEFAULTS.bgVideoSoundOn;
           saveSettings();
           syncFormToState();
           applyAllToDom();
           applyBackground();
           if (bgUrlInput) bgUrlInput.value = '';
           showUrlError('');
+          bgVideoName.textContent = '未选择文件';
+          Background.clearVideoBlob();
           setBingMeta('');
           break;
         case 'search':
@@ -887,6 +1143,20 @@ const Settings = (() => {
     setPanelVisible('bing', val === 'bing');
     setPanelVisible('image', val === 'image');
     setPanelVisible('color', val === 'color');
+    setPanelVisible('video', val === 'video');
+
+    /* 切换到视频时检查 IndexedDB 中是否已有视频 */
+    if (val === 'video') {
+      Background.loadVideoBlob().then((blob) => {
+        if (blob) {
+          const sizeMB = (blob.size / (1024 * 1024)).toFixed(1);
+          const name = state.bgVideoFileName || '已存储视频';
+          bgVideoName.textContent = `${name}（${sizeMB}MB）`;
+        } else {
+          bgVideoName.textContent = '未选择文件';
+        }
+      });
+    }
 
     /* 切换到必应但还没获取过 ➜ 自动获取一次 */
     if (val === 'bing' && !state.bgBingUrl) {
@@ -954,6 +1224,8 @@ const Settings = (() => {
     if (cursorStyleTrigger) cursorStyleTrigger.classList.remove('open');
     if (glassStyleDropdown) glassStyleDropdown.hidden = true;
     if (glassStyleTrigger) glassStyleTrigger.classList.remove('open');
+    if (videoOnEndedDropdown) videoOnEndedDropdown.hidden = true;
+    if (videoOnEndedTrigger) videoOnEndedTrigger.classList.remove('open');
   }
 
   /* --- Panel state --- */

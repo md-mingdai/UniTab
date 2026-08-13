@@ -12,6 +12,7 @@
   <!-- Background Layer -->
   <div id="background-layer" class="background-layer">
     <div id="background-image" class="background-image"></div>
+    <video id="background-video" class="background-video hidden" playsinline></video>
     <div id="background-overlay" class="background-overlay"></div>
   </div>
 
@@ -115,6 +116,13 @@
               </span>
               <span class="radio-label">纯色</span>
             </button>
+            <!-- 视频壁纸 -->
+            <button class="radio-option" role="radio" data-bg-source="video" type="button">
+              <span class="radio-dot">
+                <svg class="radio-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              </span>
+              <span class="radio-label">视频壁纸</span>
+            </button>
           </div>
         </div>
 
@@ -154,6 +162,52 @@
           </div>
           <input type="color" id="bg-color-input" class="setting-color-hidden" value="#1a1d24">
           <span id="bg-color-hex" class="color-hex">#1A1D24</span>
+        </div>
+
+        <!-- 视频壁纸 子面板 -->
+        <div class="setting-group bg-sub-panel" data-panel="video" id="bg-video-panel" hidden>
+          <div class="file-upload-wrapper">
+            <input type="file" id="bg-video-input" class="file-input" accept="video/*">
+            <label for="bg-video-input" class="file-upload-btn">选择视频</label>
+            <span id="bg-video-name" class="file-name">未选择文件</span>
+          </div>
+          <label class="setting-label setting-label-row" for="video-sound-toggle" style="margin-top:12px">
+            <span>开启声音</span>
+            <span class="switch" role="switch" aria-checked="false" tabindex="0" id="video-sound-toggle">
+              <span class="switch-knob"></span>
+            </span>
+          </label>
+          <div id="video-volume-wrapper" hidden>
+            <label class="setting-label setting-label-sub" for="video-volume-slider">音量 <span id="volume-value-display">50%</span></label>
+            <input type="range" id="video-volume-slider" class="setting-slider" min="0" max="100" value="50" step="1">
+          </div>
+          <label class="setting-label setting-label-row" for="video-loop-toggle" style="margin-top:12px">
+            <span>循环播放</span>
+            <span class="switch on" role="switch" aria-checked="true" tabindex="0" id="video-loop-toggle">
+              <span class="switch-knob"></span>
+            </span>
+          </label>
+          <div id="video-onended-wrapper" hidden>
+            <label class="setting-label setting-label-sub" for="video-onended-select">播放完成后</label>
+            <div class="custom-select-wrapper">
+              <button class="custom-select-trigger" id="video-onended-trigger" type="button">
+                <span id="video-onended-label">黑屏</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+              <div class="custom-select-dropdown" id="video-onended-dropdown" hidden>
+                <button class="custom-select-option" data-value="black">黑屏</button>
+                <button class="custom-select-option" data-value="lastframe">展示最后一帧</button>
+                <button class="custom-select-option" data-value="customimage">展示自定义图片背景</button>
+                <button class="custom-select-option" data-value="bing">展示必应壁纸</button>
+              </div>
+            </div>
+            <select id="video-onended-select" class="setting-select-hidden" hidden>
+              <option value="black">黑屏</option>
+              <option value="lastframe">展示最后一帧</option>
+              <option value="customimage">展示自定义图片背景</option>
+              <option value="bing">展示必应壁纸</option>
+            </select>
+          </div>
         </div>
 
         <div class="setting-group">
@@ -301,6 +355,17 @@
 
   <!-- Settings Overlay -->
   <div id="settings-overlay" class="settings-overlay" hidden></div>
+
+  <!-- Confirm Dialog -->
+  <div id="confirm-dialog" class="confirm-dialog" hidden>
+    <div class="confirm-dialog-body">
+      <p id="confirm-dialog-msg" class="confirm-dialog-msg"></p>
+      <div class="confirm-dialog-actions">
+        <button id="confirm-dialog-cancel" class="confirm-dialog-btn confirm-dialog-btn--ghost">取消</button>
+        <button id="confirm-dialog-ok" class="confirm-dialog-btn confirm-dialog-btn--solid">确定</button>
+      </div>
+    </div>
+  </div>
 
   <script src="lib/anime.min.js"></script>
   <script src="js/effect-kivotos.js"></script>
