@@ -20,7 +20,8 @@ const Settings = (() => {
     showBookmarks: true,  // 底部常用网址 Dock 栏开关
     showCursorEffect: false,  // 鼠标粒子特效
     cursorEffectStyle: 'confetti',  // 'confetti' | 'rain' | 'bubble' | 'star'
-    glassStyle: 'frosted'     // 'frosted' | 'liquid' — 毛玻璃 / 液态玻璃
+    glassStyle: 'frosted',    // 'frosted' | 'liquid' — 毛玻璃 / 液态玻璃
+    glassRadius: 20           // 组件圆角 0-32px
   };
 
   /* --- State --- */
@@ -45,6 +46,7 @@ const Settings = (() => {
   let cursorEffectToggle;
   let cursorStyleGroup, cursorStyleWrapper, cursorStyleTrigger, cursorStyleDropdown, cursorStyleLabel, cursorStyleNative;
   let glassStyleWrapper, glassStyleTrigger, glassStyleDropdown, glassStyleLabel, glassStyleNative;
+  let glassRadiusSlider, glassRadiusDisplay;
   let resetBtn;
 
   function init() {
@@ -132,6 +134,8 @@ const Settings = (() => {
     glassStyleDropdown = document.getElementById('glass-style-dropdown');
     glassStyleLabel = document.getElementById('glass-style-label');
     glassStyleNative = document.getElementById('glass-style-select');
+    glassRadiusSlider = document.getElementById('glass-radius-slider');
+    glassRadiusDisplay = document.getElementById('radius-value-display');
 
     resetBtn = document.getElementById('settings-reset');
   }
@@ -211,6 +215,10 @@ const Settings = (() => {
           state.glassStyle = DEFAULTS.glassStyle;
           saveSettings();
         }
+        if (parsed && typeof parsed === 'object' && !('glassRadius' in parsed)) {
+          state.glassRadius = DEFAULTS.glassRadius;
+          saveSettings();
+        }
       }
     } catch {
       /* ignore */
@@ -259,6 +267,10 @@ const Settings = (() => {
     glassStyleNative.value = state.glassStyle;
     updateGlassStyleLabel(state.glassStyle);
     updateGlassStyleDropdown(state.glassStyle);
+
+    /* Glass radius slider */
+    glassRadiusSlider.value = state.glassRadius;
+    glassRadiusDisplay.textContent = state.glassRadius + 'px';
 
     /* Background source radios */
     updateBgSourceRadios(state.bgSource);
@@ -333,6 +345,9 @@ const Settings = (() => {
       case 'glassStyle':
         root.dataset.glass = value;
         break;
+      case 'glassRadius':
+        root.style.setProperty('--glass-radius', value + 'px');
+        break;
     }
   }
 
@@ -348,6 +363,7 @@ const Settings = (() => {
     applyToDom('showCursorEffect', state.showCursorEffect);
     applyToDom('cursorEffectStyle', state.cursorEffectStyle);
     applyToDom('glassStyle', state.glassStyle);
+    applyToDom('glassRadius', state.glassRadius);
   }
 
   function applyBackground() {
@@ -794,6 +810,15 @@ const Settings = (() => {
       }
     });
 
+    /* --- Glass radius slider --- */
+    glassRadiusSlider.addEventListener('input', () => {
+      const val = parseInt(glassRadiusSlider.value, 10);
+      glassRadiusDisplay.textContent = val + 'px';
+      state.glassRadius = val;
+      applyToDom('glassRadius', val);
+      saveSettings();
+    });
+
     /* --- Reset (per-tab) --- */
     resetBtn.addEventListener('click', () => {
       const activeTab = getActiveTab();
@@ -828,6 +853,7 @@ const Settings = (() => {
           state.showCursorEffect = DEFAULTS.showCursorEffect;
           state.cursorEffectStyle = DEFAULTS.cursorEffectStyle;
           state.glassStyle = DEFAULTS.glassStyle;
+          state.glassRadius = DEFAULTS.glassRadius;
           saveSettings();
           syncFormToState();
           applyToDom('showSeconds', state.showSeconds);
@@ -835,6 +861,7 @@ const Settings = (() => {
           applyToDom('showCursorEffect', state.showCursorEffect);
           applyToDom('cursorEffectStyle', state.cursorEffectStyle);
           applyToDom('glassStyle', state.glassStyle);
+          applyToDom('glassRadius', state.glassRadius);
           break;
       }
     });
