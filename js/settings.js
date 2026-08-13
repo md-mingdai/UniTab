@@ -19,7 +19,8 @@ const Settings = (() => {
     showSeconds: true,
     showBookmarks: true,  // 底部常用网址 Dock 栏开关
     showCursorEffect: false,  // 鼠标粒子特效
-    cursorEffectStyle: 'confetti'  // 'confetti' | 'rain' | 'bubble' | 'star'
+    cursorEffectStyle: 'confetti',  // 'confetti' | 'rain' | 'bubble' | 'star'
+    glassStyle: 'frosted'     // 'frosted' | 'liquid' — 毛玻璃 / 液态玻璃
   };
 
   /* --- State --- */
@@ -43,6 +44,7 @@ const Settings = (() => {
   let showBookmarksToggle;
   let cursorEffectToggle;
   let cursorStyleGroup, cursorStyleWrapper, cursorStyleTrigger, cursorStyleDropdown, cursorStyleLabel, cursorStyleNative;
+  let glassStyleWrapper, glassStyleTrigger, glassStyleDropdown, glassStyleLabel, glassStyleNative;
   let resetBtn;
 
   function init() {
@@ -124,6 +126,13 @@ const Settings = (() => {
     cursorStyleLabel = document.getElementById('cursor-style-label');
     cursorStyleNative = document.getElementById('cursor-style-select');
 
+    /* Glass style select */
+    glassStyleWrapper = document.getElementById('glass-style-wrapper');
+    glassStyleTrigger = document.getElementById('glass-style-trigger');
+    glassStyleDropdown = document.getElementById('glass-style-dropdown');
+    glassStyleLabel = document.getElementById('glass-style-label');
+    glassStyleNative = document.getElementById('glass-style-select');
+
     resetBtn = document.getElementById('settings-reset');
   }
 
@@ -198,6 +207,10 @@ const Settings = (() => {
           state.bgThemeColor = DEFAULTS.bgThemeColor;
           saveSettings();
         }
+        if (parsed && typeof parsed === 'object' && !('glassStyle' in parsed)) {
+          state.glassStyle = DEFAULTS.glassStyle;
+          saveSettings();
+        }
       }
     } catch {
       /* ignore */
@@ -241,6 +254,11 @@ const Settings = (() => {
     cursorStyleNative.value = state.cursorEffectStyle;
     updateCursorStyleLabel(state.cursorEffectStyle);
     updateCursorStyleDropdown(state.cursorEffectStyle);
+
+    /* Glass style select */
+    glassStyleNative.value = state.glassStyle;
+    updateGlassStyleLabel(state.glassStyle);
+    updateGlassStyleDropdown(state.glassStyle);
 
     /* Background source radios */
     updateBgSourceRadios(state.bgSource);
@@ -312,6 +330,9 @@ const Settings = (() => {
           CursorEffect.setStyle(value);
         }
         break;
+      case 'glassStyle':
+        root.dataset.glass = value;
+        break;
     }
   }
 
@@ -326,6 +347,7 @@ const Settings = (() => {
     applyToDom('showBookmarks', state.showBookmarks);
     applyToDom('showCursorEffect', state.showCursorEffect);
     applyToDom('cursorEffectStyle', state.cursorEffectStyle);
+    applyToDom('glassStyle', state.glassStyle);
   }
 
   function applyBackground() {
@@ -423,6 +445,17 @@ const Settings = (() => {
   function setCursorStyleGroupVisible(visible) {
     if (!cursorStyleGroup) return;
     cursorStyleGroup.hidden = !visible;
+  }
+
+  function updateGlassStyleLabel(styleKey) {
+    const opt = glassStyleNative.querySelector(`option[value="${styleKey}"]`);
+    glassStyleLabel.textContent = opt ? opt.textContent : styleKey;
+  }
+
+  function updateGlassStyleDropdown(styleKey) {
+    glassStyleDropdown.querySelectorAll('.custom-select-option').forEach(opt => {
+      opt.classList.toggle('selected', opt.dataset.value === styleKey);
+    });
   }
 
   /* --- Tab switching --- */
@@ -733,6 +766,34 @@ const Settings = (() => {
       }
     });
 
+    /* --- Glass style select --- */
+    glassStyleTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = !glassStyleDropdown.hidden;
+      glassStyleDropdown.hidden = isOpen;
+      glassStyleTrigger.classList.toggle('open', !isOpen);
+    });
+    glassStyleDropdown.querySelectorAll('.custom-select-option').forEach(opt => {
+      opt.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const val = opt.dataset.value;
+        glassStyleNative.value = val;
+        state.glassStyle = val;
+        updateGlassStyleLabel(val);
+        updateGlassStyleDropdown(val);
+        applyToDom('glassStyle', val);
+        saveSettings();
+        glassStyleDropdown.hidden = true;
+        glassStyleTrigger.classList.remove('open');
+      });
+    });
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#glass-style-wrapper')) {
+        glassStyleDropdown.hidden = true;
+        glassStyleTrigger.classList.remove('open');
+      }
+    });
+
     /* --- Reset (per-tab) --- */
     resetBtn.addEventListener('click', () => {
       const activeTab = getActiveTab();
@@ -766,12 +827,14 @@ const Settings = (() => {
           state.showBookmarks = DEFAULTS.showBookmarks;
           state.showCursorEffect = DEFAULTS.showCursorEffect;
           state.cursorEffectStyle = DEFAULTS.cursorEffectStyle;
+          state.glassStyle = DEFAULTS.glassStyle;
           saveSettings();
           syncFormToState();
           applyToDom('showSeconds', state.showSeconds);
           applyToDom('showBookmarks', state.showBookmarks);
           applyToDom('showCursorEffect', state.showCursorEffect);
           applyToDom('cursorEffectStyle', state.cursorEffectStyle);
+          applyToDom('glassStyle', state.glassStyle);
           break;
       }
     });
@@ -862,6 +925,8 @@ const Settings = (() => {
     if (engineSelectTrigger) engineSelectTrigger.classList.remove('open');
     if (cursorStyleDropdown) cursorStyleDropdown.hidden = true;
     if (cursorStyleTrigger) cursorStyleTrigger.classList.remove('open');
+    if (glassStyleDropdown) glassStyleDropdown.hidden = true;
+    if (glassStyleTrigger) glassStyleTrigger.classList.remove('open');
   }
 
   /* --- Panel state --- */

@@ -267,6 +267,24 @@
             <option value="kivotos">基沃托斯</option>
           </select>
         </div>
+
+        <div class="setting-group">
+          <label class="setting-label" for="glass-style-select">玻璃效果</label>
+          <div class="custom-select-wrapper" id="glass-style-wrapper">
+            <button class="custom-select-trigger" id="glass-style-trigger" type="button">
+              <span id="glass-style-label">毛玻璃</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <div class="custom-select-dropdown" id="glass-style-dropdown" hidden>
+              <button class="custom-select-option" data-value="frosted">毛玻璃</button>
+              <button class="custom-select-option" data-value="liquid">液态玻璃</button>
+            </div>
+          </div>
+          <select id="glass-style-select" class="setting-select-hidden" hidden>
+            <option value="frosted">毛玻璃</option>
+            <option value="liquid">液态玻璃</option>
+          </select>
+        </div>
       </section>
 
       <!-- Reset -->
