@@ -1082,6 +1082,7 @@ const Settings = (() => {
           state.bgBingUrl = DEFAULTS.bgBingUrl;
           state.bgBingCopyright = DEFAULTS.bgBingCopyright;
           state.bgColor = DEFAULTS.bgColor;
+          state.bgThemeColor = DEFAULTS.bgThemeColor;
           state.bgVideoVolume = DEFAULTS.bgVideoVolume;
           state.bgVideoLoop = DEFAULTS.bgVideoLoop;
           state.bgVideoOnEnded = DEFAULTS.bgVideoOnEnded;
