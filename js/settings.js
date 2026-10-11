@@ -41,7 +41,7 @@ const Settings = (() => {
   /* Form elements */
   let bgFileInput, bgFileName, bgUrlInput, bgUrlApply, bgUrlError;
   let bgBingRefresh, bgBingMeta, bgBingPanel, bgImagePanel, bgColorPanel, bgVideoPanel;
-  let bgVideoInput, bgVideoName;
+  let bgVideoInput, bgVideoName, bgVideoExport;
   let videoSoundToggle, videoVolumeWrapper;
   let videoVolumeSlider, videoVolumeDisplay;
   let videoLoopToggle;
@@ -93,6 +93,7 @@ const Settings = (() => {
     bgVideoPanel = document.getElementById('bg-video-panel');
     bgVideoInput = document.getElementById('bg-video-input');
     bgVideoName = document.getElementById('bg-video-name');
+    bgVideoExport = document.getElementById('bg-video-export');
     videoSoundToggle = document.getElementById('video-sound-toggle');
     videoVolumeWrapper = document.getElementById('video-volume-wrapper');
     videoVolumeSlider = document.getElementById('video-volume-slider');
@@ -182,6 +183,80 @@ const Settings = (() => {
       function onCancel() { cleanup(false); }
       okBtn.addEventListener('click', onOk);
       cancelBtn.addEventListener('click', onCancel);
+    });
+  }
+
+  /* --- Export Result Dialog (二级弹窗) ---
+     okLabel is optional; defaults to 「知道了」. */
+  function showExportDialog({ ok = false, title, detail, okLabel }) {
+    return new Promise((resolve) => {
+      const dialog = document.getElementById('export-dialog');
+      const icon = document.getElementById('export-dialog-icon');
+      const titleEl = document.getElementById('export-dialog-title');
+      const detailEl = document.getElementById('export-dialog-detail');
+      const okBtn = document.getElementById('export-dialog-ok');
+
+      icon.classList.toggle('export-dialog-icon--error', !ok);
+      icon.innerHTML = ok
+        ? '<circle cx="12" cy="12" r="10"></circle><path d="m8 12 2.5 2.5L16 9"></path>'
+        : '<circle cx="12" cy="12" r="10"></circle><path d="M12 8v5"></path><path d="M12 16.5h.01"></path>';
+      titleEl.textContent = title || (ok ? '导出完成' : '导出失败');
+      detailEl.textContent = detail || '';
+      okBtn.textContent = okLabel || '知道了';
+      dialog.hidden = false;
+
+      function onOk() {
+        dialog.hidden = true;
+        okBtn.removeEventListener('click', onOk);
+        resolve();
+      }
+      okBtn.addEventListener('click', onOk);
+    });
+  }
+
+  /* Extension hint derived from the blob's real MIME, so a stored file
+     whose name lost its suffix on the way in still downloads playable. */
+  const MIME_EXT = {
+    'mp4': 'mp4', 'webm': 'webm', 'ogg': 'ogv', 'ogv': 'ogv',
+    'quicktime': 'mov', 'x-matroska': 'mkv', 'x-msvideo': 'avi',
+    'x-flv': 'flv', 'x-ms-wmv': 'wmv', 'mpegurl': 'm3u8',
+  };
+
+  function buildExportName(blob) {
+    const sub = (blob.type || '').split('/')[1] || '';
+    const ext = MIME_EXT[sub] || sub.replace(/^x-/, '') || 'mp4';
+    /* Strip only what is illegal on some OS, plus trailing dots that
+       Windows drops silently. Hyphens, spaces and CJK stay untouched. */
+    const raw = (state.bgVideoFileName || 'unitab-视频壁纸')
+      .replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_')
+      .replace(/[.\s]+$/, '');
+    const base = raw.trim() || 'unitab-视频壁纸';
+    return /\.(mp4|webm|mov|mkv|avi|ogv|flv|wmv)$/i.test(base) ? base : `${base}.${ext}`;
+  }
+
+  /* Hands the blob to the browser's download manager, which files it in
+     the default download folder. Resolves as soon as the download is
+     handed off — the manager streams it, so we don't wait on the bytes. */
+  function downloadBlob(blob, fileName) {
+    return new Promise((resolve, reject) => {
+      let url;
+      try {
+        url = URL.createObjectURL(blob);
+      } catch (err) { reject(err); return; }
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      a.rel = 'noopener';
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      /* Revoking early can abort the transfer in Firefox; keep the URL
+         alive well past hand-off. Detached so the dialog isn't delayed. */
+      setTimeout(() => URL.revokeObjectURL(url), 120000);
+      resolve();
     });
   }
 
@@ -373,16 +448,18 @@ const Settings = (() => {
     updateVideoOnEndedLabel(state.bgVideoOnEnded);
     updateVideoOnEndedDropdown(state.bgVideoOnEnded);
 
-    /* Check if video exists in IndexedDB */
-    if (state.bgSource === 'video') {
-      Background.loadVideoBlob().then((blob) => {
-        if (blob) {
-          const sizeMB = (blob.size / (1024 * 1024)).toFixed(1);
-          const name = state.bgVideoFileName || '已存储视频';
-          bgVideoName.textContent = `${name}（${sizeMB}MB）`;
-        }
-      });
-    }
+    /* Check if video exists in IndexedDB — the blob survives source
+       switches, so probe it regardless of the active wallpaper source. */
+    Background.loadVideoBlob().then((blob) => {
+      if (bgVideoExport) bgVideoExport.disabled = !blob;
+      if (blob && state.bgSource === 'video') {
+        const sizeMB = (blob.size / (1024 * 1024)).toFixed(1);
+        const name = state.bgVideoFileName || '已存储视频';
+        bgVideoName.textContent = `${name}（${sizeMB}MB）`;
+      }
+    }).catch(() => {
+      if (bgVideoExport) bgVideoExport.disabled = true;
+    });
   }
 
   /* --- Apply to DOM --- */
@@ -991,9 +1068,54 @@ const Settings = (() => {
       bgVideoName.textContent = file.name + `（${sizeMB}MB）`;
       state.bgVideoFileName = file.name;
       Background.saveVideoBlob(file).then(() => {
+        if (bgVideoExport) bgVideoExport.disabled = false;
         saveSettings();
         applyBackground();
       });
+    });
+
+    /* --- Export stored video to the browser download folder --- */
+    bgVideoExport.addEventListener('click', async () => {
+      bgVideoExport.disabled = true;
+      const originalLabel = bgVideoExport.textContent;
+      bgVideoExport.textContent = '导出中…';
+
+      let blob = null;
+      try {
+        blob = await Background.loadVideoBlob();
+      } catch { /* handled below */ }
+
+      if (!blob) {
+        bgVideoExport.textContent = originalLabel;
+        bgVideoExport.disabled = false;
+        await showExportDialog({
+          ok: false,
+          title: '没有可导出的视频',
+          detail: '当前浏览器中没有存储视频壁纸，或存储已被清除。',
+        });
+        return;
+      }
+
+      const sizeMB = (blob.size / (1024 * 1024)).toFixed(1);
+      const fileName = buildExportName(blob);
+
+      try {
+        await downloadBlob(blob, fileName);
+        bgVideoExport.textContent = originalLabel;
+        bgVideoExport.disabled = false;
+        await showExportDialog({
+          ok: true,
+          title: '导出完成',
+          detail: `${fileName}（${sizeMB}MB）`,
+        });
+      } catch (err) {
+        bgVideoExport.textContent = originalLabel;
+        bgVideoExport.disabled = false;
+        await showExportDialog({
+          ok: false,
+          detail: '下载被浏览器拦截或失败了，请检查本站的下载权限设置。\n' + (err && err.message ? err.message : ''),
+        });
+      }
     });
 
     /* --- Video sound toggle --- */

@@ -1732,6 +1732,54 @@ body {
   to { opacity: 1; }
 }
 
+/* ============================================
+   Export Result Dialog — reuses .confirm-dialog
+   ============================================ */
+
+.export-dialog-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.export-dialog-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  color: #34d399;
+  background: rgba(52, 211, 153, 0.14);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+}
+
+.export-dialog-icon--error {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.14);
+  border-color: rgba(248, 113, 113, 0.3);
+}
+
+.export-dialog-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* The detail line reuses .confirm-dialog-msg; drop its top gap here. */
+.export-dialog-head + .confirm-dialog-msg {
+  margin-top: 0;
+  text-align: center;
+  word-break: break-all;
+}
+
+#export-dialog .confirm-dialog-actions {
+  justify-content: center;
+}
+
 /* Liquid glass effect */
 [data-glass="liquid"] .confirm-dialog-body {
   background:

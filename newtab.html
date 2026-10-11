@@ -169,6 +169,7 @@
           <div class="file-upload-wrapper">
             <input type="file" id="bg-video-input" class="file-input" accept="video/*">
             <label for="bg-video-input" class="file-upload-btn">选择视频</label>
+            <button type="button" id="bg-video-export" class="setting-btn-secondary" disabled>导出视频</button>
             <span id="bg-video-name" class="file-name">未选择文件</span>
           </div>
           <label class="setting-label setting-label-row" for="video-sound-toggle" style="margin-top:12px">
@@ -363,6 +364,23 @@
       <div class="confirm-dialog-actions">
         <button id="confirm-dialog-cancel" class="confirm-dialog-btn confirm-dialog-btn--ghost">取消</button>
         <button id="confirm-dialog-ok" class="confirm-dialog-btn confirm-dialog-btn--solid">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export Result Dialog -->
+  <div id="export-dialog" class="confirm-dialog" hidden>
+    <div class="confirm-dialog-body">
+      <div class="export-dialog-head">
+        <svg id="export-dialog-icon" class="export-dialog-icon" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="m8 12 2.5 2.5L16 9"></path>
+        </svg>
+        <p id="export-dialog-title" class="export-dialog-title">导出完成</p>
+      </div>
+      <p id="export-dialog-detail" class="confirm-dialog-msg"></p>
+      <div class="confirm-dialog-actions">
+        <button id="export-dialog-ok" class="confirm-dialog-btn confirm-dialog-btn--solid">知道了</button>
       </div>
     </div>
   </div>
