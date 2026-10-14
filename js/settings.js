@@ -10,7 +10,8 @@ const Settings = (() => {
     overlayOpacity: 0,
     overlayColor: '#000000',
     bgSource: 'bing',     // 'bing' | 'image' | 'color' | 'video'
-    bgImageData: null,    // 自定义图片 base64
+    bgImageData: null,    // 旧版本：自定义图片 base64（仅用于迁移；新版本改存 IndexedDB）
+    bgImageStored: false, // 上传的自定义图片已保存在 IndexedDB（image_blob）
     bgImageUrl: null,     // 自定义图片 URL（仅当 bgSource === 'image' 且用户填了链接时使用）
     bgBingUrl: null,      // 必应壁纸 URL（仅 bgSource === 'bing' 时使用）
     bgBingCopyright: '',  // 必应壁纸标题 + 版权信息（持久化，刷新页面也显示）
@@ -31,6 +32,18 @@ const Settings = (() => {
 
   /* --- State --- */
   let state = { ...DEFAULTS };
+
+  const STORAGE_KEY = 'unitab_settings';
+
+  /* Writes are batched (see saveSettings): a slider drag fires `input` ~60 times a
+     second, and every one of those used to JSON.stringify + synchronously write the
+     whole settings blob to localStorage. */
+  const SAVE_DELAY = 300;
+  let saveTimer = 0;
+  let saveDirty = false;
+
+  const reduceMotionQuery = window.matchMedia
+    ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
 
   /* --- DOM refs --- */
   let panel, toggle, closeBtn, overlayEl;
@@ -64,6 +77,16 @@ const Settings = (() => {
     loadSettings();
     bindEvents();
     applyBackground();
+    /* The closed panel is laid out (just invisible), so the tab indicator can be
+       placed now, while the page is still in `preload` and nothing transitions. */
+    moveIndicator(getActiveTab());
+    migrateLegacyImage();
+
+    /* Make sure the latest changes reach localStorage when the tab goes away. */
+    window.addEventListener('pagehide', flushSettings);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) flushSettings();
+    });
 
     /* Auto-fetch Bing wallpaper if that's the active source but no
        image has been fetched yet (e.g. first-time install). */
@@ -262,16 +285,22 @@ const Settings = (() => {
 
   /* --- Load / Save --- */
   function loadSettings() {
-    try {
-      const saved = JSON.parse(localStorage.getItem('unitab_settings'));
-      if (saved && typeof saved === 'object') {
-        state = { ...DEFAULTS, ...saved };
-      } else {
-        state = { ...DEFAULTS };
+    /* boot.js (in <head>) has already read and parsed localStorage once. */
+    let saved = window.__UNITAB_SAVED__;
+    delete window.__UNITAB_SAVED__;
+    if (saved === undefined) {
+      flushSettings();
+      try {
+        saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      } catch {
+        saved = null;
       }
-    } catch {
-      state = { ...DEFAULTS };
     }
+    /* Keys missing from an older save fall back to DEFAULTS through the spread. */
+    state = saved && typeof saved === 'object' ? { ...DEFAULTS, ...saved } : { ...DEFAULTS };
+
+    let migrated = false;
+
     /* Migration: pre-bgSource builds stored everything in bgImageData. */
     if (state.bgSource == null) {
       const data = state.bgImageData;
@@ -284,7 +313,7 @@ const Settings = (() => {
       } else {
         state.bgSource = 'image';
       }
-      saveSettings();
+      migrated = true;
     }
     /* Migration: pre-bgBingUrl builds stored bing URL inside bgImageData
        under the bing-otd: prefix. Move it to its own field so the two
@@ -294,83 +323,63 @@ const Settings = (() => {
         && state.bgImageData.startsWith(Background.getBingOtdPrefix())) {
       state.bgBingUrl = state.bgImageData.slice(Background.getBingOtdPrefix().length);
       state.bgImageData = null;
-      saveSettings();
+      migrated = true;
     }
     /* Migration: 'none' source removed — redirect to 'bing'. */
     if (state.bgSource === 'none') {
       state.bgSource = 'bing';
       state.bgImageData = null;
-      saveSettings();
+      migrated = true;
     }
-    /* Migration: showSeconds was added later, default to true if missing. */
-    try {
-      const raw = localStorage.getItem('unitab_settings');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed === 'object' && !('showSeconds' in parsed)) {
-          state.showSeconds = DEFAULTS.showSeconds;
-          saveSettings();
-        }
-        if (parsed && typeof parsed === 'object' && !('bgColor' in parsed)) {
-          state.bgColor = DEFAULTS.bgColor;
-          saveSettings();
-        }
-        if (parsed && typeof parsed === 'object' && !('showBookmarks' in parsed)) {
-          state.showBookmarks = DEFAULTS.showBookmarks;
-          saveSettings();
-        }
-        if (parsed && typeof parsed === 'object' && !('showCursorEffect' in parsed)) {
-          state.showCursorEffect = DEFAULTS.showCursorEffect;
-          saveSettings();
-        }
-        if (parsed && typeof parsed === 'object' && !('cursorEffectStyle' in parsed)) {
-          state.cursorEffectStyle = DEFAULTS.cursorEffectStyle;
-          saveSettings();
-        }
-        if (parsed && typeof parsed === 'object' && !('bgThemeColor' in parsed)) {
-          state.bgThemeColor = DEFAULTS.bgThemeColor;
-          saveSettings();
-        }
-        if (parsed && typeof parsed === 'object' && !('bgVideoFileName' in parsed)) {
-          state.bgVideoFileName = DEFAULTS.bgVideoFileName;
-          saveSettings();
-        }
-        if (parsed && typeof parsed === 'object' && !('bgVideoSoundOn' in parsed)) {
-          state.bgVideoSoundOn = DEFAULTS.bgVideoSoundOn;
-          saveSettings();
-        }
-        if (parsed && typeof parsed === 'object' && !('glassStyle' in parsed)) {
-          state.glassStyle = DEFAULTS.glassStyle;
-          saveSettings();
-        }
-        if (parsed && typeof parsed === 'object' && !('glassRadius' in parsed)) {
-          state.glassRadius = DEFAULTS.glassRadius;
-          saveSettings();
-        }
-        if (parsed && typeof parsed === 'object' && !('bgVideoVolume' in parsed)) {
-          state.bgVideoVolume = DEFAULTS.bgVideoVolume;
-          state.bgVideoLoop = DEFAULTS.bgVideoLoop;
-          state.bgVideoOnEnded = DEFAULTS.bgVideoOnEnded;
-          saveSettings();
-        }
-        /* Migrate old on-ended values to new options */
-        if (state.bgVideoOnEnded === 'loop' || state.bgVideoOnEnded === 'pause' || state.bgVideoOnEnded === 'restart') {
-          state.bgVideoOnEnded = 'black';
-          saveSettings();
-        }
-      }
-    } catch {
-      /* ignore */
+    /* Migrate old on-ended values to new options */
+    if (state.bgVideoOnEnded === 'loop' || state.bgVideoOnEnded === 'pause' || state.bgVideoOnEnded === 'restart') {
+      state.bgVideoOnEnded = 'black';
+      migrated = true;
     }
+    if (migrated) saveSettings();
     syncFormToState();
   }
 
+  /* Persisting is deferred and batched: saveSettings() marks the state dirty and a
+     single write follows SAVE_DELAY ms later (immediately when the tab is hidden or
+     closed, see init). */
   function saveSettings() {
+    saveDirty = true;
+    if (!saveTimer) saveTimer = setTimeout(flushSettings, SAVE_DELAY);
+  }
+
+  function flushSettings() {
+    if (saveTimer) {
+      clearTimeout(saveTimer);
+      saveTimer = 0;
+    }
+    if (!saveDirty) return;
+    saveDirty = false;
     try {
-      localStorage.setItem('unitab_settings', JSON.stringify(state));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (e) {
       console.warn('UniTab: 无法保存设置:', e.message);
     }
+  }
+
+  /* Earlier builds kept an uploaded wallpaper as a base64 string inside the settings
+     blob (several MB that were parsed on every new tab and re-written on every slider
+     tick, and that silently stopped saving once they hit the ~5 MB localStorage
+     quota). Move it into IndexedDB once; this page keeps showing the data URL it
+     already loaded. If the move fails the base64 simply stays where it was. */
+  function migrateLegacyImage() {
+    const data = state.bgImageData;
+    if (typeof data !== 'string' || !data.startsWith('data:')) return;
+    /* Decoding a few MB of base64 is main-thread work: wait until the page has settled. */
+    setTimeout(() => {
+      if (state.bgImageData !== data) return; /* changed in the meantime */
+      Background.migrateLegacyImage(data).then((ok) => {
+        if (!ok || state.bgImageData !== data) return;
+        state.bgImageData = null;
+        state.bgImageStored = true;
+        saveSettings();
+      });
+    }, 1500);
   }
 
   function syncFormToState() {
@@ -427,7 +436,7 @@ const Settings = (() => {
 
     /* Image filename hint — distinguishes between uploaded base64
        and a user-entered URL, both stored independently under 'image'. */
-    if (state.bgImageData) {
+    if (state.bgImageData || state.bgImageStored) {
       bgFileName.textContent = '已上传图片';
     } else if (state.bgImageUrl) {
       bgFileName.textContent = state.bgImageUrl.length > 40
@@ -447,15 +456,21 @@ const Settings = (() => {
     if (videoOnEndedNative) videoOnEndedNative.value = state.bgVideoOnEnded;
     updateVideoOnEndedLabel(state.bgVideoOnEnded);
     updateVideoOnEndedDropdown(state.bgVideoOnEnded);
+  }
 
-    /* Check if video exists in IndexedDB — the blob survives source
-       switches, so probe it regardless of the active wallpaper source. */
+  /* What is stored in IndexedDB, as far as the video sub-panel shows it (export button,
+     file label). Looked up when the panel is opened or the source switched to video,
+     not on every new tab: the blob survives source switches, but nothing here is
+     visible until the panel is. */
+  function refreshVideoInfo() {
     Background.loadVideoBlob().then((blob) => {
       if (bgVideoExport) bgVideoExport.disabled = !blob;
-      if (blob && state.bgSource === 'video') {
+      if (blob) {
         const sizeMB = (blob.size / (1024 * 1024)).toFixed(1);
         const name = state.bgVideoFileName || '已存储视频';
         bgVideoName.textContent = `${name}（${sizeMB}MB）`;
+      } else {
+        bgVideoName.textContent = '未选择文件';
       }
     }).catch(() => {
       if (bgVideoExport) bgVideoExport.disabled = true;
@@ -467,7 +482,8 @@ const Settings = (() => {
     const root = document.documentElement;
     switch (key) {
       case 'bgBlur':
-        root.style.setProperty('--bg-blur', value + 'px');
+        /* `none`, not blur(0px): at 0 no off-screen filter pass is paid for at all. */
+        root.style.setProperty('--bg-filter', value > 0 ? 'blur(' + value + 'px)' : 'none');
         break;
       case 'overlayOpacity':
         root.style.setProperty('--overlay-opacity', value);
@@ -530,13 +546,20 @@ const Settings = (() => {
     applyToDom('glassRadius', state.glassRadius);
   }
 
+  /* The saved custom image, in the shape Background.load() expects. */
+  function customImageOpts() {
+    return {
+      imageStored: !!state.bgImageStored,
+      imageData: state.bgImageData || state.bgImageUrl
+    };
+  }
+
   function getVideoEndCallback() {
     const behavior = state.bgVideoOnEnded;
     if (behavior === 'customimage') {
       return () => {
-        const data = state.bgImageData || state.bgImageUrl;
-        if (data) {
-          Background.load({ source: 'image', imageData: data, color: state.bgColor });
+        if (state.bgImageStored || state.bgImageData || state.bgImageUrl) {
+          Background.load({ source: 'image', ...customImageOpts(), color: state.bgColor });
         }
       };
     }
@@ -560,27 +583,27 @@ const Settings = (() => {
   }
 
   function applyBackground() {
-    if (typeof Background !== 'undefined') {
-      if (state.bgSource === 'video') {
-        Background.load({
-          source: 'video',
-          volume: state.bgVideoVolume,
-          loop: state.bgVideoLoop,
-          onEnded: state.bgVideoOnEnded,
-          soundOn: state.bgVideoSoundOn,
-          onEndCallback: getVideoEndCallback()
-        });
-        return;
-      }
-      const data = state.bgSource === 'image'
-        ? (state.bgImageData || state.bgImageUrl)
-        : state.bgBingUrl;
+    if (typeof Background === 'undefined') return;
+    if (state.bgSource === 'video') {
       Background.load({
-        source: state.bgSource,
-        imageData: data,
-        color: state.bgColor
+        source: 'video',
+        volume: state.bgVideoVolume,
+        loop: state.bgVideoLoop,
+        onEnded: state.bgVideoOnEnded,
+        soundOn: state.bgVideoSoundOn,
+        onEndCallback: getVideoEndCallback()
       });
+      return;
     }
+    if (state.bgSource === 'image') {
+      Background.load({ source: 'image', ...customImageOpts(), color: state.bgColor });
+      return;
+    }
+    Background.load({
+      source: state.bgSource,
+      imageData: state.bgBingUrl,
+      color: state.bgColor
+    });
   }
 
   /* --- Sub-panel visibility --- */
@@ -704,13 +727,16 @@ const Settings = (() => {
   /* --- Tab switching --- */
   function switchTab(tabName) {
     if (!tabButtons || !tabPanels) return;
-    tabButtons.forEach(btn => {
-      const active = btn.dataset.tab === tabName;
-      btn.setAttribute('aria-selected', active ? 'true' : 'false');
-      btn.tabIndex = active ? 0 : -1;
-    });
-    tabPanels.forEach(p => {
-      p.hidden = p.dataset.tabPanel !== tabName;
+    if (tabName === getActiveTab()) return;
+    morphPanel(() => {
+      tabButtons.forEach(btn => {
+        const active = btn.dataset.tab === tabName;
+        btn.setAttribute('aria-selected', active ? 'true' : 'false');
+        btn.tabIndex = active ? 0 : -1;
+      });
+      tabPanels.forEach(p => {
+        p.hidden = p.dataset.tabPanel !== tabName;
+      });
     });
     moveIndicator(tabName);
   }
@@ -719,13 +745,55 @@ const Settings = (() => {
     if (!tabIndicator) return;
     const activeBtn = panel.querySelector(`.settings-tab[data-tab="${tabName}"]`);
     if (!activeBtn) return;
-    const tabsRect = activeBtn.parentElement.getBoundingClientRect();
-    const btnRect = activeBtn.getBoundingClientRect();
     const inset = 14; // px to shrink from each side
-    const left = btnRect.left - tabsRect.left + inset;
-    const width = Math.max(btnRect.width - inset * 2, 20);
-    tabIndicator.style.left = left + 'px';
+    /* offsetLeft / offsetWidth are layout values: unlike getBoundingClientRect() they
+       are not skewed by the panel's open/close scale transform. The slide itself is a
+       transform (see css), so no layout work per animation frame. */
+    const left = activeBtn.offsetLeft + inset;
+    const width = Math.max(activeBtn.offsetWidth - inset * 2, 20);
     tabIndicator.style.width = width + 'px';
+    tabIndicator.style.transform = 'translateX(' + left + 'px)';
+  }
+
+  /* --- Panel height morph ---
+     The panel is as tall as its content, so swapping a tab or revealing a control used
+     to make the whole centred panel jump (up to ~230 px). `mutate` performs the DOM
+     change; the height is then eased from the old size to the new one. */
+  let morphCleanup = null;
+
+  function morphPanel(mutate) {
+    const animate = panel.classList.contains('open')
+      && !(reduceMotionQuery && reduceMotionQuery.matches);
+    if (!animate) {
+      mutate();
+      return;
+    }
+
+    const from = panel.offsetHeight;      /* may be mid-morph: continue from there */
+    if (morphCleanup) morphCleanup();     /* drop the previous inline height */
+    mutate();
+    const to = panel.offsetHeight;        /* natural height after the change */
+    if (Math.abs(from - to) < 2) return;
+
+    panel.style.height = from + 'px';
+    panel.classList.add('is-morphing');
+    void panel.offsetHeight;              /* commit the start height */
+    panel.style.height = to + 'px';
+
+    let timer = 0;
+    const finish = () => {
+      clearTimeout(timer);
+      panel.removeEventListener('transitionend', onEnd);
+      panel.classList.remove('is-morphing');
+      panel.style.height = '';
+      if (morphCleanup === finish) morphCleanup = null;
+    };
+    const onEnd = (e) => {
+      if (e.target === panel && e.propertyName === 'height') finish();
+    };
+    panel.addEventListener('transitionend', onEnd);
+    timer = setTimeout(finish, 450);      /* safety net if no transition runs */
+    morphCleanup = finish;
   }
 
   function getActiveTab() {
@@ -784,7 +852,7 @@ const Settings = (() => {
     });
 
     /* --- Image upload --- */
-    bgFileInput.addEventListener('change', (e) => {
+    bgFileInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
       if (!file.type.startsWith('image/')) {
@@ -793,18 +861,31 @@ const Settings = (() => {
         return;
       }
       bgFileName.textContent = file.name;
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        /* Clear the URL slot so the upload "wins" — having both stored
-           at once caused the two sources to fight for the same field. */
-        state.bgImageData = ev.target.result;
-        state.bgImageUrl = null;
-        saveSettings();
-        applyBackground();
-        extractAndSaveThemeColor(ev.target.result);
-      };
-      reader.onerror = () => { bgFileName.textContent = '图片加载失败'; };
-      reader.readAsDataURL(file);
+      /* The File goes into IndexedDB as it is. It used to be converted to a base64
+         string (+33 %) kept inside the localStorage settings blob. */
+      let stored = false;
+      try {
+        await Background.saveImageBlob(file);
+        stored = true;
+      } catch {
+        /* IndexedDB unavailable (some private modes): use the old base64 route. */
+      }
+      let dataUrl = null;
+      if (!stored) {
+        dataUrl = await readAsDataUrl(file).catch(() => null);
+        if (!dataUrl) {
+          bgFileName.textContent = '图片加载失败';
+          return;
+        }
+      }
+      /* Clear the URL slot so the upload "wins" — having both stored
+         at once caused the two sources to fight for the same field. */
+      state.bgImageStored = stored;
+      state.bgImageData = dataUrl;
+      state.bgImageUrl = null;
+      saveSettings();
+      applyBackground();
+      extractAndSaveThemeColor(file);
     });
 
     /* --- URL apply --- */
@@ -822,6 +903,10 @@ const Settings = (() => {
       /* Clear the upload slot so the URL "wins". */
       state.bgImageUrl = check.url;
       state.bgImageData = null;
+      if (state.bgImageStored) {
+        state.bgImageStored = false;
+        Background.clearImageBlob();
+      }
       saveSettings();
       applyBackground();
       bgFileName.textContent = check.url.length > 40 ? check.url.substring(0, 40) + '...' : check.url;
@@ -969,7 +1054,7 @@ const Settings = (() => {
     cursorEffectToggle.addEventListener('click', () => {
       state.showCursorEffect = !state.showCursorEffect;
       updateCursorEffectToggle(state.showCursorEffect);
-      setCursorStyleGroupVisible(state.showCursorEffect);
+      morphPanel(() => setCursorStyleGroupVisible(state.showCursorEffect));
       applyToDom('showCursorEffect', state.showCursorEffect);
       saveSettings();
     });
@@ -1066,11 +1151,13 @@ const Settings = (() => {
         }
       }
       bgVideoName.textContent = file.name + `（${sizeMB}MB）`;
-      state.bgVideoFileName = file.name;
       Background.saveVideoBlob(file).then(() => {
+        state.bgVideoFileName = file.name;
         if (bgVideoExport) bgVideoExport.disabled = false;
         saveSettings();
         applyBackground();
+      }).catch(() => {
+        bgVideoName.textContent = '视频保存失败';
       });
     });
 
@@ -1122,7 +1209,9 @@ const Settings = (() => {
     function toggleVideoSound() {
       state.bgVideoSoundOn = !state.bgVideoSoundOn;
       updateVideoSoundToggle(state.bgVideoSoundOn);
-      if (videoVolumeWrapper) videoVolumeWrapper.hidden = !state.bgVideoSoundOn;
+      morphPanel(() => {
+        if (videoVolumeWrapper) videoVolumeWrapper.hidden = !state.bgVideoSoundOn;
+      });
       Background.setMuted(!state.bgVideoSoundOn);
       saveSettings();
     }
@@ -1147,7 +1236,9 @@ const Settings = (() => {
     videoLoopToggle.addEventListener('click', () => {
       state.bgVideoLoop = !state.bgVideoLoop;
       updateVideoLoopToggle(state.bgVideoLoop);
-      if (videoOnEndedWrapper) videoOnEndedWrapper.hidden = state.bgVideoLoop;
+      morphPanel(() => {
+        if (videoOnEndedWrapper) videoOnEndedWrapper.hidden = state.bgVideoLoop;
+      });
       if (state.bgVideoLoop) {
         Background.setLoop(true);
       } else {
@@ -1190,6 +1281,10 @@ const Settings = (() => {
       }
     });
 
+    /* While a slider is held, the preview follows it 1:1 (.is-dragging in css). */
+    trackDragging(blurSlider);
+    trackDragging(opacitySlider);
+
     /* --- Reset (per-tab) --- */
     resetBtn.addEventListener('click', () => {
       const activeTab = getActiveTab();
@@ -1200,6 +1295,7 @@ const Settings = (() => {
           state.overlayOpacity = DEFAULTS.overlayOpacity;
           state.overlayColor = DEFAULTS.overlayColor;
           state.bgImageData = DEFAULTS.bgImageData;
+          state.bgImageStored = DEFAULTS.bgImageStored;
           state.bgImageUrl = DEFAULTS.bgImageUrl;
           state.bgBingUrl = DEFAULTS.bgBingUrl;
           state.bgBingCopyright = DEFAULTS.bgBingCopyright;
@@ -1217,8 +1313,15 @@ const Settings = (() => {
           if (bgUrlInput) bgUrlInput.value = '';
           showUrlError('');
           bgVideoName.textContent = '未选择文件';
+          if (bgVideoExport) bgVideoExport.disabled = true;
           Background.clearVideoBlob();
+          Background.clearImageBlob();
+          Background.clearBingCache();
           setBingMeta('');
+          /* Back on the default source: fetch today's wallpaper, as a first run does. */
+          if (state.bgSource === 'bing' && !state.bgBingUrl && bgBingRefresh) {
+            bgBingRefresh.click();
+          }
           break;
         case 'search':
           state.engine = DEFAULTS.engine;
@@ -1246,16 +1349,49 @@ const Settings = (() => {
     });
   }
 
-  /* Extract theme color from an image source and persist it. */
+  function readAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  /* Extract theme color from an image source (Blob or URL) and persist it. */
+  let themeColorSeq = 0;
   function extractAndSaveThemeColor(src) {
     if (!Background.extractThemeColor) return;
+    const seq = ++themeColorSeq;
     Background.extractThemeColor(src).then((color) => {
-      if (color) {
-        state.bgThemeColor = color;
-        saveSettings();
-        applyToDom('bgThemeColor', color);
-      }
+      /* Ignore an empty result, and a stale one if a newer wallpaper was chosen since. */
+      if (!color || seq !== themeColorSeq) return;
+      state.bgThemeColor = color;
+      saveSettings();
+      applyToDom('bgThemeColor', color);
+    }).catch(() => { /* cosmetic only */ });
+  }
+
+  /* While a slider thumb is held, <html> carries .is-dragging, which switches off the
+     background layers' transitions (see css): the blur / mask preview then follows the
+     thumb 1:1 instead of chasing it through a 0.4 s transition that is re-targeted on
+     every input event. */
+  function trackDragging(slider) {
+    if (!slider) return;
+    const root = document.documentElement;
+    const stop = () => {
+      root.classList.remove('is-dragging');
+      window.removeEventListener('pointerup', stop, true);
+      window.removeEventListener('pointercancel', stop, true);
+    };
+    slider.addEventListener('pointerdown', () => {
+      root.classList.add('is-dragging');
+      window.addEventListener('pointerup', stop, true);
+      window.addEventListener('pointercancel', stop, true);
     });
+    slider.addEventListener('keydown', () => root.classList.add('is-dragging'));
+    slider.addEventListener('keyup', stop);
+    slider.addEventListener('blur', stop);
   }
 
   /* --- Background source selection --- */
@@ -1263,23 +1399,15 @@ const Settings = (() => {
     if (state.bgSource === val) return; // 已经选中，不重复操作
     state.bgSource = val;
     updateBgSourceRadios(val);
-    setPanelVisible('bing', val === 'bing');
-    setPanelVisible('image', val === 'image');
-    setPanelVisible('color', val === 'color');
-    setPanelVisible('video', val === 'video');
+    morphPanel(() => {
+      setPanelVisible('bing', val === 'bing');
+      setPanelVisible('image', val === 'image');
+      setPanelVisible('color', val === 'color');
+      setPanelVisible('video', val === 'video');
+    });
 
     /* 切换到视频时检查 IndexedDB 中是否已有视频 */
-    if (val === 'video') {
-      Background.loadVideoBlob().then((blob) => {
-        if (blob) {
-          const sizeMB = (blob.size / (1024 * 1024)).toFixed(1);
-          const name = state.bgVideoFileName || '已存储视频';
-          bgVideoName.textContent = `${name}（${sizeMB}MB）`;
-        } else {
-          bgVideoName.textContent = '未选择文件';
-        }
-      });
-    }
+    if (val === 'video') refreshVideoInfo();
 
     /* 切换到必应但还没获取过 ➜ 自动获取一次 */
     if (val === 'bing' && !state.bgBingUrl) {
@@ -1312,21 +1440,25 @@ const Settings = (() => {
 
   /* --- Bing meta helpers --- */
   function setBingMeta(text) {
-    if (bgBingMeta) bgBingMeta.textContent = text || '';
+    if (!bgBingMeta) return;
+    /* The line wraps when the copyright text arrives: ease the panel to its new height. */
+    morphPanel(() => { bgBingMeta.textContent = text || ''; });
   }
 
   /* Show / clear the URL input error line. Pass empty string to clear. */
   function showUrlError(text) {
     if (!bgUrlError) return;
-    if (text) {
-      bgUrlError.textContent = text;
-      bgUrlError.hidden = false;
-      bgUrlInput.setAttribute('aria-invalid', 'true');
-    } else {
-      bgUrlError.textContent = '';
-      bgUrlError.hidden = true;
-      bgUrlInput.removeAttribute('aria-invalid');
-    }
+    morphPanel(() => {
+      if (text) {
+        bgUrlError.textContent = text;
+        bgUrlError.hidden = false;
+        bgUrlInput.setAttribute('aria-invalid', 'true');
+      } else {
+        bgUrlError.textContent = '';
+        bgUrlError.hidden = true;
+        bgUrlInput.removeAttribute('aria-invalid');
+      }
+    });
   }
 
   function formatBingMeta(result) {
@@ -1352,35 +1484,25 @@ const Settings = (() => {
   }
 
   /* --- Panel state --- */
+  /* Closed means `visibility: hidden` in css (no backdrop blur kept alive, nothing
+     focusable), so there are no `hidden` flips or timeouts to coordinate here. */
   function openPanel() {
     panel.classList.add('open');
     panel.setAttribute('aria-hidden', 'false');
-    /* Show overlay first, then fade in on next frame so the transition
-       actually plays (setting both at once would skip the animation). */
-    overlayEl.hidden = false;
+    overlayEl.classList.add('open');
     requestAnimationFrame(() => {
-      if (overlayEl) overlayEl.style.opacity = '1';
-      /* Position the tab indicator after the panel is visible so
-         getBoundingClientRect returns correct values. */
+      /* Cheap re-check once per open (fonts / breakpoint may have changed the tabs). */
       moveIndicator(getActiveTab());
     });
     toggle.style.opacity = '0';
     toggle.style.pointerEvents = 'none';
+    if (state.bgSource === 'video') refreshVideoInfo();
   }
 
   function closePanel() {
     panel.classList.remove('open');
     panel.setAttribute('aria-hidden', 'true');
-    if (overlayEl) overlayEl.style.opacity = '0';
-    /* Hide after the fade transition completes — 220ms matches CSS. */
-    if (overlayEl) {
-      setTimeout(() => {
-        /* Guard against reopening during the timeout window. */
-        if (!panel.classList.contains('open')) {
-          overlayEl.hidden = true;
-        }
-      }, 240);
-    }
+    overlayEl.classList.remove('open');
     toggle.style.opacity = '';
     toggle.style.pointerEvents = '';
     closeAllDropdowns();
@@ -1390,6 +1512,7 @@ const Settings = (() => {
     init,
     getState: () => state,
     applyAllToDom,
-    loadSettings
+    loadSettings,
+    flush: flushSettings
   };
 })();

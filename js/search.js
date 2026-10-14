@@ -41,6 +41,14 @@ const Search = (() => {
   let suggestions = [];
   let debounceTimer = null;
   let abortController = null;
+  let hideTimer = 0;
+  let lastFetchAt = -Infinity;
+  let lastWorkerContact = 0;
+
+  const DEBOUNCE_MS = 150;
+  const CACHE_MAX = 60;
+  /* "engine\0query" -> string[]; least recently used first. Lives as long as the page. */
+  const suggestionCache = new Map();
 
   /* --- DOM refs (set on init) --- */
   let searchInput;
@@ -55,6 +63,7 @@ const Search = (() => {
     suggestionsList = refs.suggestionsList;
 
     bindEvents();
+    warmUpWorker();
     /* Load saved engine */
     const saved = localStorage.getItem('unitab_engine');
     if (saved && ENGINES[saved]) {
@@ -68,6 +77,22 @@ const Search = (() => {
     searchInput.addEventListener('focus', onFocus);
     searchButton.addEventListener('click', onSearch);
 
+    /* One delegated handler for every row: the list is rebuilt on each response, so
+       per-row listeners were created (and thrown away) with every keystroke. */
+    suggestionsList.addEventListener('click', (e) => {
+      const item = e.target.closest('.suggestion-item');
+      if (!item) return;
+      const idx = parseInt(item.dataset.index, 10);
+      if (!isNaN(idx) && suggestions[idx]) {
+        performSearch(suggestions[idx]);
+      }
+    });
+
+    /* Take the dropdown out of the layout once its close transition has played. */
+    suggestionsDropdown.addEventListener('transitionend', (e) => {
+      if (e.target === suggestionsDropdown) finishHide();
+    });
+
     /* Close suggestions on outside click */
     document.addEventListener('click', (e) => {
       if (!e.target.closest('#search-container')) {
@@ -80,10 +105,36 @@ const Search = (() => {
   function onInput() {
     const query = searchInput.value.trim();
     if (query.length < 1) {
+      /* Nothing left to suggest: drop the pending / in-flight request as well, or its
+         answer would pop the dropdown open under an empty box. */
+      cancelPending();
       hideSuggestions();
       return;
     }
+    warmUpWorker();
     debounceFetch(query);
+  }
+
+  function cancelPending() {
+    clearTimeout(debounceTimer);
+    debounceTimer = null;
+    currentFetchToken++;
+    if (abortController) abortController.abort();
+  }
+
+  /* A MV3 service worker is shut down after ~30 s idle and needs ~150 ms to start
+     again, which used to be added to the first suggestion request. A no-op message
+     wakes it ahead of time: when the page opens, and on the first key after a pause. */
+  function warmUpWorker() {
+    if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.sendMessage) return;
+    const now = Date.now();
+    if (now - lastWorkerContact < 20000) return;
+    lastWorkerContact = now;
+    try {
+      chrome.runtime.sendMessage({ type: 'ping' }, () => { void chrome.runtime.lastError; });
+    } catch {
+      /* extension context invalidated (extension reloaded): nothing to warm */
+    }
   }
 
   function onFocus() {
@@ -94,6 +145,9 @@ const Search = (() => {
   }
 
   function onKeyDown(e) {
+    /* Keys that drive an input method (candidate selection, Enter that commits the
+       composition) are not ours: Enter used to start a search for the raw letters. */
+    if (e.isComposing || e.keyCode === 229) return;
     const isOpen = suggestionsDropdown.classList.contains('is-open');
 
     if (e.key === 'ArrowDown') {
@@ -140,7 +194,31 @@ const Search = (() => {
 
   function debounceFetch(query) {
     clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => fetchSuggestions(query), 150);
+    debounceTimer = null;
+    /* Leading edge: the first key after a pause goes out at once instead of waiting
+       DEBOUNCE_MS; keys typed in quick succession are coalesced into one trailing call. */
+    if (performance.now() - lastFetchAt >= DEBOUNCE_MS) {
+      fetchSuggestions(query);
+      return;
+    }
+    debounceTimer = setTimeout(() => fetchSuggestions(query), DEBOUNCE_MS);
+  }
+
+  /* --- Suggestion cache (LRU) --- */
+  function cacheGet(key) {
+    const hit = suggestionCache.get(key);
+    if (hit) {
+      suggestionCache.delete(key);
+      suggestionCache.set(key, hit);
+    }
+    return hit;
+  }
+
+  function cacheSet(key, list) {
+    suggestionCache.set(key, list);
+    if (suggestionCache.size > CACHE_MAX) {
+      suggestionCache.delete(suggestionCache.keys().next().value);
+    }
   }
 
   function fetchSuggestions(query) {
@@ -158,8 +236,18 @@ const Search = (() => {
 
     const token = ++currentFetchToken;
 
+    /* A query seen before (typed again, or reached by backspacing): answer from memory. */
+    const cacheKey = currentEngine + '\0' + query;
+    const cached = cacheGet(cacheKey);
+    if (cached) {
+      applySuggestions(cached);
+      return;
+    }
+    lastFetchAt = performance.now();
+
     /* Try background SW proxy first — this is the only reliable way to bypass CORS */
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+      lastWorkerContact = Date.now();
       chrome.runtime.sendMessage(
         { type: 'fetch_jsonp', url: engine.suggestUrl + encodeURIComponent(query) },
         (response) => {
@@ -169,7 +257,7 @@ const Search = (() => {
             handleFetchError(response && response.error || 'SW fetch failed');
             return;
           }
-          processResponse(response.text, engine);
+          processResponse(response.text, engine, cacheKey);
         }
       );
       return;
@@ -177,17 +265,17 @@ const Search = (() => {
 
     /* Fallback: direct fetch (works for engines that DO send CORS headers,
        i.e. Google and Bing) */
-    fetchDirect(engine.suggestUrl + encodeURIComponent(query), engine, token, signal);
+    fetchDirect(engine.suggestUrl + encodeURIComponent(query), engine, token, signal, cacheKey);
   }
 
-  async function fetchDirect(url, engine, token, signal) {
+  async function fetchDirect(url, engine, token, signal, cacheKey) {
     try {
       const resp = await fetch(url, { signal });
       if (token !== currentFetchToken) return;
       if (!resp.ok) throw new Error('Suggestion fetch failed');
       const text = await resp.text();
       if (token !== currentFetchToken) return;
-      processResponse(text, engine);
+      processResponse(text, engine, cacheKey);
     } catch (err) {
       if (token !== currentFetchToken) return;
       if (err.name === 'AbortError') return;
@@ -195,7 +283,7 @@ const Search = (() => {
     }
   }
 
-  function processResponse(text, engine) {
+  function processResponse(text, engine, cacheKey) {
     let data;
     try {
       data = JSON.parse(text);
@@ -232,7 +320,13 @@ const Search = (() => {
         return;
       }
     }
-    suggestions = engine.parser(data) || [];
+    const list = engine.parser(data) || [];
+    if (cacheKey) cacheSet(cacheKey, list);
+    applySuggestions(list);
+  }
+
+  function applySuggestions(list) {
+    suggestions = list;
     activeIndex = -1;
     renderSuggestions();
   }
@@ -313,18 +407,10 @@ const Search = (() => {
         </li>
       `).join('');
 
-    suggestionsList.querySelectorAll('.suggestion-item').forEach(item => {
-      item.addEventListener('click', () => {
-        const idx = parseInt(item.dataset.index, 10);
-        if (!isNaN(idx) && suggestions[idx]) {
-          performSearch(suggestions[idx]);
-        }
-      });
-    });
-
     /* Toggle via class so the slide/fade transition can play.
        Set hidden=false first so display:block takes effect; then add
        .is-open on the next frame to trigger the transition. */
+    clearTimeout(hideTimer);
     suggestionsDropdown.hidden = false;
     requestAnimationFrame(() => {
       suggestionsDropdown.classList.add('is-open');
@@ -356,18 +442,27 @@ const Search = (() => {
     if (!suggestionsDropdown) return;
     suggestionsDropdown.classList.remove('is-open');
     activeIndex = -1;
-    /* After the transition ends, fully hide so it's removed from layout / a11y tree */
-    const onEnd = () => {
-      if (!suggestionsDropdown.classList.contains('is-open')) {
-        suggestionsDropdown.hidden = true;
-      }
-      suggestionsDropdown.removeEventListener('transitionend', onEnd);
-    };
-    suggestionsDropdown.addEventListener('transitionend', onEnd);
+    if (suggestionsDropdown.hidden) return; /* already out of the layout */
+    /* The transitionend listener bound in bindEvents() hides it once the close
+       transition has played. A listener used to be added here on every call (and only
+       removed if a transition actually ran). The timer covers "no transition": reduced
+       motion, or a close that interrupts the open one. */
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(finishHide, 400);
+  }
+
+  /* After the close transition: fully hide, so it is out of the layout / a11y tree. */
+  function finishHide() {
+    clearTimeout(hideTimer);
+    hideTimer = 0;
+    if (suggestionsDropdown && !suggestionsDropdown.classList.contains('is-open')) {
+      suggestionsDropdown.hidden = true;
+    }
   }
 
   function showSuggestionsIfAvailable() {
     if (suggestions.length > 0 && !suggestionsDropdown.classList.contains('is-open')) {
+      clearTimeout(hideTimer);
       suggestionsDropdown.hidden = false;
       requestAnimationFrame(() => {
         suggestionsDropdown.classList.add('is-open');
@@ -390,6 +485,7 @@ const Search = (() => {
     if (save) {
       localStorage.setItem('unitab_engine', engineKey);
     }
+    cancelPending();
     hideSuggestions();
   }
 
@@ -398,10 +494,9 @@ const Search = (() => {
   }
 
   /* --- Utilities --- */
+  const HTML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
   function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
+    return String(str).replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]);
   }
 
   /* --- Public API --- */

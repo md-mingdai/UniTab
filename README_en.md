@@ -69,11 +69,16 @@ UniTab/
 ├── css/
 │   └── style.css         # All styles (glassmorphism, layout, dark mode)
 ├── js/
+│   ├── boot.js           # Runs before the first paint: applies the saved look (glass style / radius / blur / mask) to <html>
 │   ├── main.js           # Entry point, Clock module, init order
-│   ├── search.js         # Search engines, suggestions, JSONP parsing
-│   ├── settings.js       # Settings panel, custom dropdowns & toggles
+│   ├── search.js         # Search engines, suggestions (cached), JSONP parsing
+│   ├── settings.js       # Settings panel, custom dropdowns & toggles, batched persistence
 │   ├── bookmarks.js      # Bookmarks + top sites, letter-avatar favicons
-│   └── background.js     # Background image / blur / overlay
+│   ├── background.js     # Background image / video / blur / overlay (IndexedDB storage)
+│   ├── cursor.js         # Cursor effects (canvas and listeners created on demand)
+│   └── effect-kivotos.js # Kivotos effect (loaded together with lib/anime.min.js only when that style is selected)
+├── lib/
+│   └── anime.min.js      # Only used by the Kivotos effect, loaded on demand
 ├── fonts/
 │   └── DingTalk_Sans.ttf # English/Latin font (unicode-range limited)
 ├── icons/
@@ -107,7 +112,7 @@ Reads `chrome.bookmarks.getTree()` (bookmarks bar) and `chrome.topSites.get()`, 
 
 ### Background Storage
 
-User-uploaded images are read via `FileReader.readAsDataURL()` and stored as base64 in `localStorage`. URLs are stored as-is and applied via CSS `background-image`. Both are scoped to the extension's own storage; uninstalling the extension clears them automatically.
+Uploaded images and videos are stored as Blobs in IndexedDB (database `unitab_bg`); the panel's switches and values live in `localStorage` (key `unitab_settings`, a few hundred bytes, written in batches within 300 ms and immediately when the tab is hidden or closed). URLs are stored as-is and applied via CSS `background-image`; the latest Bing wallpaper's image data is cached in IndexedDB so a new tab reads it from disk. A base64 image saved by an older version in `localStorage` is migrated to IndexedDB automatically on the first visit. All of it is scoped to the extension's own storage; uninstalling the extension clears it automatically.
 
 ## Design
 

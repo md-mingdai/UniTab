@@ -69,11 +69,16 @@ UniTab/
 ├── css/
 │   └── style.css         # 所有样式（毛玻璃、布局、深色模式）
 ├── js/
+│   ├── boot.js           # 首帧前运行：把已保存的外观（玻璃风格 / 圆角 / 模糊 / 蒙版）先套到 <html>
 │   ├── main.js           # 入口、Clock 模块、初始化顺序
-│   ├── search.js         # 搜索引擎、建议请求、JSONP 解析
-│   ├── settings.js       # 设置面板、自定义下拉与开关
+│   ├── search.js         # 搜索引擎、建议请求（带缓存）、JSONP 解析
+│   ├── settings.js       # 设置面板、自定义下拉与开关、设置的批量保存
 │   ├── bookmarks.js      # 书签 + 常访问站点，字母头像 favicon
-│   └── background.js     # 背景图 / 模糊 / 蒙版管理
+│   ├── background.js     # 背景图 / 视频 / 模糊 / 蒙版管理（IndexedDB 存储）
+│   ├── cursor.js         # 鼠标特效（按需创建画布、按需绑定事件）
+│   └── effect-kivotos.js # 基沃托斯特效（选中该样式时才与 lib/anime.min.js 一起加载）
+├── lib/
+│   └── anime.min.js      # 仅基沃托斯特效使用，按需加载
 ├── fonts/
 │   └── DingTalk_Sans.ttf # 英文字体（unicode-range 限定拉丁字符）
 ├── icons/
@@ -107,7 +112,7 @@ UniTab/
 
 ### 背景存储
 
-上传的图片经 `FileReader.readAsDataURL()` 转 base64，存到 `localStorage`。图片链接直接保存，应用时通过 CSS `background-image` 设置。两者均属于扩展自有存储，卸载扩展时随扩展一起清除。
+上传的图片、视频以 Blob 形式存进 IndexedDB（库 `unitab_bg`），设置面板里的各项开关与数值存在 `localStorage`（键 `unitab_settings`，只有几百字节，300ms 内合并写入，切走或关闭标签页时立即落盘）。图片链接直接保存，应用时通过 CSS `background-image` 设置；必应每日壁纸会把最近一张的图片数据缓存在 IndexedDB，新标签页直接从本地读取。旧版本存在 `localStorage` 里的 base64 图片会在首次打开后自动迁移到 IndexedDB。以上均属于扩展自有存储，卸载扩展时随扩展一起清除。
 
 ## 设计理念
 

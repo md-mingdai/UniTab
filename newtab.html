@@ -1,18 +1,24 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="preload">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light dark">
   <title>新标签页</title>
+  <link rel="preload" href="fonts/JetBrainsMono-Medium.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="stylesheet" href="css/style.css">
+  <!-- Applies the saved look (glass style, radius, blur, mask, placeholder colour)
+       before the first paint, so the page never flashes the defaults. -->
+  <script src="js/boot.js"></script>
 </head>
 <body>
 
   <!-- Background Layer -->
   <div id="background-layer" class="background-layer">
-    <div id="background-image" class="background-image"></div>
-    <video id="background-video" class="background-video hidden" playsinline></video>
+    <div id="background-image" class="background-image">
+      <div id="background-photo" class="background-photo"></div>
+    </div>
+    <video id="background-video" class="background-video hidden" playsinline disablepictureinpicture disableremoteplayback></video>
     <div id="background-overlay" class="background-overlay"></div>
   </div>
 
@@ -54,7 +60,7 @@
   </main>
 
   <!-- Bookmarks Bar -->
-  <div id="bookmarks-bar" class="bookmarks-bar">
+  <div id="bookmarks-bar" class="bookmarks-bar is-empty">
     <div class="bookmarks-container">
       <div id="bookmarks-list" class="bookmarks-list"></div>
     </div>
@@ -355,7 +361,7 @@
   </aside>
 
   <!-- Settings Overlay -->
-  <div id="settings-overlay" class="settings-overlay" hidden></div>
+  <div id="settings-overlay" class="settings-overlay"></div>
 
   <!-- Confirm Dialog -->
   <div id="confirm-dialog" class="confirm-dialog" hidden>
@@ -385,8 +391,7 @@
     </div>
   </div>
 
-  <script src="lib/anime.min.js"></script>
-  <script src="js/effect-kivotos.js"></script>
+  <!-- lib/anime.min.js and js/effect-kivotos.js are loaded on demand by cursor.js -->
   <script src="js/background.js"></script>
   <script src="js/search.js"></script>
   <script src="js/bookmarks.js"></script>

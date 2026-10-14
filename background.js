@@ -13,6 +13,12 @@ const GBK_DECODER = new TextDecoder('gbk');
 const UTF8_DECODER = new TextDecoder('utf-8');
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  /* The new tab page pings once when it opens (and on the first key after a pause) so
+     this worker is already running when the first suggestion request arrives. */
+  if (message && message.type === 'ping') {
+    sendResponse({ ok: true });
+    return false;
+  }
   if (message && message.type === 'fetch_jsonp' && message.url) {
     const init = {};
     if (message.headers && typeof message.headers === 'object') {

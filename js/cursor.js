@@ -1,5 +1,9 @@
 /* ============================================
    UniTab - Cursor Effects (multiple styles)
+
+   Nothing here costs anything while the effect is off: the canvas, the window
+   listeners and (for the Kivotos style) anime.js + effect-kivotos.js are only
+   created / loaded the first time they are actually needed.
    ============================================ */
 
 const CursorEffect = (() => {
@@ -12,8 +16,11 @@ const CursorEffect = (() => {
   let running = false;
   let visible = false;
   let style = 'confetti';
+  let inited = false;
+  let listening = false;
   let rafId = null;
   let mouseX = -1, mouseY = -1;
+  let pointerMoved = false; /* the pointer moved since the last frame (star trail) */
 
   /* ============ Particle Pool ============ */
   const MAX_LIVE = 300; /* performance cap — recycle oldest if exceeded */
@@ -143,10 +150,16 @@ const CursorEffect = (() => {
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
 
-    /* Continuous effects */
-    if (style === 'star' && mouseX >= 0) starTrail(mouseX, mouseY);
+    /* Continuous effects: the trail only needs a look when the pointer has moved. */
+    if (style === 'star' && pointerMoved) {
+      pointerMoved = false;
+      starTrail(mouseX, mouseY);
+    }
 
-    if (live.length === 0 && !(style === 'star' && mouseX >= 0)) {
+    /* Nothing left to draw: stop asking for frames. (The star style used to keep a
+       60 fps loop alive for as long as the page was open once the mouse had moved;
+       onMove() restarts the loop as soon as there is something to animate again.) */
+    if (live.length === 0) {
       running = false;
       rafId = null;
       return;
@@ -167,13 +180,38 @@ const CursorEffect = (() => {
     pool.push(...live);
     live = [];
     lastSX = lastSY = -1;
+    pointerMoved = false;
   }
 
-  /* ============ Canvas ============ */
+  /* ============ Canvas (created on first use) ============ */
+  function ensureCanvas() {
+    if (canvas) return;
+    canvas = document.createElement('canvas');
+    canvas.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9999;';
+    canvas.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(canvas);
+    ctx = canvas.getContext('2d');
+    resize();
+  }
+
+  /* Assigning width/height clears and re-allocates the backing store, even when the
+     value is unchanged, so only touch what changed. */
   function resize() {
     if (!canvas) return;
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    if (canvas.width !== w) canvas.width = w;
+    if (canvas.height !== h) canvas.height = h;
+  }
+
+  /* A window drag fires dozens of resize events per frame: resize once per frame. */
+  let resizeRaf = 0;
+  function onResize() {
+    if (resizeRaf) return;
+    resizeRaf = requestAnimationFrame(() => {
+      resizeRaf = 0;
+      resize();
+    });
   }
 
   /* ============ Events ============ */
@@ -192,79 +230,142 @@ const CursorEffect = (() => {
     if (style === 'confetti') confettiBurst(holdX, holdY);
     else if (style === 'rain') rainBurst(holdX, holdY);
     else if (style === 'bubble') bubbleBurst(holdX, holdY);
+    else return;
     startLoop();
+  }
+
+  function clearHold() {
+    if (holdTimer) { clearInterval(holdTimer); holdTimer = null; }
   }
 
   function onClick(e) {
     if (!visible || isInteractive(e.target)) return;
     holdX = e.clientX; holdY = e.clientY;
     spawnAtCursor();
-    /* Start continuous spawn on hold */
-    holdTimer = setInterval(spawnAtCursor, 120);
+    /* Start continuous spawn on hold. Only one timer at a time: a second mousedown
+       without a mouseup in between used to orphan the first interval, which then
+       kept bursting forever. */
+    clearHold();
+    if (style === 'confetti' || style === 'rain' || style === 'bubble') {
+      holdTimer = setInterval(spawnAtCursor, 120);
+    }
   }
 
   function onMove(e) {
-    if (!visible) return;
     mouseX = e.clientX; mouseY = e.clientY;
     holdX = e.clientX; holdY = e.clientY;
-    if (style === 'star') startLoop();
+    if (style === 'star') {
+      pointerMoved = true;
+      startLoop();
+    }
   }
 
-  function onUp() {
-    if (holdTimer) { clearInterval(holdTimer); holdTimer = null; }
+  /* The button can be released where we never hear about it (context menu, another
+     window, a different tab): all of those end the hold as well. */
+  function onUp() { clearHold(); }
+  function onVisibility() { if (document.hidden) clearHold(); }
+
+  /* Listeners exist only while the canvas effects are on. */
+  function bindListeners() {
+    if (listening) return;
+    listening = true;
+    window.addEventListener('resize', onResize);
+    window.addEventListener('mousedown', onClick);
+    window.addEventListener('mousemove', onMove, { passive: true });
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('blur', onUp);
+    window.addEventListener('contextmenu', onUp);
+    document.addEventListener('visibilitychange', onVisibility);
   }
 
-  /* ============ Kivotos sub-mode ============ */
-  function isKivotos() { return style === 'kivotos'; }
+  function unbindListeners() {
+    if (!listening) return;
+    listening = false;
+    window.removeEventListener('resize', onResize);
+    window.removeEventListener('mousedown', onClick);
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+    window.removeEventListener('blur', onUp);
+    window.removeEventListener('contextmenu', onUp);
+    document.removeEventListener('visibilitychange', onVisibility);
+  }
+
+  /* ============ Kivotos sub-mode (anime.js powered, loaded on demand) ============ */
+  let kivotosLoad = null;
+
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const el = document.createElement('script');
+      el.src = src;
+      el.onload = () => resolve();
+      el.onerror = () => reject(new Error('could not load ' + src));
+      document.head.appendChild(el);
+    });
+  }
+
+  /* Resolves true once KivotosEffect exists and is initialised. */
+  function ensureKivotos() {
+    if (typeof KivotosEffect !== 'undefined') {
+      KivotosEffect.init();
+      return Promise.resolve(true);
+    }
+    if (!kivotosLoad) {
+      kivotosLoad = loadScript('lib/anime.min.js')
+        .then(() => loadScript('js/effect-kivotos.js'))
+        .then(() => { KivotosEffect.init(); return true; })
+        .catch((err) => {
+          kivotosLoad = null; /* allow a retry the next time it is selected */
+          console.warn('UniTab: Kivotos effect unavailable:', err.message);
+          return false;
+        });
+    }
+    return kivotosLoad;
+  }
+
+  /* ============ Mode ============ */
+  function syncMode() {
+    if (!inited) return; /* init() applies whatever was set before it ran */
+    const wantsKivotos = visible && style === 'kivotos';
+    const wantsCanvas = visible && !wantsKivotos;
+
+    if (wantsCanvas) {
+      ensureCanvas();
+      canvas.hidden = false;
+      bindListeners();
+    } else {
+      stopLoop();
+      clearHold();
+      unbindListeners();
+      if (canvas) canvas.hidden = true;
+    }
+
+    if (wantsKivotos) {
+      ensureKivotos().then((ok) => {
+        /* The user may have switched away while the scripts were loading. */
+        if (ok && visible && style === 'kivotos') KivotosEffect.setVisible(true);
+      });
+    } else if (typeof KivotosEffect !== 'undefined') {
+      KivotosEffect.setVisible(false);
+    }
+  }
 
   /* ============ Public API ============ */
   function init(initialVisible, initialStyle) {
-    canvas = document.createElement('canvas');
-    canvas.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9999;';
-    canvas.setAttribute('aria-hidden', 'true');
-    document.body.appendChild(canvas);
-    ctx = canvas.getContext('2d');
-    resize();
-    window.addEventListener('resize', resize);
-    window.addEventListener('mousedown', onClick);
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
     if (initialStyle) style = initialStyle;
-    /* Init Kivotos effect module (anime.js powered) */
-    if (typeof KivotosEffect !== 'undefined') KivotosEffect.init();
-    setVisible(!!initialVisible);
+    visible = !!initialVisible;
+    inited = true;
+    syncMode();
   }
 
   function setVisible(on) {
     visible = !!on;
-    if (!canvas) return;
-    canvas.hidden = !visible;
-    if (!visible) {
-      stopLoop();
-      if (typeof KivotosEffect !== 'undefined') KivotosEffect.setVisible(false);
-    } else {
-      /* If kivotos is the active style, show it and hide the main canvas */
-      if (isKivotos()) {
-        canvas.hidden = true;
-        if (typeof KivotosEffect !== 'undefined') KivotosEffect.setVisible(true);
-      }
-    }
+    syncMode();
   }
 
   function setStyle(s) {
     style = s || 'confetti';
-    if (!canvas) return; /* not yet initialised */
     stopLoop();
-    /* Toggle between main canvas and kivotos */
-    if (typeof KivotosEffect !== 'undefined') {
-      if (isKivotos()) {
-        canvas.hidden = true;
-        KivotosEffect.setVisible(true);
-      } else {
-        KivotosEffect.setVisible(false);
-        if (visible) canvas.hidden = false;
-      }
-    }
+    syncMode();
   }
 
   return { init, setVisible, setStyle };

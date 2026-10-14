@@ -25,12 +25,30 @@ const KivotosEffect = (() => {
   let activeFireworksCount = 0;
   let bound = false;
 
+  /* Assigning width/height re-allocates (and clears) the backing store even when the
+     value is unchanged, so only touch what changed. */
   function setCanvasSize() {
     if (!fireworksCanvas) return;
-    fireworksCanvas.width = window.innerWidth;
-    fireworksCanvas.height = window.innerHeight;
-    fireworksCanvas.style.width = window.innerWidth + 'px';
-    fireworksCanvas.style.height = window.innerHeight + 'px';
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    if (fireworksCanvas.width !== w) {
+      fireworksCanvas.width = w;
+      fireworksCanvas.style.width = w + 'px';
+    }
+    if (fireworksCanvas.height !== h) {
+      fireworksCanvas.height = h;
+      fireworksCanvas.style.height = h + 'px';
+    }
+  }
+
+  /* A window drag fires dozens of resize events per frame: resize once per frame. */
+  let resizeRaf = 0;
+  function onResize() {
+    if (resizeRaf) return;
+    resizeRaf = requestAnimationFrame(function() {
+      resizeRaf = 0;
+      setCanvasSize();
+    });
   }
 
   function setParticleDirection(p) {
@@ -165,6 +183,7 @@ const KivotosEffect = (() => {
     fireworksCanvas.className = 'fireworks';
     fireworksCanvas.style.cssText = 'position:fixed;left:0;top:0;z-index:9999;pointer-events:none;';
     fireworksCanvas.setAttribute('aria-hidden', 'true');
+    fireworksCanvas.hidden = true; /* shown by setVisible(true) */
     document.body.appendChild(fireworksCanvas);
     ctx = fireworksCanvas.getContext('2d');
 
@@ -184,7 +203,7 @@ const KivotosEffect = (() => {
       if (state.darkMode === 'system') updateTheme('system');
     });
 
-    window.addEventListener('resize', setCanvasSize);
+    window.addEventListener('resize', onResize);
     window.addEventListener('mousedown', handleMouseDown);
     bound = true;
   }

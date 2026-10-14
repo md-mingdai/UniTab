@@ -8,8 +8,8 @@
   /* --- Clock Module --- */
   const Clock = (() => {
     const clockEl = document.getElementById('clock');
-    let minuteTimeoutId = null;
-    let intervalId = null;
+    let timerId = null;
+    let lastText = '';
 
     /* Read the current setting directly from Settings so the clock always
        reflects the saved preference, even if the apply path is missed
@@ -29,43 +29,53 @@
       const now = new Date();
       const hh = now.getHours().toString().padStart(2, '0');
       const mm = now.getMinutes().toString().padStart(2, '0');
-      if (shouldShowSeconds()) {
-        const ss = now.getSeconds().toString().padStart(2, '0');
-        clockEl.textContent = `${hh}:${mm}:${ss}`;
-      } else {
-        clockEl.textContent = `${hh}:${mm}`;
+      const text = shouldShowSeconds()
+        ? `${hh}:${mm}:${now.getSeconds().toString().padStart(2, '0')}`
+        : `${hh}:${mm}`;
+      /* Only touch the DOM when the text changes. */
+      if (text !== lastText) {
+        lastText = text;
+        clockEl.textContent = text;
       }
     }
 
-    function clearTimers() {
-      if (intervalId !== null) {
-        clearInterval(intervalId);
-        intervalId = null;
+    function clearTimer() {
+      if (timerId !== null) {
+        clearTimeout(timerId);
+        timerId = null;
       }
-      if (minuteTimeoutId !== null) {
-        clearTimeout(minuteTimeoutId);
-        minuteTimeoutId = null;
-      }
+    }
+
+    /* Wake exactly when the displayed value changes: on the next second boundary when
+       seconds are shown, otherwise on the next minute boundary. A fixed setInterval(…,
+       1000) keeps whatever phase it started with, so the seconds could run up to a
+       second behind the real clock (and a 30 s interval re-checked a minute display
+       twice a minute for nothing). */
+    function schedule() {
+      clearTimer();
+      if (document.hidden) return; /* nothing to see: resumes on visibilitychange */
+      const now = Date.now();
+      const period = shouldShowSeconds() ? 1000 : 60000;
+      const delay = period - (now % period) + 2; /* +2 ms: land just after the boundary */
+      timerId = setTimeout(() => {
+        update();
+        schedule();
+      }, delay);
     }
 
     function start() {
-      clearTimers();
       update();
-      /* Tick at 1s when seconds are visible so the display is live.
-         When only minutes are shown, align to the next minute boundary
-         then tick every 30s to keep the display fresh without burning
-         a tick every second. */
-      if (shouldShowSeconds()) {
-        intervalId = setInterval(update, 1000);
-      } else {
-        const now = new Date();
-        const msUntilNextMinute = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
-        minuteTimeoutId = setTimeout(() => {
-          update();
-          intervalId = setInterval(update, 30000);
-        }, msUntilNextMinute);
-      }
+      schedule();
     }
+
+    /* A hidden tab neither shows nor needs a ticking clock; catch up when it returns. */
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        clearTimer();
+      } else {
+        start();
+      }
+    });
 
     /* Called by Settings.applyToDom when the user toggles the switch,
        so the cadence matches the new mode without waiting for the next tick. */
@@ -76,8 +86,22 @@
     return { start, setShowSeconds };
   })();
 
+  /* Settings.applyToDom() looks for a global `Clock` to retune the clock the moment
+     "show seconds" is toggled. It was only ever visible inside this closure, so that
+     call never happened and the display changed on the next tick instead (up to a full
+     second late with the old interval, up to a minute late with a minute-aligned timer). */
+  window.Clock = Clock;
+
   /* --- Initialize --- */
   function init() {
+    /* The page starts in `preload` (css): transitions and animations are off, so the
+       saved settings applied below take effect without animating "into" place. Lift
+       it two frames after this task, i.e. once the first frame is on screen. Queued
+       first so that it happens even if something below throws. */
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => document.documentElement.classList.remove('preload'));
+    });
+
     /* 1. Initialize settings (loads saved state, binds events, applies background) */
     Settings.init();
 
@@ -121,20 +145,10 @@
       }
     });
 
-    /* 8. Handle system theme changes */
-    if (window.matchMedia) {
-      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-        const s = Settings.getState();
-        const data = s.bgSource === 'image'
-          ? (s.bgImageData || s.bgImageUrl)
-          : s.bgBingUrl;
-        Background.load({
-          source: s.bgSource || 'bing',
-          imageData: data,
-          color: s.bgColor
-        });
-      });
-    }
+    /* (A system light/dark switch used to reload the wallpaper here. Nothing about the
+       background depends on the colour scheme, so that was a pointless re-decode, and
+       for a video wallpaper it restarted playback with the default sound / loop
+       options. The stylesheet handles the scheme on its own.) */
   }
 
   /* --- Boot --- */

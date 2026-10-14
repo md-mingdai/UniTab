@@ -10,7 +10,9 @@
   src: url('../fonts/JetBrainsMono-Medium.ttf') format('truetype');
   font-weight: 500;
   unicode-range: U+0020-007F, U+00A0-00FF, U+0100-024F, U+0250-02FF, U+1E00-1EFF, U+2000-206F, U+2100-214F;
-  font-display: swap;
+  /* The font is a local file (preloaded in <head>): a few ms of invisible text is
+     better than painting the fallback face and then swapping it. */
+  font-display: block;
 }
 
 /* --- CSS Custom Properties (Theme Tokens) --- */
@@ -32,8 +34,9 @@
   --accent: #8b9dc3;
   --accent-hover: #a0b0d4;
 
-  /* Background defaults */
-  --bg-blur: 0px;
+  /* Background defaults. The wallpaper filter is `none` (not `blur(0px)`) when the
+     blur is 0, so no off-screen filter pass is paid for by default. */
+  --bg-filter: none;
   --overlay-opacity: 0;
   --overlay-color: #000000;
 
@@ -92,11 +95,24 @@ body {
   position: absolute;
   inset: -10px; /* Bleed to cover blur edge gaps */
   background-color: var(--bg-theme-color, transparent);
+  filter: var(--bg-filter, none);
+  transition: filter 0.4s var(--ease-out-expo);
+}
+
+/* The wallpaper lives on its own child so it can fade in (opacity only) over the
+   colour placeholder without touching the placeholder or the blur filter. */
+.background-photo {
+  position: absolute;
+  inset: 0;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  filter: blur(var(--bg-blur));
-  transition: filter 0.4s var(--ease-out-expo);
+  opacity: 0;
+  transition: opacity 0.45s ease;
+}
+
+.background-photo.is-ready {
+  opacity: 1;
 }
 
 .background-video {
@@ -106,7 +122,7 @@ body {
   height: calc(100% + 20px);
   object-fit: cover;
   z-index: 1;
-  filter: blur(var(--bg-blur));
+  filter: var(--bg-filter, none);
   transition: filter 0.4s var(--ease-out-expo);
 }
 
@@ -122,6 +138,15 @@ body {
   background: var(--overlay-color);
   opacity: calc(var(--overlay-opacity) / 100);
   transition: opacity 0.4s var(--ease-out-expo);
+}
+
+/* While a slider thumb is held (class set by settings.js) the preview follows the
+   pointer 1:1. Re-targeting a 0.4s filter transition on every input event made the
+   full-screen blur lag behind the thumb and re-rasterise on every frame. */
+.is-dragging .background-image,
+.is-dragging .background-video,
+.is-dragging .background-overlay {
+  transition: none;
 }
 
 /* Default gradient fallback when no image set */
@@ -387,17 +412,19 @@ body {
   transform: translateY(0);
 }
 
-/* Stagger each item for a soft cascade */
-.suggestions-dropdown.is-open .suggestion-item:nth-child(1) { transition-delay: 0.00s, 0.00s; }
-.suggestions-dropdown.is-open .suggestion-item:nth-child(2) { transition-delay: 0.02s, 0.02s; }
-.suggestions-dropdown.is-open .suggestion-item:nth-child(3) { transition-delay: 0.04s, 0.04s; }
-.suggestions-dropdown.is-open .suggestion-item:nth-child(4) { transition-delay: 0.06s, 0.06s; }
-.suggestions-dropdown.is-open .suggestion-item:nth-child(5) { transition-delay: 0.08s, 0.08s; }
-.suggestions-dropdown.is-open .suggestion-item:nth-child(6) { transition-delay: 0.10s, 0.10s; }
-.suggestions-dropdown.is-open .suggestion-item:nth-child(7) { transition-delay: 0.12s, 0.12s; }
-.suggestions-dropdown.is-open .suggestion-item:nth-child(8) { transition-delay: 0.14s, 0.14s; }
-.suggestions-dropdown.is-open .suggestion-item:nth-child(9) { transition-delay: 0.16s, 0.16s; }
-.suggestions-dropdown.is-open .suggestion-item:nth-child(10) { transition-delay: 0.18s, 0.18s; }
+/* Stagger each item for a soft cascade. The delay list maps onto the transition
+   list [opacity, transform, background, color]: only the entrance (the first two)
+   is staggered, so the hover / keyboard highlight is instant on every row (it used
+   to lag by up to 180ms on the lower rows). */
+.suggestions-dropdown.is-open .suggestion-item:nth-child(2) { transition-delay: 0.012s, 0.012s, 0s, 0s; }
+.suggestions-dropdown.is-open .suggestion-item:nth-child(3) { transition-delay: 0.024s, 0.024s, 0s, 0s; }
+.suggestions-dropdown.is-open .suggestion-item:nth-child(4) { transition-delay: 0.036s, 0.036s, 0s, 0s; }
+.suggestions-dropdown.is-open .suggestion-item:nth-child(5) { transition-delay: 0.048s, 0.048s, 0s, 0s; }
+.suggestions-dropdown.is-open .suggestion-item:nth-child(6) { transition-delay: 0.060s, 0.060s, 0s, 0s; }
+.suggestions-dropdown.is-open .suggestion-item:nth-child(7) { transition-delay: 0.072s, 0.072s, 0s, 0s; }
+.suggestions-dropdown.is-open .suggestion-item:nth-child(8) { transition-delay: 0.084s, 0.084s, 0s, 0s; }
+.suggestions-dropdown.is-open .suggestion-item:nth-child(9) { transition-delay: 0.096s, 0.096s, 0s, 0s; }
+.suggestions-dropdown.is-open .suggestion-item:nth-child(10) { transition-delay: 0.108s, 0.108s, 0s, 0s; }
 
 .suggestion-item:hover,
 .suggestion-item.active {
@@ -458,6 +485,14 @@ body {
     inset 0 1px 0 var(--glass-highlight),
     0 4px 24px var(--glass-shadow);
   pointer-events: auto;
+  /* Fade on the glass element itself: an ancestor with opacity < 1 would become a
+     backdrop root and the blur behind the dock would vanish while it fades. */
+  transition: opacity 0.3s ease;
+}
+
+.bookmarks-bar.is-empty .bookmarks-container {
+  opacity: 0;
+  visibility: hidden;
 }
 
 .bookmarks-list {
@@ -634,6 +669,9 @@ body {
   opacity: 0;
   transform: translate(-50%, -50%) scale(0.96);
   pointer-events: none;
+  /* Closed means out of the render tree: the 32px backdrop blur is not maintained
+     and the controls inside can't be reached with Tab. */
+  visibility: hidden;
 }
 
 /* Panel open state */
@@ -641,6 +679,7 @@ body {
   opacity: 1;
   transform: translate(-50%, -50%) scale(1);
   pointer-events: auto;
+  visibility: visible;
 }
 
 /* Transition only when not preferring reduced motion */
@@ -648,8 +687,30 @@ body {
   .settings-panel {
     transition:
       opacity 0.22s var(--ease-out-expo),
-      transform 0.28s var(--ease-out-expo);
+      transform 0.28s var(--ease-out-expo),
+      visibility 0s linear 0.28s; /* flip to hidden after the close animation */
   }
+
+  .settings-panel.open {
+    transition:
+      opacity 0.22s var(--ease-out-expo),
+      transform 0.28s var(--ease-out-expo),
+      visibility 0s linear 0s;
+  }
+
+  /* Height morph between tabs / sub-panels (driven by settings.js) */
+  .settings-panel.is-morphing,
+  .settings-panel.open.is-morphing {
+    transition:
+      opacity 0.22s var(--ease-out-expo),
+      transform 0.28s var(--ease-out-expo),
+      visibility 0s linear 0s,
+      height 0.3s var(--ease-out-expo);
+  }
+}
+
+.settings-panel.is-morphing .settings-body {
+  overflow-y: hidden; /* no scrollbar flicker while the frame grows or shrinks */
 }
 
 /* Settings Header */
@@ -728,12 +789,14 @@ body {
 .settings-tab-indicator {
   position: absolute;
   bottom: 0;
+  left: 0;
   height: 3px;
   border-radius: 1.5px;
   background: var(--text-primary);
-  transition: left 0.28s var(--ease-out-expo), width 0.28s var(--ease-out-expo);
+  /* Slides with transform (no layout). JS sets the width instantly and the
+     X offset here — inset from the button edges, see moveIndicator(). */
+  transition: transform 0.28s var(--ease-out-expo);
   pointer-events: none;
-  /* Narrower than the button — offset by this amount on each side via JS */
 }
 
 .settings-tab:focus-visible {
@@ -1016,9 +1079,9 @@ body {
   left: 0;
   right: 0;
   z-index: 50;
+  /* 98% opaque: a backdrop blur here is invisible (and it would sit inside the
+     panel's own backdrop root anyway), so it is deliberately not used. */
   background: rgba(255, 255, 255, 0.98);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 10px;
   overflow: hidden;
@@ -1327,11 +1390,28 @@ body {
   -webkit-backdrop-filter: blur(4px);
   cursor: pointer;
   opacity: 0;
+  /* Closed: not painted, not blurred, not clickable. */
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.settings-overlay.open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 
 @media (prefers-reduced-motion: no-preference) {
   .settings-overlay {
-    transition: opacity 0.22s var(--ease-out-expo);
+    transition:
+      opacity 0.22s var(--ease-out-expo),
+      visibility 0s linear 0.22s;
+  }
+
+  .settings-overlay.open {
+    transition:
+      opacity 0.22s var(--ease-out-expo),
+      visibility 0s linear 0s;
   }
 }
 
@@ -1813,6 +1893,27 @@ body {
   }
   [data-glass="liquid"] .confirm-dialog-body {
     background: rgba(30, 34, 48, 0.96);
+  }
+}
+
+/* ============================================
+   Preload (first two frames)
+   <html class="preload"> is removed by main.js after the first paint. Saved
+   settings are applied while it is present, so nothing animates "into" its saved
+   state on every new tab (blur, mask, focus glow, toggles, radios...).
+   ============================================ */
+
+.preload *,
+.preload *::before,
+.preload *::after {
+  transition: none !important;
+  animation: none !important;
+}
+
+/* ...except the wallpaper fade-in, which is meant to be seen. */
+@media (prefers-reduced-motion: no-preference) {
+  .preload .background-photo {
+    transition: opacity 0.45s ease !important;
   }
 }
 
