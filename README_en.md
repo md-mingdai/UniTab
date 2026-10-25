@@ -12,6 +12,7 @@
 - **Multi-Engine Search** — Google, Bing, Sogou (搜狗), and Baidu (百度), with live suggestions across all engines
 - **Smart Suggestions** — Debounced fetch, keyboard navigation (↑ / ↓ / Enter / Esc), JSONP parsing for Baidu (GBK-aware)
 - **Custom Background** — Upload an image or paste a URL, with adjustable Gaussian blur (0–50px)
+- **Advanced Tools** — Export the current Bing, custom image, or video wallpaper, maintain preview cache/colour, clear the Bing cache, and wipe all local data behind a typed confirmation
 - **Overlay Control** — Adjustable opacity and color overlay for readability
 - **Bookmarks Bar** — Browser bookmarks + top sites, capped at 6, with letter-avatar favicons (no cross-origin favicon requests)
 - **Display Settings** — Toggle seconds in the clock display (HH:MM / HH:MM:SS)
@@ -48,7 +49,10 @@
 - **Overlay** — Slider 0–100% + color picker (9 presets + custom); updates live
 - **Show Seconds** — Settings → Display: toggle between HH:MM and HH:MM:SS for the clock
 - **Bookmarks** — Bottom glass bar; combines your bookmarks bar with top sites (most visited), up to 6 items
-- **Reset** — Settings → "恢复默认设置" clears all customizations
+- **Export Wallpaper** — Settings → Advanced → Export Current Wallpaper; Bing, custom image, and video wallpapers all go through the browser download manager
+- **Preview Maintenance** — Settings → Advanced: clear the preview buffer, regenerate the current preview, or re-pick its colour
+- **Clear Cache** — Settings → Advanced → Storage & Cache: remove the cached Bing wallpaper
+- **Reset** — The footer's "恢复默认设置" only resets the active tab. To delete every setting, wallpaper, preview, and cache entry, use Advanced → Danger Zone → Clear All Configuration and type the warning phrase by hand (pasting is blocked)
 
 ## Keyboard Shortcuts
 
@@ -117,6 +121,12 @@ Uploaded images and videos are stored as Blobs in IndexedDB (database `unitab_bg
 ### Wallpaper Previews
 
 Whenever a wallpaper is picked (image upload / image URL / Bing of-the-day fetch / video selection) a small, silent WebP preview is generated and stored under its own key per type in IndexedDB — `preview_bing` / `preview_image` / `preview_video` (images are downscaled, videos use the first frame, longest side ≈ 512 px, decode-first priority). The slot is emptied before each new preview is written, so the cache never piles up. Preview colours are persisted per type too (`bgThemeColorBing` / `bgThemeColorImage` / `bgThemeColorVideo`), so switching from Bing (yellow) to a custom image or video (green) swaps the placeholder to the target type's own colour immediately instead of keeping the previous one; if that type has no colour yet, a neutral colour stands in and the preview read/generation corrects it as soon as possible. The active type's preview read is warmed in `<head>` on startup, keeping the order preview colour → decoded preview → full wallpaper, with the colour placeholder visible for as short a time as possible.
+
+### Advanced Tools & Storage Cleanup
+
+"Export Current Wallpaper" first tries to read the active wallpaper as a Blob and hands it to the browser download manager through a temporary `<a download>`: uploaded images/videos come straight from IndexedDB, Bing reuses its local cache (downloading once if needed), and image URLs are fetched. If CORS or the CSP prevents reading the bytes, the browser is asked to download the URL directly. Uploaded files keep their original name, the extension is corrected from the Blob's real MIME type, and Bing wallpapers are named by date.
+
+Preview maintenance only touches the `preview_*` slots, never the active wallpaper. "Regenerate current preview" builds a fresh WebP and updates its colour; "Re-pick preview colour" averages the existing preview first and only falls back to the wallpaper source when no preview exists. Clear All Configuration removes every `unitab_*` key from `localStorage` and all records in the `unitab_bg` IndexedDB database, then reloads the page. The confirmation input blocks `paste`, paste/drop `beforeinput` input types, and `drop` events, so the warning phrase must be typed by hand.
 
 ## Design
 

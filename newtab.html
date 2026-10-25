@@ -93,6 +93,7 @@
       <button class="settings-tab" role="tab" id="tab-bg" data-tab="bg" aria-selected="true" aria-controls="tab-panel-bg" type="button">背景</button>
       <button class="settings-tab" role="tab" id="tab-search" data-tab="search" aria-selected="false" aria-controls="tab-panel-search" tabindex="-1" type="button">搜索</button>
       <button class="settings-tab" role="tab" id="tab-display" data-tab="display" aria-selected="false" aria-controls="tab-panel-display" tabindex="-1" type="button">显示</button>
+      <button class="settings-tab" role="tab" id="tab-advanced" data-tab="advanced" aria-selected="false" aria-controls="tab-panel-advanced" tabindex="-1" type="button">高级</button>
       <div class="settings-tab-indicator" aria-hidden="true"></div>
     </div>
 
@@ -179,7 +180,6 @@
           <div class="file-upload-wrapper">
             <input type="file" id="bg-video-input" class="file-input" accept="video/*">
             <label for="bg-video-input" class="file-upload-btn">选择视频</label>
-            <button type="button" id="bg-video-export" class="setting-btn-secondary" disabled>导出视频</button>
             <span id="bg-video-name" class="file-name">未选择文件</span>
           </div>
           <label class="setting-label setting-label-row" for="video-sound-toggle" style="margin-top:12px">
@@ -357,8 +357,86 @@
         </div>
       </section>
 
+      <!-- Advanced Section -->
+      <section class="settings-tab-panel" id="tab-panel-advanced" role="tabpanel" aria-labelledby="tab-advanced" data-tab-panel="advanced" hidden>
+        <h3 class="settings-section-title">高级</h3>
+        <p class="advanced-intro">这些工具用于导出壁纸、维护预览缓存和清理本地数据。操作只影响本扩展自己的存储。</p>
+
+        <section class="advanced-section" aria-labelledby="advanced-wallpaper-title">
+          <h4 class="advanced-section-title" id="advanced-wallpaper-title">壁纸工具</h4>
+          <div class="advanced-action">
+            <div class="advanced-action-copy">
+              <div class="advanced-action-title">导出当前壁纸</div>
+              <p class="advanced-action-desc">把当前使用的必应、自定义图片或视频壁纸保存到浏览器的下载目录。</p>
+              <p id="advanced-export-hint" class="advanced-action-meta">当前：正在读取…</p>
+            </div>
+            <button id="advanced-export-wallpaper" class="setting-btn-secondary" type="button">导出当前壁纸</button>
+          </div>
+        </section>
+
+        <section class="advanced-section" aria-labelledby="advanced-preview-title">
+          <h4 class="advanced-section-title" id="advanced-preview-title">预览维护</h4>
+          <p id="advanced-preview-status" class="advanced-status">正在读取预览状态…</p>
+
+          <div class="advanced-action">
+            <div class="advanced-action-copy">
+              <div class="advanced-action-title">清空预览缓冲区</div>
+              <p class="advanced-action-desc">删除必应、图片、视频三种壁纸的预览缓存；当前壁纸不会被删除。</p>
+            </div>
+            <button id="advanced-clear-previews" class="setting-btn-secondary" type="button">清空</button>
+          </div>
+
+          <div class="advanced-action">
+            <div class="advanced-action-copy">
+              <div class="advanced-action-title">重新生成当前预览</div>
+              <p class="advanced-action-desc">按当前壁纸重新截取一张低分辨率预览，并同步更新预览色。</p>
+            </div>
+            <button id="advanced-regen-preview" class="setting-btn-secondary" type="button">重新生成</button>
+          </div>
+
+          <div class="advanced-action">
+            <div class="advanced-action-copy">
+              <div class="advanced-action-title">重新拾取预览色</div>
+              <p class="advanced-action-desc">从当前预览或壁纸重新计算占位色，不重新生成预览图。</p>
+            </div>
+            <button id="advanced-repick-color" class="setting-btn-secondary" type="button">重新拾取</button>
+          </div>
+        </section>
+
+        <section class="advanced-section" aria-labelledby="advanced-storage-title">
+          <h4 class="advanced-section-title" id="advanced-storage-title">存储与缓存</h4>
+          <p id="advanced-storage-info" class="advanced-status">正在读取本地存储占用…</p>
+
+          <div class="advanced-action">
+            <div class="advanced-action-copy">
+              <div class="advanced-action-title">清除必应壁纸缓存</div>
+              <p class="advanced-action-desc">删除最近一张必应壁纸的本地缓存；下次使用必应壁纸时会重新下载。</p>
+            </div>
+            <button id="advanced-clear-bing-cache" class="setting-btn-secondary" type="button">清除缓存</button>
+          </div>
+        </section>
+
+        <section class="advanced-section" aria-labelledby="advanced-danger-title">
+          <h4 class="advanced-section-title advanced-section-title--danger" id="advanced-danger-title">危险区域</h4>
+          <div class="advanced-danger">
+            <div class="advanced-danger-head">
+              <svg class="advanced-danger-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <path d="M12 9v4"/>
+                <path d="M12 17h.01"/>
+              </svg>
+              <div>
+                <div class="advanced-danger-title">清空全部配置</div>
+                <p class="advanced-danger-desc">删除全部设置、壁纸、预览与缓存，并恢复首次安装状态。此操作无法撤销。</p>
+              </div>
+            </div>
+            <button id="advanced-reset-all" class="setting-btn-danger" type="button">清空全部配置</button>
+          </div>
+        </section>
+      </section>
+
       <!-- Reset -->
-      <div class="settings-footer">
+      <div class="settings-footer" id="settings-footer">
         <button id="settings-reset" class="setting-btn-reset">恢复默认设置</button>
       </div>
     </div>
@@ -374,6 +452,31 @@
       <div class="confirm-dialog-actions">
         <button id="confirm-dialog-cancel" class="confirm-dialog-btn confirm-dialog-btn--ghost">取消</button>
         <button id="confirm-dialog-ok" class="confirm-dialog-btn confirm-dialog-btn--solid">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Clear All Configuration Dialog (typed confirmation) -->
+  <div id="reset-all-dialog" class="confirm-dialog" hidden>
+    <div class="confirm-dialog-body reset-all-dialog">
+      <div class="reset-all-head">
+        <span class="reset-all-icon" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <path d="M12 9v4"/>
+            <path d="M12 17h.01"/>
+          </svg>
+        </span>
+        <p class="reset-all-title">清空全部配置？</p>
+      </div>
+      <p class="confirm-dialog-msg">这会删除所有设置、壁纸、预览和缓存，且无法撤销。请手动输入下面的警告文字以确认：</p>
+      <code id="reset-all-phrase" class="reset-all-phrase">我确认清空全部配置且无法恢复</code>
+      <label class="setting-label setting-label-sub" for="reset-all-input">警告文字</label>
+      <input id="reset-all-input" class="setting-input reset-all-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="在此手动输入上面的文字">
+      <p id="reset-all-error" class="setting-meta setting-meta-error" role="alert" aria-live="polite" hidden></p>
+      <div class="confirm-dialog-actions">
+        <button id="reset-all-cancel" class="confirm-dialog-btn confirm-dialog-btn--ghost" type="button">取消</button>
+        <button id="reset-all-confirm" class="confirm-dialog-btn confirm-dialog-btn--danger" type="button" disabled>清空全部配置</button>
       </div>
     </div>
   </div>

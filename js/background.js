@@ -79,14 +79,63 @@ const Background = (() => {
   const deleteItem = (key) => withStore('readwrite', (s) => s.delete(key));
   const hasItem = (key) => withStore('readonly', (s) => s.count(key)).then((n) => n > 0);
 
-  const saveVideoBlob = (blob) => putItem(KEY_VIDEO, blob);
+  /* Bumped by clearAllStorage(): an upload that was already being written
+     when the reset happened must not reappear after the store was cleared. */
+  let mediaEpoch = 0;
+
+  const saveVideoBlob = (blob) => {
+    const epoch = mediaEpoch;
+    return putItem(KEY_VIDEO, blob).then(() => {
+      if (epoch !== mediaEpoch) return deleteItem(KEY_VIDEO);
+    });
+  };
   const loadVideoBlob = () => getItem(KEY_VIDEO);
   const hasVideoBlob = () => hasItem(KEY_VIDEO).catch(() => false);
   const clearVideoBlob = () => deleteItem(KEY_VIDEO).catch(() => {});
 
-  const saveImageBlob = (blob) => putItem(KEY_IMAGE, blob);
+  const saveImageBlob = (blob) => {
+    const epoch = mediaEpoch;
+    return putItem(KEY_IMAGE, blob).then(() => {
+      if (epoch !== mediaEpoch) return deleteItem(KEY_IMAGE);
+    });
+  };
   const clearImageBlob = () => deleteItem(KEY_IMAGE).catch(() => {});
-  const clearBingCache = () => deleteItem(KEY_BING).catch(() => {});
+
+  /* Bumped whenever cached wallpaper bytes are cleared: an in-flight Bing
+     download that started before the clear must not write the cache back. */
+  let cacheEpoch = 0;
+  const clearBingCache = () => {
+    cacheEpoch++;
+    return deleteItem(KEY_BING).catch(() => {});
+  };
+
+  /* The wallpaper bytes for the active source, used by the Advanced export
+     action. Returns null when there is nothing stored/fetchable. */
+  async function getWallpaperBlob(source, opts) {
+    opts = opts || {};
+    try {
+      if (source === 'video') return await loadVideoBlob();
+
+      if (source === 'bing') {
+        let url = opts.url;
+        if (typeof url !== 'string' || !url) return null;
+        if (url.startsWith(BING_OTD_PREFIX)) url = url.slice(BING_OTD_PREFIX.length);
+        return await ensureBingBlob(url);
+      }
+
+      if (source === 'image') {
+        if (opts.imageStored) {
+          const stored = await getItem(KEY_IMAGE);
+          if (stored && stored.size) return stored;
+        }
+        const data = opts.imageData;
+        if (typeof data !== 'string' || !data) return null;
+        if (data.startsWith('data:')) return dataUrlToBlob(data);
+        return await fetchImageBlob(data);
+      }
+    } catch { /* treated as no downloadable wallpaper */ }
+    return null;
+  }
 
   /* ------------------------------------------------------------------
      State
@@ -374,13 +423,14 @@ const Background = (() => {
   function ensureBingBlob(url) {
     let p = bingInflight.get(url);
     if (!p) {
+      const epoch = cacheEpoch;
       p = (async () => {
         try {
           const cached = await getItem(KEY_BING);
           if (cached && cached.url === url && cached.blob) return cached.blob;
         } catch { /* fall through to the network */ }
         const blob = await fetchImageBlob(url);
-        if (blob) putItem(KEY_BING, { url, blob }).catch(() => {});
+        if (blob && epoch === cacheEpoch) putItem(KEY_BING, { url, blob }).catch(() => {});
         return blob;
       })();
       bingInflight.set(url, p);
@@ -443,10 +493,17 @@ const Background = (() => {
      uploaded a newer wallpaper in the meantime the key exists, the write fails and
      the newer upload is left untouched. */
   async function migrateLegacyImage(dataUrl) {
+    const epoch = mediaEpoch;
     try {
       const blob = dataUrlToBlob(dataUrl);
       if (!blob || !blob.size) return false;
       await withStore('readwrite', (s) => s.add(blob, KEY_IMAGE));
+      /* A reset landed while the migration was in flight: do not let the old
+         base64 image come back after clearAllStorage(). */
+      if (epoch !== mediaEpoch) {
+        await deleteItem(KEY_IMAGE);
+        return false;
+      }
       return true;
     } catch {
       return false;
@@ -788,17 +845,21 @@ const Background = (() => {
 
   const clearPreview = (source) => {
     const key = PREVIEW_KEYS[source];
-    if (!key) return;
+    if (!key) return Promise.resolve();
     /* Fence both an in-flight read and an in-flight regeneration of this slot:
        otherwise a late putItem could resurrect a preview that was just reset. */
     previewJobSeq[source]++;
     invalidatePreview(source);
-    deleteItem(key).catch(() => {});
+    /* Clearing the buffer should be visible immediately too, not only after the
+       next navigation. The full wallpaper above the preview stays untouched. */
+    if (activeSource === source) clearPreviewLayer();
+    return deleteItem(key).catch(() => {});
   };
 
-  /* Reset paths: drop every preview slot at once. */
+  /* Reset paths: drop every preview slot at once. Resolves after IndexedDB has
+     committed the deletions, so a status refresh cannot read an old record. */
   function clearAllPreviews() {
-    Object.keys(PREVIEW_KEYS).forEach((source) => clearPreview(source));
+    return Promise.all(Object.keys(PREVIEW_KEYS).map((source) => clearPreview(source)));
   }
 
   /* The preview colour of a type, used as the placeholder the instant a
@@ -808,6 +869,109 @@ const Background = (() => {
     if (!key) return null;
     const rec = await readPreviewRecord(source);
     return rec && rec.color ? rec.color : null;
+  }
+
+  /* What the Advanced tab shows for a type: whether a preview slot exists,
+     how big it is, and the stored colour. */
+  async function getPreviewInfo(source) {
+    const rec = await readPreviewRecord(source);
+    if (!rec || !rec.blob) return null;
+    return {
+      color: rec.color || '',
+      size: rec.blob.size || 0,
+      time: rec.time || 0,
+    };
+  }
+
+  /* Average the tiny stored preview instead of decoding the full wallpaper:
+     the preview was made from the same picture, so its average is the same
+     colour at a fraction of the cost. */
+  async function blobAverageColor(blob) {
+    if (typeof createImageBitmap === 'function') {
+      try {
+        const bmp = await createImageBitmap(blob);
+        try { return averageColor(bmp); } finally { if (bmp.close) bmp.close(); }
+      } catch { /* fall back to <img> below */ }
+    }
+    const url = URL.createObjectURL(blob);
+    try { return await extractViaImage(url); } finally { URL.revokeObjectURL(url); }
+  }
+
+  /* Re-pick the preview colour without replacing the preview blob. When the
+     type has no preview yet, derive the colour from the wallpaper source
+     (Blob / data: URL / http(s) URL / Bing URL) and leave the preview slot
+     empty — "regenerate preview" is the action that creates one. */
+  async function recomputePreviewColor(source, src) {
+    const key = PREVIEW_KEYS[source];
+    if (!key) return null;
+
+    /* A preview regeneration / clear supersedes this colour pick. */
+    const seq = previewJobSeq[source];
+    let rec = null;
+    try { rec = await readPreviewRecord(source); } catch { rec = null; }
+    if (seq !== previewJobSeq[source]) return null;
+
+    let color = '';
+    if (rec && rec.blob) {
+      color = await blobAverageColor(rec.blob);
+    }
+    if (seq !== previewJobSeq[source]) return null;
+
+    if (!color && src) {
+      try {
+        let blob = null;
+        if (src instanceof Blob) {
+          blob = src;
+        } else if (typeof src === 'string') {
+          let url = src;
+          if (url.startsWith(BING_OTD_PREFIX)) url = url.slice(BING_OTD_PREFIX.length);
+          if (url.startsWith('data:')) blob = dataUrlToBlob(url);
+          else if (isBingUrl(url)) blob = await ensureBingBlob(url);
+          else blob = await fetchImageBlob(url);
+          if (!blob) color = await extractThemeColor(url);
+        }
+        if (blob) {
+          const result = source === 'video'
+            ? await videoPreview(blob)
+            : await imagePreview(blob);
+          color = result && result.color ? result.color : '';
+        }
+      } catch { color = ''; }
+    }
+
+    if (seq !== previewJobSeq[source]) return null;
+    if (!color) return null;
+
+    if (rec && rec.blob) {
+      const updated = { ...rec, color };
+      try {
+        await putItem(key, updated);
+        if (seq === previewJobSeq[source]) previewCache[source] = updated;
+      } catch { /* the colour still reaches the page below */ }
+    }
+    notifyPreviewColor(source, color);
+    return color;
+  }
+
+  /* Drop every local blob: wallpapers, Bing cache and preview slots. Used by
+     the Advanced "clear all configuration" flow before the page reloads. */
+  async function clearAllStorage() {
+    cacheEpoch++;
+    mediaEpoch++;
+    loadToken++;
+    Object.keys(PREVIEW_KEYS).forEach((source) => {
+      previewJobSeq[source]++;
+      invalidatePreview(source);
+    });
+    activeSource = null;
+    previewColorListener = null;
+    clearAll();
+    try {
+      await withStore('readwrite', (s) => s.clear());
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /* Warm all three slots right away: by the time the settings panel is opened
@@ -925,6 +1089,7 @@ const Background = (() => {
     load, clear, fetchBingOfTheDay, getBingOtdPrefix, extractThemeColor,
     saveVideoBlob, loadVideoBlob, hasVideoBlob, clearVideoBlob,
     saveImageBlob, clearImageBlob, migrateLegacyImage, clearBingCache,
+    getWallpaperBlob, getPreviewInfo, recomputePreviewColor, clearAllStorage,
     regeneratePreview, readPreviewColor, clearPreview, clearAllPreviews,
     setVolume, setMuted, setLoop, setOnEnded
   };

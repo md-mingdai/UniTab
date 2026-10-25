@@ -12,6 +12,7 @@ const Settings = (() => {
     bgSource: 'bing',     // 'bing' | 'image' | 'color' | 'video'
     bgImageData: null,    // 旧版本：自定义图片 base64（仅用于迁移；新版本改存 IndexedDB）
     bgImageStored: false, // 上传的自定义图片已保存在 IndexedDB（image_blob）
+    bgImageFileName: '',  // 上传图片的原始文件名（仅用于显示和导出命名）
     bgImageUrl: null,     // 自定义图片 URL（仅当 bgSource === 'image' 且用户填了链接时使用）
     bgBingUrl: null,      // 必应壁纸 URL（仅 bgSource === 'bing' 时使用）
     bgBingCopyright: '',  // 必应壁纸标题 + 版权信息（持久化，刷新页面也显示）
@@ -46,6 +47,9 @@ const Settings = (() => {
     video: 'bgThemeColorVideo'
   };
 
+  /* Must be typed by hand in the Advanced danger zone. Pasting is blocked. */
+  const RESET_PHRASE = '我确认清空全部配置且无法恢复';
+
   /* Writes are batched (see saveSettings): a slider drag fires `input` ~60 times a
      second, and every one of those used to JSON.stringify + synchronously write the
      whole settings blob to localStorage. */
@@ -65,7 +69,7 @@ const Settings = (() => {
   /* Form elements */
   let bgFileInput, bgFileName, bgUrlInput, bgUrlApply, bgUrlError;
   let bgBingRefresh, bgBingMeta, bgBingPanel, bgImagePanel, bgColorPanel, bgVideoPanel;
-  let bgVideoInput, bgVideoName, bgVideoExport;
+  let bgVideoInput, bgVideoName;
   let videoSoundToggle, videoVolumeWrapper;
   let videoVolumeSlider, videoVolumeDisplay;
   let videoLoopToggle;
@@ -81,7 +85,19 @@ const Settings = (() => {
   let cursorStyleGroup, cursorStyleWrapper, cursorStyleTrigger, cursorStyleDropdown, cursorStyleLabel, cursorStyleNative;
   let glassStyleWrapper, glassStyleTrigger, glassStyleDropdown, glassStyleLabel, glassStyleNative;
   let glassRadiusSlider, glassRadiusDisplay;
-  let resetBtn;
+  let resetBtn, settingsFooter;
+
+  /* Advanced tab */
+  let advancedExportBtn, advancedExportHint;
+  let advancedPreviewStatus, advancedClearPreviews, advancedRegenPreview, advancedRepickColor;
+  let advancedStorageInfo, advancedClearBingCache, advancedResetAll;
+
+  /* Typed confirmation dialog */
+  let resetAllDialog, resetAllInput, resetAllConfirm, resetAllCancel, resetAllError, resetAllPhrase;
+
+  /* Set while the full reset is in progress: pagehide must not write the old
+     in-memory settings back into the localStorage that was just cleared. */
+  let isResetting = false;
 
   function init() {
     cacheDom();
@@ -91,6 +107,7 @@ const Settings = (() => {
     /* The closed panel is laid out (just invisible), so the tab indicator can be
        placed now, while the page is still in `preload` and nothing transitions. */
     moveIndicator(getActiveTab());
+    updateFooterVisibility(getActiveTab());
     migrateLegacyImage();
 
     /* Make sure the latest changes reach localStorage when the tab goes away. */
@@ -127,7 +144,6 @@ const Settings = (() => {
     bgVideoPanel = document.getElementById('bg-video-panel');
     bgVideoInput = document.getElementById('bg-video-input');
     bgVideoName = document.getElementById('bg-video-name');
-    bgVideoExport = document.getElementById('bg-video-export');
     videoSoundToggle = document.getElementById('video-sound-toggle');
     videoVolumeWrapper = document.getElementById('video-volume-wrapper');
     videoVolumeSlider = document.getElementById('video-volume-slider');
@@ -196,6 +212,26 @@ const Settings = (() => {
     glassRadiusDisplay = document.getElementById('radius-value-display');
 
     resetBtn = document.getElementById('settings-reset');
+    settingsFooter = document.getElementById('settings-footer');
+
+    /* Advanced tab */
+    advancedExportBtn = document.getElementById('advanced-export-wallpaper');
+    advancedExportHint = document.getElementById('advanced-export-hint');
+    advancedPreviewStatus = document.getElementById('advanced-preview-status');
+    advancedClearPreviews = document.getElementById('advanced-clear-previews');
+    advancedRegenPreview = document.getElementById('advanced-regen-preview');
+    advancedRepickColor = document.getElementById('advanced-repick-color');
+    advancedStorageInfo = document.getElementById('advanced-storage-info');
+    advancedClearBingCache = document.getElementById('advanced-clear-bing-cache');
+    advancedResetAll = document.getElementById('advanced-reset-all');
+
+    /* Typed confirmation dialog */
+    resetAllDialog = document.getElementById('reset-all-dialog');
+    resetAllInput = document.getElementById('reset-all-input');
+    resetAllConfirm = document.getElementById('reset-all-confirm');
+    resetAllCancel = document.getElementById('reset-all-cancel');
+    resetAllError = document.getElementById('reset-all-error');
+    resetAllPhrase = document.getElementById('reset-all-phrase');
   }
 
   /* --- Confirm Dialog --- */
@@ -254,18 +290,65 @@ const Settings = (() => {
     'mp4': 'mp4', 'webm': 'webm', 'ogg': 'ogv', 'ogv': 'ogv',
     'quicktime': 'mov', 'x-matroska': 'mkv', 'x-msvideo': 'avi',
     'x-flv': 'flv', 'x-ms-wmv': 'wmv', 'mpegurl': 'm3u8',
+    'jpeg': 'jpg', 'jpg': 'jpg', 'png': 'png', 'webp': 'webp',
+    'gif': 'gif', 'avif': 'avif', 'svg+xml': 'svg', 'bmp': 'bmp',
+    'x-icon': 'ico', 'vnd.microsoft.icon': 'ico', 'tiff': 'tif',
+    'heic': 'heic', 'heif': 'heif',
   };
 
-  function buildExportName(blob) {
-    const sub = (blob.type || '').split('/')[1] || '';
-    const ext = MIME_EXT[sub] || sub.replace(/^x-/, '') || 'mp4';
-    /* Strip only what is illegal on some OS, plus trailing dots that
-       Windows drops silently. Hyphens, spaces and CJK stay untouched. */
-    const raw = (state.bgVideoFileName || 'unitab-视频壁纸')
+  function mimeExtension(blob, fallback) {
+    const sub = blob && blob.type ? blob.type.split('/')[1].toLowerCase() : '';
+    if (!sub || sub === 'octet-stream') return fallback;
+    return MIME_EXT[sub] || sub.replace(/^x-/, '') || fallback;
+  }
+
+  /* Strip only what is illegal on some OS, plus trailing dots that
+     Windows drops silently. Hyphens, spaces and CJK stay untouched. */
+  function sanitizeFileName(name) {
+    return String(name || '')
       .replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_')
-      .replace(/[.\s]+$/, '');
-    const base = raw.trim() || 'unitab-视频壁纸';
-    return /\.(mp4|webm|mov|mkv|avi|ogv|flv|wmv)$/i.test(base) ? base : `${base}.${ext}`;
+      .replace(/[.\s]+$/, '')
+      .trim();
+  }
+
+  function nameFromUrl(url) {
+    if (typeof url !== 'string' || url.startsWith('data:')) return '';
+    try {
+      const last = new URL(url).pathname.split('/').filter(Boolean).pop() || '';
+      return decodeURIComponent(last);
+    } catch {
+      return '';
+    }
+  }
+
+  /* Name for the Advanced tab's "export current wallpaper" action. The
+     extension comes from the real blob MIME whenever one is available. */
+  function buildExportName(blob, source, url) {
+    if (source === 'video') {
+      const raw = sanitizeFileName(state.bgVideoFileName || 'unitab-视频壁纸') || 'unitab-视频壁纸';
+      if (/\.(mp4|webm|mov|mkv|avi|ogv|flv|wmv|m4v|3gp)$/i.test(raw)) return raw;
+      return `${raw}.${mimeExtension(blob, 'mp4')}`;
+    }
+
+    if (source === 'bing') {
+      const now = new Date();
+      const stamp = [
+        now.getFullYear(),
+        String(now.getMonth() + 1).padStart(2, '0'),
+        String(now.getDate()).padStart(2, '0'),
+      ].join('-');
+      return `unitab-必应壁纸-${stamp}.${mimeExtension(blob, 'jpg')}`;
+    }
+
+    let raw = sanitizeFileName(state.bgImageFileName || nameFromUrl(url) || 'unitab-图片壁纸');
+    if (!raw) raw = 'unitab-图片壁纸';
+
+    const ext = mimeExtension(blob, 'jpg');
+    if (/\.(jpe?g|png|webp|gif|avif|svg|bmp|ico|tiff?|heic|heif)$/i.test(raw)) {
+      /* Prefer the blob's real type over a possibly misleading URL suffix. */
+      return blob && blob.type ? `${raw.replace(/\.[^.]+$/, '')}.${ext}` : raw;
+    }
+    return `${raw}.${ext}`;
   }
 
   /* Hands the blob to the browser's download manager, which files it in
@@ -291,6 +374,29 @@ const Settings = (() => {
          alive well past hand-off. Detached so the dialog isn't delayed. */
       setTimeout(() => URL.revokeObjectURL(url), 120000);
       resolve();
+    });
+  }
+
+  /* Fallback for wallpapers the page cannot fetch into a Blob (for example a
+     cross-origin image URL blocked by connect-src). The browser's own
+     download manager still gets the URL; target=_blank keeps the new tab page
+     alive if the server sends an image instead of an attachment. */
+  function downloadUrl(url, fileName) {
+    return new Promise((resolve, reject) => {
+      try {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        a.rel = 'noopener';
+        a.target = '_blank';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        resolve();
+      } catch (err) {
+        reject(err);
+      }
     });
   }
 
@@ -368,6 +474,7 @@ const Settings = (() => {
      single write follows SAVE_DELAY ms later (immediately when the tab is hidden or
      closed, see init). */
   function saveSettings() {
+    if (isResetting) return;
     saveDirty = true;
     if (!saveTimer) saveTimer = setTimeout(flushSettings, SAVE_DELAY);
   }
@@ -377,13 +484,21 @@ const Settings = (() => {
       clearTimeout(saveTimer);
       saveTimer = 0;
     }
-    if (!saveDirty) return;
+    if (!saveDirty || isResetting) return;
     saveDirty = false;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (e) {
       console.warn('UniTab: 无法保存设置:', e.message);
     }
+  }
+
+  function cancelPendingSave() {
+    if (saveTimer) {
+      clearTimeout(saveTimer);
+      saveTimer = 0;
+    }
+    saveDirty = false;
   }
 
   /* Earlier builds kept an uploaded wallpaper as a base64 string inside the settings
@@ -465,7 +580,7 @@ const Settings = (() => {
     /* Image filename hint — distinguishes between uploaded base64
        and a user-entered URL, both stored independently under 'image'. */
     if (state.bgImageData || state.bgImageStored) {
-      bgFileName.textContent = '已上传图片';
+      bgFileName.textContent = state.bgImageFileName || '已上传图片';
     } else if (state.bgImageUrl) {
       bgFileName.textContent = state.bgImageUrl.length > 40
         ? state.bgImageUrl.substring(0, 40) + '...' : state.bgImageUrl;
@@ -486,13 +601,12 @@ const Settings = (() => {
     updateVideoOnEndedDropdown(state.bgVideoOnEnded);
   }
 
-  /* What is stored in IndexedDB, as far as the video sub-panel shows it (export button,
-     file label). Looked up when the panel is opened or the source switched to video,
+  /* What is stored in IndexedDB, as far as the video sub-panel shows it (file
+     label). Looked up when the panel is opened or the source switched to video,
      not on every new tab: the blob survives source switches, but nothing here is
      visible until the panel is. */
   function refreshVideoInfo() {
     Background.loadVideoBlob().then((blob) => {
-      if (bgVideoExport) bgVideoExport.disabled = !blob;
       if (blob) {
         const sizeMB = (blob.size / (1024 * 1024)).toFixed(1);
         const name = state.bgVideoFileName || '已存储视频';
@@ -501,7 +615,7 @@ const Settings = (() => {
         bgVideoName.textContent = '未选择文件';
       }
     }).catch(() => {
-      if (bgVideoExport) bgVideoExport.disabled = true;
+      bgVideoName.textContent = '未选择文件';
     });
   }
 
@@ -755,7 +869,10 @@ const Settings = (() => {
   /* --- Tab switching --- */
   function switchTab(tabName) {
     if (!tabButtons || !tabPanels) return;
-    if (tabName === getActiveTab()) return;
+    if (tabName === getActiveTab()) {
+      if (tabName === 'advanced') refreshAdvancedInfo();
+      return;
+    }
     morphPanel(() => {
       tabButtons.forEach(btn => {
         const active = btn.dataset.tab === tabName;
@@ -765,8 +882,16 @@ const Settings = (() => {
       tabPanels.forEach(p => {
         p.hidden = p.dataset.tabPanel !== tabName;
       });
+      updateFooterVisibility(tabName);
     });
     moveIndicator(tabName);
+    if (tabName === 'advanced') refreshAdvancedInfo();
+  }
+
+  /* The Advanced tab has its own danger zone, so the per-tab "restore
+     defaults" footer would be redundant (and has no defaults to restore). */
+  function updateFooterVisibility(tabName) {
+    if (settingsFooter) settingsFooter.hidden = tabName === 'advanced';
   }
 
   function moveIndicator(tabName) {
@@ -913,6 +1038,7 @@ const Settings = (() => {
       state.bgImageStored = stored;
       state.bgImageData = dataUrl;
       state.bgImageUrl = null;
+      state.bgImageFileName = file.name;
       saveSettings();
       /* 静默生成图片 preview（低分辨率 WebP，先清空旧的再生成，预览色一并采用），
          生成失败则退回整图取色。 */
@@ -935,6 +1061,7 @@ const Settings = (() => {
       /* Clear the upload slot so the URL "wins". */
       state.bgImageUrl = check.url;
       state.bgImageData = null;
+      state.bgImageFileName = '';
       if (state.bgImageStored) {
         state.bgImageStored = false;
         Background.clearImageBlob();
@@ -1187,7 +1314,6 @@ const Settings = (() => {
       bgVideoName.textContent = file.name + `（${sizeMB}MB）`;
       Background.saveVideoBlob(file).then(() => {
         state.bgVideoFileName = file.name;
-        if (bgVideoExport) bgVideoExport.disabled = false;
         saveSettings();
         /* 静默截取视频首帧生成 preview（低分辨率 WebP，先清空旧的，预览色来自首帧）。 */
         pickPreview('video', file, null);
@@ -1195,50 +1321,6 @@ const Settings = (() => {
       }).catch(() => {
         bgVideoName.textContent = '视频保存失败';
       });
-    });
-
-    /* --- Export stored video to the browser download folder --- */
-    bgVideoExport.addEventListener('click', async () => {
-      bgVideoExport.disabled = true;
-      const originalLabel = bgVideoExport.textContent;
-      bgVideoExport.textContent = '导出中…';
-
-      let blob = null;
-      try {
-        blob = await Background.loadVideoBlob();
-      } catch { /* handled below */ }
-
-      if (!blob) {
-        bgVideoExport.textContent = originalLabel;
-        bgVideoExport.disabled = false;
-        await showExportDialog({
-          ok: false,
-          title: '没有可导出的视频',
-          detail: '当前浏览器中没有存储视频壁纸，或存储已被清除。',
-        });
-        return;
-      }
-
-      const sizeMB = (blob.size / (1024 * 1024)).toFixed(1);
-      const fileName = buildExportName(blob);
-
-      try {
-        await downloadBlob(blob, fileName);
-        bgVideoExport.textContent = originalLabel;
-        bgVideoExport.disabled = false;
-        await showExportDialog({
-          ok: true,
-          title: '导出完成',
-          detail: `${fileName}（${sizeMB}MB）`,
-        });
-      } catch (err) {
-        bgVideoExport.textContent = originalLabel;
-        bgVideoExport.disabled = false;
-        await showExportDialog({
-          ok: false,
-          detail: '下载被浏览器拦截或失败了，请检查本站的下载权限设置。\n' + (err && err.message ? err.message : ''),
-        });
-      }
     });
 
     /* --- Video sound toggle --- */
@@ -1321,6 +1403,26 @@ const Settings = (() => {
     trackDragging(blurSlider);
     trackDragging(opacitySlider);
 
+    /* --- Advanced tab actions --- */
+    if (advancedExportBtn) {
+      advancedExportBtn.addEventListener('click', exportCurrentWallpaper);
+    }
+    if (advancedClearPreviews) {
+      advancedClearPreviews.addEventListener('click', clearPreviewBuffer);
+    }
+    if (advancedRegenPreview) {
+      advancedRegenPreview.addEventListener('click', regenerateCurrentPreview);
+    }
+    if (advancedRepickColor) {
+      advancedRepickColor.addEventListener('click', repickPreviewColor);
+    }
+    if (advancedClearBingCache) {
+      advancedClearBingCache.addEventListener('click', clearBingCacheFromAdvanced);
+    }
+    if (advancedResetAll) {
+      advancedResetAll.addEventListener('click', resetAllConfiguration);
+    }
+
     /* --- Reset (per-tab) --- */
     resetBtn.addEventListener('click', () => {
       const activeTab = getActiveTab();
@@ -1337,6 +1439,7 @@ const Settings = (() => {
           state.overlayColor = DEFAULTS.overlayColor;
           state.bgImageData = DEFAULTS.bgImageData;
           state.bgImageStored = DEFAULTS.bgImageStored;
+          state.bgImageFileName = DEFAULTS.bgImageFileName;
           state.bgImageUrl = DEFAULTS.bgImageUrl;
           state.bgBingUrl = DEFAULTS.bgBingUrl;
           state.bgBingCopyright = DEFAULTS.bgBingCopyright;
@@ -1357,7 +1460,6 @@ const Settings = (() => {
           if (bgUrlInput) bgUrlInput.value = '';
           showUrlError('');
           bgVideoName.textContent = '未选择文件';
-          if (bgVideoExport) bgVideoExport.disabled = true;
           Background.clearVideoBlob();
           Background.clearImageBlob();
           Background.clearBingCache();
@@ -1392,6 +1494,525 @@ const Settings = (() => {
           break;
       }
     });
+  }
+
+  /* ================================================================
+     Advanced tab
+     ================================================================ */
+
+  function formatBytes(bytes) {
+    if (typeof bytes !== 'number' || !Number.isFinite(bytes) || bytes < 0) return '未知';
+    if (bytes < 1024) return Math.round(bytes) + ' B';
+    const units = ['KB', 'MB', 'GB', 'TB'];
+    let value = bytes;
+    let unit = -1;
+    do {
+      value /= 1024;
+      unit++;
+    } while (value >= 1024 && unit < units.length - 1);
+    return value.toFixed(value >= 10 ? 1 : 2).replace(/\.0+$/, '') + ' ' + units[unit];
+  }
+
+  function sourceLabel(source) {
+    if (source === 'bing') return '必应每日壁纸';
+    if (source === 'image') {
+      if (state.bgImageStored || state.bgImageData) {
+        return state.bgImageFileName ? `自定义图片 · ${state.bgImageFileName}` : '自定义图片（已上传）';
+      }
+      return state.bgImageUrl ? '自定义图片（链接）' : '自定义图片（未设置）';
+    }
+    if (source === 'video') {
+      return state.bgVideoFileName ? `视频壁纸 · ${state.bgVideoFileName}` : '视频壁纸';
+    }
+    if (source === 'color') return '纯色背景';
+    return '未设置';
+  }
+
+  /* Resolve the active wallpaper into the shape Background.regeneratePreview()
+     accepts. Uploaded images/videos are read from IndexedDB once here; URL
+     sources stay URLs so the preview generator can use its own fetch/cache. */
+  async function resolveCurrentWallpaperSource() {
+    const source = state.bgSource;
+    if (source === 'bing') {
+      return { source, src: state.bgBingUrl || null };
+    }
+    if (source === 'image') {
+      const opts = customImageOpts();
+      if (opts.imageStored) {
+        let blob = null;
+        try { blob = await Background.getWallpaperBlob('image', opts); } catch { blob = null; }
+        if (blob) return { source, src: blob };
+      }
+      return { source, src: opts.imageData || null };
+    }
+    if (source === 'video') {
+      let blob = null;
+      try { blob = await Background.getWallpaperBlob('video', {}); } catch { blob = null; }
+      return { source, src: blob || null };
+    }
+    return { source, src: null };
+  }
+
+  let advancedRefreshSeq = 0;
+
+  async function refreshAdvancedInfo() {
+    if (!advancedExportBtn) return;
+    const seq = ++advancedRefreshSeq;
+    const source = state.bgSource;
+    const hasWallpaper = source !== 'color' && source !== 'none';
+
+    advancedExportBtn.disabled = !hasWallpaper;
+    if (advancedExportHint) {
+      advancedExportHint.textContent = hasWallpaper
+        ? `当前：${sourceLabel(source)}`
+        : '当前：纯色背景，没有可导出的壁纸。';
+    }
+    if (advancedRegenPreview) advancedRegenPreview.disabled = !hasWallpaper;
+    if (advancedRepickColor) advancedRepickColor.disabled = !hasWallpaper;
+
+    if (advancedPreviewStatus) {
+      if (!hasWallpaper) {
+        advancedPreviewStatus.textContent = '纯色背景不使用壁纸预览。';
+      } else if (typeof Background === 'undefined' || !Background.getPreviewInfo) {
+        advancedPreviewStatus.textContent = '当前预览：无法读取。';
+      } else {
+        advancedPreviewStatus.textContent = '当前预览：正在读取…';
+        try {
+          const info = await Background.getPreviewInfo(source);
+          if (seq !== advancedRefreshSeq) return;
+          if (info) {
+            const color = info.color ? info.color.toUpperCase() : '未知';
+            advancedPreviewStatus.textContent =
+              `当前预览：已缓存（${formatBytes(info.size)}） · 预览色 ${color}`;
+          } else {
+            advancedPreviewStatus.textContent = '当前预览：未缓存，可点击“重新生成当前预览”。';
+          }
+        } catch {
+          if (seq === advancedRefreshSeq) advancedPreviewStatus.textContent = '当前预览：读取失败。';
+        }
+      }
+    }
+
+    if (advancedStorageInfo) {
+      advancedStorageInfo.textContent = '本地存储占用：正在读取…';
+      try {
+        if (navigator.storage && navigator.storage.estimate) {
+          const estimate = await navigator.storage.estimate();
+          if (seq !== advancedRefreshSeq) return;
+          if (estimate && typeof estimate.usage === 'number') {
+            const quota = typeof estimate.quota === 'number' && estimate.quota > 0
+              ? ` / ${formatBytes(estimate.quota)}` : '';
+            advancedStorageInfo.textContent = `本地存储占用：约 ${formatBytes(estimate.usage)}${quota}`;
+          } else {
+            advancedStorageInfo.textContent = '本地存储占用：无法读取。';
+          }
+        } else {
+          advancedStorageInfo.textContent = '当前浏览器不支持存储占用查询。';
+        }
+      } catch {
+        if (seq === advancedRefreshSeq) advancedStorageInfo.textContent = '本地存储占用：读取失败。';
+      }
+    }
+  }
+
+  async function exportCurrentWallpaper() {
+    if (!advancedExportBtn) return;
+    const source = state.bgSource;
+    if (source === 'color' || source === 'none') {
+      await showExportDialog({
+        ok: false,
+        title: '没有可导出的壁纸',
+        detail: '当前背景是纯色，请先切换到必应、自定义图片或视频壁纸。',
+      });
+      return;
+    }
+    if (typeof Background === 'undefined' || !Background.getWallpaperBlob) {
+      await showExportDialog({ ok: false, detail: '壁纸模块尚未准备好，请稍后重试。' });
+      return;
+    }
+
+    const originalLabel = advancedExportBtn.textContent;
+    advancedExportBtn.disabled = true;
+    advancedExportBtn.textContent = '导出中…';
+
+    let url = '';
+    let opts = {};
+    if (source === 'bing') {
+      url = state.bgBingUrl || '';
+      opts = { url };
+    } else if (source === 'image') {
+      opts = customImageOpts();
+      url = state.bgImageUrl || (state.bgImageData && !state.bgImageData.startsWith('data:')
+        ? state.bgImageData : '');
+    }
+
+    try {
+      let blob = null;
+      try { blob = await Background.getWallpaperBlob(source, opts); } catch { blob = null; }
+
+      if (blob && blob.size) {
+        const fileName = buildExportName(blob, source, url);
+        await downloadBlob(blob, fileName);
+        await showExportDialog({
+          ok: true,
+          title: '导出完成',
+          detail: `${fileName}（${formatBytes(blob.size)}）`,
+        });
+      } else if (url) {
+        /* The page could not turn this URL into a Blob (CORS / connect-src);
+           let the browser's download manager handle the URL directly. */
+        const fileName = buildExportName(null, source, url);
+        await downloadUrl(url, fileName);
+        await showExportDialog({
+          ok: true,
+          title: '已交给浏览器下载',
+          detail: `${fileName}\n如果浏览器直接打开了图片，请右键另存为。`,
+        });
+      } else {
+        await showExportDialog({
+          ok: false,
+          title: '没有可导出的壁纸',
+          detail: '当前壁纸的数据不存在，或本地存储已被清除。',
+        });
+      }
+    } catch (err) {
+      await showExportDialog({
+        ok: false,
+        title: '导出失败',
+        detail: '下载被浏览器拦截或失败了，请检查本站的下载权限设置。'
+          + (err && err.message ? '\n' + err.message : ''),
+      });
+    } finally {
+      advancedExportBtn.textContent = originalLabel;
+      advancedExportBtn.disabled = false;
+      refreshAdvancedInfo();
+    }
+  }
+
+  async function clearPreviewBuffer() {
+    if (!advancedClearPreviews) return;
+    if (typeof Background === 'undefined' || !Background.clearAllPreviews) return;
+
+    const originalLabel = advancedClearPreviews.textContent;
+    advancedClearPreviews.disabled = true;
+    advancedClearPreviews.textContent = '清空中…';
+    /* Cancel settings-side late colour adoption as well as Background's own
+       preview jobs, otherwise a result from before the clear could reappear. */
+    pickSeq.bing++;
+    pickSeq.image++;
+    pickSeq.video++;
+    themeColorSeq++;
+
+    let cleared = true;
+    try {
+      await Background.clearAllPreviews();
+    } catch {
+      cleared = false;
+    }
+    advancedClearPreviews.textContent = originalLabel;
+    advancedClearPreviews.disabled = false;
+
+    if (cleared) {
+      await showExportDialog({
+        ok: true,
+        title: '预览缓冲区已清空',
+        detail: '必应、图片、视频三种壁纸的预览缓存已删除，当前壁纸不受影响。',
+      });
+    } else {
+      await showExportDialog({
+        ok: false,
+        title: '清空失败',
+        detail: '预览缓存删除失败，请稍后重试。',
+      });
+    }
+    refreshAdvancedInfo();
+  }
+
+  async function regenerateCurrentPreview() {
+    if (!advancedRegenPreview) return;
+    if (typeof Background === 'undefined' || !Background.regeneratePreview) return;
+
+    const originalLabel = advancedRegenPreview.textContent;
+    advancedRegenPreview.disabled = true;
+    advancedRegenPreview.textContent = '生成中…';
+    try {
+      const current = await resolveCurrentWallpaperSource();
+      if (current.source === 'color' || current.source === 'none') {
+        await showExportDialog({
+          ok: false,
+          title: '无需生成预览',
+          detail: '纯色背景不使用壁纸预览。',
+        });
+        return;
+      }
+      if (!current.src) {
+        await showExportDialog({
+          ok: false,
+          title: '没有可用的壁纸数据',
+          detail: '请先在“背景”中选择并应用壁纸，再重新生成预览。',
+        });
+        return;
+      }
+
+      const seq = ++pickSeq[current.source];
+      const rec = await Background.regeneratePreview(current.source, current.src);
+      if (seq !== pickSeq[current.source]) return; /* superseded by a newer pick */
+      if (rec && rec.color) adoptPreviewColor(current.source, rec.color);
+      if (rec) {
+        await showExportDialog({
+          ok: true,
+          title: '预览已重新生成',
+          detail: `${sourceLabel(current.source)} 的预览与预览色已更新。`,
+        });
+      } else {
+        await showExportDialog({
+          ok: false,
+          title: '预览生成失败',
+          detail: '壁纸数据无法读取（链接可能不允许跨域访问，或当前处于离线状态）。',
+        });
+      }
+    } catch (err) {
+      await showExportDialog({
+        ok: false,
+        title: '预览生成失败',
+        detail: err && err.message ? err.message : '未知错误',
+      });
+    } finally {
+      advancedRegenPreview.textContent = originalLabel;
+      advancedRegenPreview.disabled = false;
+      refreshAdvancedInfo();
+    }
+  }
+
+  async function repickPreviewColor() {
+    if (!advancedRepickColor) return;
+    if (typeof Background === 'undefined' || !Background.recomputePreviewColor) return;
+
+    const originalLabel = advancedRepickColor.textContent;
+    advancedRepickColor.disabled = true;
+    advancedRepickColor.textContent = '拾取中…';
+    try {
+      const current = await resolveCurrentWallpaperSource();
+      if (current.source === 'color' || current.source === 'none') {
+        await showExportDialog({
+          ok: false,
+          title: '无需拾取预览色',
+          detail: '纯色背景不使用壁纸预览色。',
+        });
+        return;
+      }
+
+      const color = await Background.recomputePreviewColor(current.source, current.src);
+      if (color) {
+        adoptPreviewColor(current.source, color);
+        await showExportDialog({
+          ok: true,
+          title: '预览色已更新',
+          detail: `${sourceLabel(current.source)} 的预览色已更新为 ${color.toUpperCase()}。`,
+        });
+      } else {
+        await showExportDialog({
+          ok: false,
+          title: '无法拾取预览色',
+          detail: '当前壁纸数据不可读，或还没有可用的预览。请尝试“重新生成当前预览”。',
+        });
+      }
+    } catch (err) {
+      await showExportDialog({
+        ok: false,
+        title: '无法拾取预览色',
+        detail: err && err.message ? err.message : '未知错误',
+      });
+    } finally {
+      advancedRepickColor.textContent = originalLabel;
+      advancedRepickColor.disabled = false;
+      refreshAdvancedInfo();
+    }
+  }
+
+  async function clearBingCacheFromAdvanced() {
+    if (!advancedClearBingCache) return;
+    if (typeof Background === 'undefined' || !Background.clearBingCache) return;
+
+    const originalLabel = advancedClearBingCache.textContent;
+    advancedClearBingCache.disabled = true;
+    advancedClearBingCache.textContent = '清理中…';
+    try {
+      await Background.clearBingCache();
+      await showExportDialog({
+        ok: true,
+        title: '必应缓存已清除',
+        detail: '下次使用必应壁纸时会重新下载最新壁纸。',
+      });
+    } catch (err) {
+      await showExportDialog({
+        ok: false,
+        title: '清除失败',
+        detail: err && err.message ? err.message : '未知错误',
+      });
+    } finally {
+      advancedClearBingCache.textContent = originalLabel;
+      advancedClearBingCache.disabled = false;
+      refreshAdvancedInfo();
+    }
+  }
+
+  /* Typed second confirmation for the full reset. Pasting and dropping text
+     are blocked on purpose: the user must type the warning phrase by hand. */
+  function showResetAllDialog() {
+    return new Promise((resolve) => {
+      if (!resetAllDialog || !resetAllInput || !resetAllConfirm) {
+        resolve(false);
+        return;
+      }
+      let settled = false;
+
+      function setError(text) {
+        if (!resetAllError) return;
+        resetAllError.textContent = text || '';
+        resetAllError.hidden = !text;
+        if (text) resetAllInput.setAttribute('aria-invalid', 'true');
+        else resetAllInput.removeAttribute('aria-invalid');
+      }
+
+      function syncConfirm() {
+        const matches = resetAllInput.value.trim() === RESET_PHRASE;
+        resetAllConfirm.disabled = !matches;
+        if (matches) setError('');
+      }
+
+      function cleanup(result) {
+        if (settled) return;
+        settled = true;
+        resetAllDialog.hidden = true;
+        resetAllInput.value = '';
+        resetAllInput.removeAttribute('aria-invalid');
+        resetAllInput.removeEventListener('input', onInput);
+        resetAllInput.removeEventListener('paste', onPaste);
+        resetAllInput.removeEventListener('beforeinput', onBeforeInput);
+        resetAllInput.removeEventListener('drop', onDrop);
+        resetAllDialog.removeEventListener('keydown', onKeydown);
+        resetAllDialog.removeEventListener('click', onBackdrop);
+        resetAllConfirm.removeEventListener('click', onConfirm);
+        resetAllCancel.removeEventListener('click', onCancel);
+        resolve(result);
+      }
+
+      function onInput() {
+        setError('');
+        syncConfirm();
+      }
+
+      function onPaste(e) {
+        e.preventDefault();
+        setError('此输入框禁止粘贴，请手动输入警告文字。');
+      }
+
+      function onBeforeInput(e) {
+        const type = e.inputType || '';
+        if (type === 'insertFromPaste' || type === 'insertFromPasteAsQuotation'
+            || type === 'insertFromDrop' || type === 'insertFromYank') {
+          e.preventDefault();
+          setError('此输入框禁止粘贴，请手动输入警告文字。');
+        }
+      }
+
+      function onDrop(e) {
+        e.preventDefault();
+        setError('此输入框禁止拖放文本，请手动输入警告文字。');
+      }
+
+      function onKeydown(e) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          e.stopPropagation();
+          cleanup(false);
+        } else if (e.key === 'Enter' && document.activeElement === resetAllInput) {
+          if (resetAllConfirm.disabled) {
+            e.preventDefault();
+            setError('请完整输入上面的警告文字。');
+          } else {
+            e.preventDefault();
+            cleanup(true);
+          }
+        }
+      }
+
+      function onBackdrop(e) {
+        if (e.target === resetAllDialog) cleanup(false);
+      }
+
+      function onConfirm() {
+        if (resetAllInput.value.trim() !== RESET_PHRASE) {
+          setError('输入内容不匹配，请重新输入。');
+          syncConfirm();
+          return;
+        }
+        cleanup(true);
+      }
+
+      function onCancel() {
+        cleanup(false);
+      }
+
+      if (resetAllPhrase) resetAllPhrase.textContent = RESET_PHRASE;
+      resetAllInput.value = '';
+      resetAllInput.removeAttribute('aria-invalid');
+      resetAllConfirm.disabled = true;
+      setError('');
+      resetAllDialog.hidden = false;
+
+      resetAllInput.addEventListener('input', onInput);
+      resetAllInput.addEventListener('paste', onPaste);
+      resetAllInput.addEventListener('beforeinput', onBeforeInput);
+      resetAllInput.addEventListener('drop', onDrop);
+      resetAllDialog.addEventListener('keydown', onKeydown);
+      resetAllDialog.addEventListener('click', onBackdrop);
+      resetAllConfirm.addEventListener('click', onConfirm);
+      resetAllCancel.addEventListener('click', onCancel);
+      requestAnimationFrame(() => resetAllInput.focus());
+    });
+  }
+
+  async function resetAllConfiguration() {
+    if (!advancedResetAll) return;
+    const confirmed = await showResetAllDialog();
+    if (!confirmed) return;
+
+    /* From here on, nothing may write the old in-memory state back. */
+    isResetting = true;
+    cancelPendingSave();
+
+    advancedResetAll.disabled = true;
+    advancedResetAll.textContent = '正在清空…';
+
+    let storageCleared = true;
+    try {
+      if (typeof Background !== 'undefined' && Background.clearAllStorage) {
+        storageCleared = await Background.clearAllStorage();
+      }
+    } catch {
+      storageCleared = false;
+    }
+
+    try {
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith('unitab_')) localStorage.removeItem(key);
+      });
+    } catch {
+      storageCleared = false;
+    }
+
+    advancedResetAll.textContent = '已清空';
+    await showExportDialog({
+      ok: storageCleared,
+      title: storageCleared ? '已清空全部配置' : '配置已清除，但缓存清理不完整',
+      detail: storageCleared
+        ? '页面将重新加载，恢复首次安装状态。'
+        : '设置已清除，但部分本地缓存可能仍在。页面将重新加载。',
+      okLabel: '重新加载',
+    });
+    window.location.reload();
   }
 
   function readAsDataUrl(file) {
@@ -1623,6 +2244,7 @@ const Settings = (() => {
     toggle.style.opacity = '0';
     toggle.style.pointerEvents = 'none';
     if (state.bgSource === 'video') refreshVideoInfo();
+    if (getActiveTab() === 'advanced') refreshAdvancedInfo();
   }
 
   function closePanel() {
