@@ -1553,6 +1553,43 @@ const Settings = (() => {
     return { source, src: null };
   }
 
+  /* Preview maintenance actions report through the button itself instead of a
+     secondary dialog: busy label while running, then a brief result label. */
+  const BUTTON_RESULT_MS = 1600;
+  const buttonResultTimers = new WeakMap();
+  const buttonIdleLabels = new WeakMap();
+
+  function setButtonBusy(button, text) {
+    if (!button) return;
+    if (!buttonIdleLabels.has(button)) buttonIdleLabels.set(button, button.textContent);
+    clearTimeout(buttonResultTimers.get(button));
+    buttonResultTimers.delete(button);
+    button.disabled = true;
+    button.textContent = text;
+  }
+
+  function setButtonResult(button, text) {
+    if (!button) return;
+    const idle = buttonIdleLabels.get(button) || button.textContent;
+    clearTimeout(buttonResultTimers.get(button));
+    button.disabled = false;
+    button.textContent = text;
+    const timer = setTimeout(() => {
+      buttonResultTimers.delete(button);
+      button.textContent = idle;
+    }, BUTTON_RESULT_MS);
+    buttonResultTimers.set(button, timer);
+  }
+
+  function resetButton(button) {
+    if (!button) return;
+    clearTimeout(buttonResultTimers.get(button));
+    buttonResultTimers.delete(button);
+    const idle = buttonIdleLabels.get(button);
+    if (idle) button.textContent = idle;
+    button.disabled = false;
+  }
+
   let advancedRefreshSeq = 0;
 
   async function refreshAdvancedInfo() {
@@ -1693,9 +1730,7 @@ const Settings = (() => {
     if (!advancedClearPreviews) return;
     if (typeof Background === 'undefined' || !Background.clearAllPreviews) return;
 
-    const originalLabel = advancedClearPreviews.textContent;
-    advancedClearPreviews.disabled = true;
-    advancedClearPreviews.textContent = '清空中…';
+    setButtonBusy(advancedClearPreviews, '清空中…');
     /* Cancel settings-side late colour adoption as well as Background's own
        preview jobs, otherwise a result from before the clear could reappear. */
     pickSeq.bing++;
@@ -1709,22 +1744,8 @@ const Settings = (() => {
     } catch {
       cleared = false;
     }
-    advancedClearPreviews.textContent = originalLabel;
-    advancedClearPreviews.disabled = false;
 
-    if (cleared) {
-      await showExportDialog({
-        ok: true,
-        title: '预览缓冲区已清空',
-        detail: '必应、图片、视频三种壁纸的预览缓存已删除，当前壁纸不受影响。',
-      });
-    } else {
-      await showExportDialog({
-        ok: false,
-        title: '清空失败',
-        detail: '预览缓存删除失败，请稍后重试。',
-      });
-    }
+    setButtonResult(advancedClearPreviews, cleared ? '已清空' : '清空失败');
     refreshAdvancedInfo();
   }
 
@@ -1732,54 +1753,29 @@ const Settings = (() => {
     if (!advancedRegenPreview) return;
     if (typeof Background === 'undefined' || !Background.regeneratePreview) return;
 
-    const originalLabel = advancedRegenPreview.textContent;
-    advancedRegenPreview.disabled = true;
-    advancedRegenPreview.textContent = '生成中…';
+    setButtonBusy(advancedRegenPreview, '生成中…');
     try {
       const current = await resolveCurrentWallpaperSource();
       if (current.source === 'color' || current.source === 'none') {
-        await showExportDialog({
-          ok: false,
-          title: '无需生成预览',
-          detail: '纯色背景不使用壁纸预览。',
-        });
+        setButtonResult(advancedRegenPreview, '无需生成');
         return;
       }
       if (!current.src) {
-        await showExportDialog({
-          ok: false,
-          title: '没有可用的壁纸数据',
-          detail: '请先在“背景”中选择并应用壁纸，再重新生成预览。',
-        });
+        setButtonResult(advancedRegenPreview, '无壁纸数据');
         return;
       }
 
       const seq = ++pickSeq[current.source];
       const rec = await Background.regeneratePreview(current.source, current.src);
-      if (seq !== pickSeq[current.source]) return; /* superseded by a newer pick */
-      if (rec && rec.color) adoptPreviewColor(current.source, rec.color);
-      if (rec) {
-        await showExportDialog({
-          ok: true,
-          title: '预览已重新生成',
-          detail: `${sourceLabel(current.source)} 的预览与预览色已更新。`,
-        });
-      } else {
-        await showExportDialog({
-          ok: false,
-          title: '预览生成失败',
-          detail: '壁纸数据无法读取（链接可能不允许跨域访问，或当前处于离线状态）。',
-        });
+      if (seq !== pickSeq[current.source]) {
+        resetButton(advancedRegenPreview); /* superseded by a newer pick */
+        return;
       }
-    } catch (err) {
-      await showExportDialog({
-        ok: false,
-        title: '预览生成失败',
-        detail: err && err.message ? err.message : '未知错误',
-      });
+      if (rec && rec.color) adoptPreviewColor(current.source, rec.color);
+      setButtonResult(advancedRegenPreview, rec ? '已生成' : '生成失败');
+    } catch {
+      setButtonResult(advancedRegenPreview, '生成失败');
     } finally {
-      advancedRegenPreview.textContent = originalLabel;
-      advancedRegenPreview.disabled = false;
       refreshAdvancedInfo();
     }
   }
@@ -1788,44 +1784,24 @@ const Settings = (() => {
     if (!advancedRepickColor) return;
     if (typeof Background === 'undefined' || !Background.recomputePreviewColor) return;
 
-    const originalLabel = advancedRepickColor.textContent;
-    advancedRepickColor.disabled = true;
-    advancedRepickColor.textContent = '拾取中…';
+    setButtonBusy(advancedRepickColor, '拾取中…');
     try {
       const current = await resolveCurrentWallpaperSource();
       if (current.source === 'color' || current.source === 'none') {
-        await showExportDialog({
-          ok: false,
-          title: '无需拾取预览色',
-          detail: '纯色背景不使用壁纸预览色。',
-        });
+        setButtonResult(advancedRepickColor, '无需拾取');
         return;
       }
 
       const color = await Background.recomputePreviewColor(current.source, current.src);
       if (color) {
         adoptPreviewColor(current.source, color);
-        await showExportDialog({
-          ok: true,
-          title: '预览色已更新',
-          detail: `${sourceLabel(current.source)} 的预览色已更新为 ${color.toUpperCase()}。`,
-        });
+        setButtonResult(advancedRepickColor, '已拾取');
       } else {
-        await showExportDialog({
-          ok: false,
-          title: '无法拾取预览色',
-          detail: '当前壁纸数据不可读，或还没有可用的预览。请尝试“重新生成当前预览”。',
-        });
+        setButtonResult(advancedRepickColor, '拾取失败');
       }
-    } catch (err) {
-      await showExportDialog({
-        ok: false,
-        title: '无法拾取预览色',
-        detail: err && err.message ? err.message : '未知错误',
-      });
+    } catch {
+      setButtonResult(advancedRepickColor, '拾取失败');
     } finally {
-      advancedRepickColor.textContent = originalLabel;
-      advancedRepickColor.disabled = false;
       refreshAdvancedInfo();
     }
   }
