@@ -115,6 +115,24 @@ body {
   opacity: 1;
 }
 
+/* The stored preview (tiny WebP per wallpaper type) sits under the photo: it is
+   decoded in a few ms and fades in over the colour placeholder as soon as the
+   page has the blob, then the full wallpaper fades in above it. Same sizing as
+   the photo so the hand-off between the two is not visible as a jump. */
+.background-preview {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.background-preview.is-ready {
+  opacity: 1;
+}
+
 .background-video {
   position: absolute;
   inset: -10px;
@@ -1910,10 +1928,13 @@ body {
   animation: none !important;
 }
 
-/* ...except the wallpaper fade-in, which is meant to be seen. */
+/* ...except the wallpaper / preview fade-in, which is meant to be seen. */
 @media (prefers-reduced-motion: no-preference) {
   .preload .background-photo {
     transition: opacity 0.45s ease !important;
+  }
+  .preload .background-preview {
+    transition: opacity 0.25s ease !important;
   }
 }
 

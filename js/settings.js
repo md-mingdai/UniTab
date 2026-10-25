@@ -16,7 +16,10 @@ const Settings = (() => {
     bgBingUrl: null,      // 必应壁纸 URL（仅 bgSource === 'bing' 时使用）
     bgBingCopyright: '',  // 必应壁纸标题 + 版权信息（持久化，刷新页面也显示）
     bgColor: '#1a1d24',   // 纯色（仅 bgSource === 'color' 时使用）
-    bgThemeColor: '',     // 图片主题色（用于图片加载前的占位背景）
+    bgThemeColor: '',     // 当前生效的预览色（由下面三个按类型的字段派生）
+    bgThemeColorBing: '', // 必应壁纸的预览色
+    bgThemeColorImage: '',// 自定义图片的预览色
+    bgThemeColorVideo: '',// 视频壁纸（首帧）的预览色
     showSeconds: true,
     showBookmarks: true,  // 底部常用网址 Dock 栏开关
     showCursorEffect: false,  // 鼠标粒子特效
@@ -34,6 +37,14 @@ const Settings = (() => {
   let state = { ...DEFAULTS };
 
   const STORAGE_KEY = 'unitab_settings';
+
+  /* 每种壁纸类型各存一份预览色：切换类型时直接取用，永远不会沿用上一个
+     类型的颜色（bing 黄 → 图片/视频绿 的即时切换就靠这个）。 */
+  const COLOR_KEY = {
+    bing: 'bgThemeColorBing',
+    image: 'bgThemeColorImage',
+    video: 'bgThemeColorVideo'
+  };
 
   /* Writes are batched (see saveSettings): a slider drag fires `input` ~60 times a
      second, and every one of those used to JSON.stringify + synchronously write the
@@ -336,6 +347,19 @@ const Settings = (() => {
       state.bgVideoOnEnded = 'black';
       migrated = true;
     }
+    /* 预览色改为按壁纸类型分别保存：老数据只有一个 bgThemeColor，先归到当前
+       类型；之后切换类型会同步命中各自颜色，不再沿用上一个壁纸的颜色。 */
+    const activeColorKey = COLOR_KEY[state.bgSource];
+    if (activeColorKey) {
+      if (!state[activeColorKey] && state.bgThemeColor) {
+        state[activeColorKey] = state.bgThemeColor;
+        migrated = true;
+      }
+      if (state[activeColorKey] && state.bgThemeColor !== state[activeColorKey]) {
+        state.bgThemeColor = state[activeColorKey];
+        migrated = true;
+      }
+    }
     if (migrated) saveSettings();
     syncFormToState();
   }
@@ -375,6 +399,10 @@ const Settings = (() => {
       if (state.bgImageData !== data) return; /* changed in the meantime */
       Background.migrateLegacyImage(data).then((ok) => {
         if (!ok || state.bgImageData !== data) return;
+        /* 静默补一份 preview，老数据迁移后下次启动有预览可用（会先清空旧槽）。 */
+        Background.regeneratePreview('image', data).then((rec) => {
+          if (rec && rec.color) adoptPreviewColor('image', rec.color);
+        });
         state.bgImageData = null;
         state.bgImageStored = true;
         saveSettings();
@@ -559,21 +587,21 @@ const Settings = (() => {
     if (behavior === 'customimage') {
       return () => {
         if (state.bgImageStored || state.bgImageData || state.bgImageUrl) {
-          Background.load({ source: 'image', ...customImageOpts(), color: state.bgColor });
+          bgLoad({ source: 'image', ...customImageOpts(), color: state.bgColor });
         }
       };
     }
     if (behavior === 'bing') {
       return () => {
         if (state.bgBingUrl) {
-          Background.load({ source: 'bing', imageData: state.bgBingUrl });
+          bgLoad({ source: 'bing', imageData: state.bgBingUrl });
         } else {
           Background.fetchBingOfTheDay().then((res) => {
             if (res && res.ok && res.url) {
               state.bgBingUrl = res.url;
               state.bgBingCopyright = res.copyright || '';
               saveSettings();
-              Background.load({ source: 'bing', imageData: res.url });
+              bgLoad({ source: 'bing', imageData: res.url });
             }
           });
         }
@@ -585,7 +613,7 @@ const Settings = (() => {
   function applyBackground() {
     if (typeof Background === 'undefined') return;
     if (state.bgSource === 'video') {
-      Background.load({
+      bgLoad({
         source: 'video',
         volume: state.bgVideoVolume,
         loop: state.bgVideoLoop,
@@ -596,10 +624,10 @@ const Settings = (() => {
       return;
     }
     if (state.bgSource === 'image') {
-      Background.load({ source: 'image', ...customImageOpts(), color: state.bgColor });
+      bgLoad({ source: 'image', ...customImageOpts(), color: state.bgColor });
       return;
     }
-    Background.load({
+    bgLoad({
       source: state.bgSource,
       imageData: state.bgBingUrl,
       color: state.bgColor
@@ -843,9 +871,11 @@ const Settings = (() => {
         state.bgBingUrl = result.url;
         state.bgBingCopyright = formatBingMeta(result);
         saveSettings();
+        /* 静默生成必应壁纸的 preview（低分辨率 WebP，先清空旧的再用预览色更新占位色），
+           生成失败（离线等）则退回原来的整图取色。 */
+        pickPreview('bing', result.url, result.url);
         applyBackground();
         setBingMeta(state.bgBingCopyright);
-        extractAndSaveThemeColor(result.url);
       } finally {
         bgBingRefresh.disabled = false;
       }
@@ -884,8 +914,10 @@ const Settings = (() => {
       state.bgImageData = dataUrl;
       state.bgImageUrl = null;
       saveSettings();
+      /* 静默生成图片 preview（低分辨率 WebP，先清空旧的再生成，预览色一并采用），
+         生成失败则退回整图取色。 */
+      pickPreview('image', file, file);
       applyBackground();
-      extractAndSaveThemeColor(file);
     });
 
     /* --- URL apply --- */
@@ -908,9 +940,11 @@ const Settings = (() => {
         Background.clearImageBlob();
       }
       saveSettings();
+      /* URL 图片可能因 CORS 无法生成 preview（fetch 不到像素）：成功则一并采用
+         预览色，失败则退回原来的 extractThemeColor 只取色。 */
+      pickPreview('image', check.url, check.url);
       applyBackground();
       bgFileName.textContent = check.url.length > 40 ? check.url.substring(0, 40) + '...' : check.url;
-      extractAndSaveThemeColor(check.url);
       showUrlError('');
     });
 
@@ -1155,6 +1189,8 @@ const Settings = (() => {
         state.bgVideoFileName = file.name;
         if (bgVideoExport) bgVideoExport.disabled = false;
         saveSettings();
+        /* 静默截取视频首帧生成 preview（低分辨率 WebP，先清空旧的，预览色来自首帧）。 */
+        pickPreview('video', file, null);
         applyBackground();
       }).catch(() => {
         bgVideoName.textContent = '视频保存失败';
@@ -1290,6 +1326,11 @@ const Settings = (() => {
       const activeTab = getActiveTab();
       switch (activeTab) {
         case 'bg':
+          /* 丢弃仍在生成中的预览 / 取色结果：否则重置完成后，迟到的结果会把
+             刚刚清空的预览色又写回来。 */
+          pickSeq.bing++;
+          pickSeq.image++;
+          pickSeq.video++;
           state.bgSource = DEFAULTS.bgSource;
           state.bgBlur = DEFAULTS.bgBlur;
           state.overlayOpacity = DEFAULTS.overlayOpacity;
@@ -1301,6 +1342,9 @@ const Settings = (() => {
           state.bgBingCopyright = DEFAULTS.bgBingCopyright;
           state.bgColor = DEFAULTS.bgColor;
           state.bgThemeColor = DEFAULTS.bgThemeColor;
+          state.bgThemeColorBing = DEFAULTS.bgThemeColorBing;
+          state.bgThemeColorImage = DEFAULTS.bgThemeColorImage;
+          state.bgThemeColorVideo = DEFAULTS.bgThemeColorVideo;
           state.bgVideoVolume = DEFAULTS.bgVideoVolume;
           state.bgVideoLoop = DEFAULTS.bgVideoLoop;
           state.bgVideoOnEnded = DEFAULTS.bgVideoOnEnded;
@@ -1317,6 +1361,7 @@ const Settings = (() => {
           Background.clearVideoBlob();
           Background.clearImageBlob();
           Background.clearBingCache();
+          Background.clearAllPreviews();
           setBingMeta('');
           /* Back on the default source: fetch today's wallpaper, as a first run does. */
           if (state.bgSource === 'bing' && !state.bgBingUrl && bgBingRefresh) {
@@ -1358,18 +1403,92 @@ const Settings = (() => {
     });
   }
 
-  /* Extract theme color from an image source (Blob or URL) and persist it. */
+  /* Extract theme color from an image source (Blob or URL) and persist it.
+     Only a fallback for when preview generation failed; `source` scopes the
+     result to its wallpaper type. */
   let themeColorSeq = 0;
-  function extractAndSaveThemeColor(src) {
+  function extractAndSaveThemeColor(src, source) {
     if (!Background.extractThemeColor) return;
-    const seq = ++themeColorSeq;
+    const active = source === state.bgSource;
+    const seq = active ? ++themeColorSeq : themeColorSeq;
+    const pick = source ? pickSeq[source] : undefined;
     Background.extractThemeColor(src).then((color) => {
       /* Ignore an empty result, and a stale one if a newer wallpaper was chosen since. */
-      if (!color || seq !== themeColorSeq) return;
-      state.bgThemeColor = color;
-      saveSettings();
-      applyToDom('bgThemeColor', color);
+      if (!color) return;
+      if (active && seq !== themeColorSeq) return;
+      if (source && pick !== undefined && pick !== pickSeq[source]) return;
+      adoptPreviewColor(source, color);
     }).catch(() => { /* cosmetic only */ });
+  }
+
+  /* 使用预览色作为占位色：pick / fetch / 切换类型都会走到这里。
+     The preview colour is cheaper than a full extractThemeColor round-trip —
+     it is computed from the tiny preview canvas while the preview itself is
+     being generated. Stored per wallpaper type, so switching back to a type
+     reuses its own colour instead of the previous type's.
+
+     `source` is the type the colour belongs to; the DOM (and the persisted
+     active colour) only change while that type is the active one. */
+  function adoptPreviewColor(source, color) {
+    const key = COLOR_KEY[source];
+    if (!key || !color) return;
+    const stored = state[key] !== color;
+    if (stored) state[key] = color;
+
+    if (state.bgSource === source && state.bgThemeColor !== color) {
+      themeColorSeq++; /* a slower extract from an older pick must not win */
+      state.bgThemeColor = color;
+      applyToDom('bgThemeColor', color);
+      saveSettings();
+    } else if (stored) {
+      saveSettings();
+    }
+  }
+
+  /* Apply the cached colour of a type the moment it is switched to. Called
+     synchronously from setBgSource: no IndexedDB / async wait whatsoever.
+     Without a cached colour the neutral bgColor stands in until the preview
+     read (or its regeneration) reports the real one. */
+  function applyTypePreviewColor(source) {
+    const key = COLOR_KEY[source];
+    const color = key ? (state[key] || state.bgColor || '') : '';
+    themeColorSeq++; /* cancel an in-flight extract belonging to the old type */
+    state.bgThemeColor = color;
+    applyToDom('bgThemeColor', color);
+  }
+
+  /* Background reports a preview colour as soon as it is known (before the
+     preview decodes). It is only adopted for the active type. */
+  function onPreviewColorFromBackground(source, color) {
+    if (state.bgSource === source) adoptPreviewColor(source, color);
+  }
+
+  /* Every Background.load() goes through here so the early colour callback is
+     never forgotten. */
+  function bgLoad(opts) {
+    if (typeof Background === 'undefined') return;
+    opts = opts || {};
+    opts.onPreviewColor = onPreviewColorFromBackground;
+    return Background.load(opts);
+  }
+
+  /* Pick flows: silently generate a fresh preview for the wallpaper just picked
+     and adopt its preview colour. Regeneration itself empties the old slot
+     first; the per-source token skips anything an older (superseded) pick
+     would try to apply after the fact. */
+  const pickSeq = { bing: 0, image: 0, video: 0 };
+
+  function pickPreview(source, src, colorFallbackSrc) {
+    if (typeof Background === 'undefined' || !Background.regeneratePreview) return;
+    const seq = ++pickSeq[source];
+    Background.regeneratePreview(source, src).then((rec) => {
+      if (seq !== pickSeq[source]) return; /* another pick of this type came later */
+      if (rec && rec.color) {
+        adoptPreviewColor(source, rec.color);
+      } else if (colorFallbackSrc && Background.extractThemeColor) {
+        extractAndSaveThemeColor(colorFallbackSrc, source);
+      }
+    });
   }
 
   /* While a slider thumb is held, <html> carries .is-dragging, which switches off the
@@ -1398,6 +1517,13 @@ const Settings = (() => {
   function setBgSource(val) {
     if (state.bgSource === val) return; // 已经选中，不重复操作
     state.bgSource = val;
+
+    /* 同步换上该类型自己的预览色（0 延迟，不读 IndexedDB）：这就是
+       “bing 黄 → 图片/视频绿”切换不再卡在旧颜色的关键。若该类型还没生成
+       过预览，则先用中性色占位；随后 preview 读取/生成通过 onPreviewColor
+       回调立刻补上真实颜色。 */
+    applyTypePreviewColor(val);
+
     updateBgSourceRadios(val);
     morphPanel(() => {
       setPanelVisible('bing', val === 'bing');

@@ -114,6 +114,10 @@ UniTab/
 
 上传的图片、视频以 Blob 形式存进 IndexedDB（库 `unitab_bg`），设置面板里的各项开关与数值存在 `localStorage`（键 `unitab_settings`，只有几百字节，300ms 内合并写入，切走或关闭标签页时立即落盘）。图片链接直接保存，应用时通过 CSS `background-image` 设置；必应每日壁纸会把最近一张的图片数据缓存在 IndexedDB，新标签页直接从本地读取。旧版本存在 `localStorage` 里的 base64 图片会在首次打开后自动迁移到 IndexedDB。以上均属于扩展自有存储，卸载扩展时随扩展一起清除。
 
+### 壁纸预览（preview）
+
+每次选定壁纸（上传图片 / 应用图片链接 / 拉取必应每日 / 选择视频）都会静默生成一份低分辨率 WebP 预览，并以必应、图片、视频三个独立键位分开存进 IndexedDB（`preview_bing` / `preview_image` / `preview_video`，视频取首帧、图片等比缩小，最长边约 512px）。生成前会先清空对应槽位，避免缓存堆积。预览色也按类型分别持久化（`bgThemeColorBing` / `bgThemeColorImage` / `bgThemeColorVideo`），因此从必应（黄）切到自定义图片或视频（绿）时，占位色会同步换成目标类型自己的颜色，不会残留上一个类型的颜色；若该类型尚未生成过预览色，则先用中性色占位，等 preview 读取或生成完成再即时补上。启动时 `<head>` 里就预热读取当前类型的 preview，加载顺序固定为预览色 → 异步解码并显示 preview → 完整壁纸解码后淡入；切换类型同样始终使用对应类型的 preview 与其预览色，预览色停留时间尽可能短。previews 解码速度优先，保证壁纸出现前页面不闪黑。
+
 ## 设计理念
 
 整体遵循毛玻璃美学：

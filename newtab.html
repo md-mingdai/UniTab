@@ -16,6 +16,10 @@
   <!-- Background Layer -->
   <div id="background-layer" class="background-layer">
     <div id="background-image" class="background-image">
+      <!-- Preview: a stored tiny WebP per wallpaper type (bing / image / video,
+           separate slots), decoded in a few ms and shown while the real
+           wallpaper decodes. The photo layer fades in above it. -->
+      <div id="background-preview" class="background-preview"></div>
       <div id="background-photo" class="background-photo"></div>
     </div>
     <video id="background-video" class="background-video hidden" playsinline disablepictureinpicture disableremoteplayback></video>

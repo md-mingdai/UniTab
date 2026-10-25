@@ -47,12 +47,65 @@
     }
 
     /* Placeholder behind the wallpaper until it has decoded: the solid colour for
-       the colour source, otherwise the image's average colour. */
-    var placeholder = saved.bgSource === 'color' ? saved.bgColor : saved.bgThemeColor;
+       the colour source, otherwise the active *type's* own preview colour. Using
+       the per-type field matters when switching bing (yellow) → image/video
+       (green): the first frame already shows the new type's colour instead of
+       the previous type's. Falls back to the legacy single value on upgrade. */
+    var placeholder = '';
+    if (saved.bgSource === 'color') {
+      placeholder = saved.bgColor;
+    } else if (saved.bgSource === 'image') {
+      placeholder = saved.bgThemeColorImage || saved.bgThemeColor;
+    } else if (saved.bgSource === 'video') {
+      placeholder = saved.bgThemeColorVideo || saved.bgThemeColor;
+    } else {
+      placeholder = saved.bgThemeColorBing || saved.bgThemeColor;
+    }
     if (typeof placeholder === 'string' && placeholder) {
       style.setProperty('--bg-theme-color', placeholder);
     }
   } catch (e) {
     /* purely cosmetic: ignore */
+  }
+
+  /* Start reading the active type's stored preview right now (still in <head>),
+     so it can paint before background.js has even loaded. Background.load()
+     consumes __UNITAB_PREVIEW_PROMISE__ exactly once. The database name, store
+     name and key format are duplicated here on purpose — keep them in sync with
+     DB_NAME / DB_STORE / PREVIEW_KEYS in background.js. */
+  try {
+    var source = saved.bgSource;
+    var previewKey = source === 'bing' ? 'preview_bing'
+      : source === 'image' ? 'preview_image'
+      : source === 'video' ? 'preview_video'
+      : null;
+    if (previewKey && window.indexedDB) {
+      var warm = new Promise(function (resolve) {
+        var req = indexedDB.open('unitab_bg', 1);
+        req.onupgradeneeded = function () {
+          if (!req.result.objectStoreNames.contains('media')) {
+            req.result.createObjectStore('media');
+          }
+        };
+        req.onerror = function () { resolve(null); };
+        req.onsuccess = function () {
+          var db = req.result;
+          try {
+            var tx = db.transaction('media', 'readonly');
+            var get = tx.objectStore('media').get(previewKey);
+            get.onsuccess = function () { resolve(get.result || null); };
+            get.onerror = function () { resolve(null); };
+            tx.oncomplete = function () { db.close(); };
+            tx.onerror = tx.onabort = function () { db.close(); };
+          } catch (err) {
+            db.close();
+            resolve(null);
+          }
+        };
+      });
+      window.__UNITAB_PREVIEW_PROMISE__ = { source: source, promise: warm };
+    }
+  } catch (e2) {
+    /* no IndexedDB (private mode / disabled): the preview is simply skipped */
   }
 })();

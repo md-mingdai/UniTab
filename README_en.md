@@ -114,6 +114,10 @@ Reads `chrome.bookmarks.getTree()` (bookmarks bar) and `chrome.topSites.get()`, 
 
 Uploaded images and videos are stored as Blobs in IndexedDB (database `unitab_bg`); the panel's switches and values live in `localStorage` (key `unitab_settings`, a few hundred bytes, written in batches within 300 ms and immediately when the tab is hidden or closed). URLs are stored as-is and applied via CSS `background-image`; the latest Bing wallpaper's image data is cached in IndexedDB so a new tab reads it from disk. A base64 image saved by an older version in `localStorage` is migrated to IndexedDB automatically on the first visit. All of it is scoped to the extension's own storage; uninstalling the extension clears it automatically.
 
+### Wallpaper Previews
+
+Whenever a wallpaper is picked (image upload / image URL / Bing of-the-day fetch / video selection) a small, silent WebP preview is generated and stored under its own key per type in IndexedDB — `preview_bing` / `preview_image` / `preview_video` (images are downscaled, videos use the first frame, longest side ≈ 512 px, decode-first priority). The slot is emptied before each new preview is written, so the cache never piles up. Preview colours are persisted per type too (`bgThemeColorBing` / `bgThemeColorImage` / `bgThemeColorVideo`), so switching from Bing (yellow) to a custom image or video (green) swaps the placeholder to the target type's own colour immediately instead of keeping the previous one; if that type has no colour yet, a neutral colour stands in and the preview read/generation corrects it as soon as possible. The active type's preview read is warmed in `<head>` on startup, keeping the order preview colour → decoded preview → full wallpaper, with the colour placeholder visible for as short a time as possible.
+
 ## Design
 
 Built with the glassmorphism aesthetic:
