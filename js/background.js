@@ -818,18 +818,28 @@ const Background = (() => {
         notifyPreviewColor(source, result.color);
 
         const record = { blob: result.blob, color: result.color, time: Date.now() };
-        putItem(key, record)
-          .then(() => {
-            /* A newer pick (or a reset) replaced this job: its delete happened
-               after our put, so neither the slot mirror nor the layer may be
-               updated from this stale result. */
-            if (seq !== previewJobSeq[source]) return;
-            previewCache[source] = record;
-            /* If this source is what is on screen right now, slide the fresh
-               preview under the wallpaper that is already loading above it. */
-            if (activeSource === source) paintPreviewFromStore(source, loadToken);
-          })
-          .catch(() => {});
+        let stored = false;
+        try {
+          /* Wait for the write to commit: callers read the slot right after this
+             promise resolves (e.g. the Advanced status line), so resolving early
+             used to report the just-emptied slot as "not cached". */
+          await putItem(key, record);
+          stored = true;
+        } catch {
+          /* Storage failed; the colour is still usable, but the slot stays empty. */
+        }
+
+        /* A newer pick (or a reset) replaced this job: its delete happened
+           after our put, so neither the slot mirror nor the layer may be
+           updated from this stale result. */
+        if (seq !== previewJobSeq[source]) return null;
+
+        if (stored) {
+          previewCache[source] = record;
+          /* If this source is what is on screen right now, slide the fresh
+             preview under the wallpaper that is already loading above it. */
+          if (activeSource === source) paintPreviewFromStore(source, loadToken);
+        }
         return { blob: result.blob, color: result.color };
       } catch {
         return null;

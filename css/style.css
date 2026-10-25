@@ -1430,7 +1430,7 @@ body {
 }
 
 .advanced-section-title--danger {
-  color: rgba(248, 113, 113, 0.82);
+  color: #f87171;
 }
 
 .advanced-status {
@@ -1482,15 +1482,19 @@ body {
 
 .advanced-action .setting-btn-secondary {
   flex-shrink: 0;
+  justify-content: center; /* feedback labels stay centered at the reserved width */
   margin-top: 2px;
   white-space: nowrap;
 }
 
 .advanced-danger {
   padding: 16px;
-  border: 1px solid rgba(248, 113, 113, 0.24);
+  border: 1px solid rgba(248, 113, 113, 0.5);
   border-radius: 12px;
-  background: rgba(248, 113, 113, 0.06);
+  /* A dark card keeps the warning legible on light wallpapers. The glass panel
+     behind it is nearly transparent, so light red text alone had too little
+     contrast there. */
+  background: rgba(60, 14, 18, 0.72);
 }
 
 .advanced-danger-head {
@@ -1503,20 +1507,20 @@ body {
 .advanced-danger-icon {
   flex-shrink: 0;
   margin-top: 2px;
-  color: #f87171;
+  color: #fca5a5;
 }
 
 .advanced-danger-title {
   margin-bottom: 4px;
   font-size: 14px;
-  color: #fca5a5;
+  color: #fecaca;
 }
 
 .advanced-danger-desc {
   margin: 0;
   font-size: 12px;
   line-height: 1.55;
-  color: var(--text-tertiary);
+  color: rgba(255, 255, 255, 0.78);
 }
 
 .setting-btn-danger {
@@ -1525,10 +1529,10 @@ body {
   justify-content: center;
   width: 100%;
   padding: 12px 20px;
-  border: 1px solid rgba(248, 113, 113, 0.35);
+  border: 1px solid rgba(248, 113, 113, 0.58);
   border-radius: 12px;
-  background: rgba(248, 113, 113, 0.12);
-  color: #f87171;
+  background: rgba(248, 113, 113, 0.2);
+  color: #fee2e2;
   font-size: 14px;
   font-family: inherit;
   cursor: pointer;
@@ -1538,12 +1542,12 @@ body {
 }
 
 .setting-btn-danger:hover {
-  background: rgba(248, 113, 113, 0.2);
-  border-color: rgba(248, 113, 113, 0.5);
+  background: rgba(248, 113, 113, 0.3);
+  border-color: rgba(248, 113, 113, 0.72);
 }
 
 .setting-btn-danger:disabled {
-  opacity: 0.55;
+  opacity: 0.6;
   cursor: not-allowed;
 }
 

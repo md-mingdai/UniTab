@@ -1559,6 +1559,74 @@ const Settings = (() => {
   const buttonResultTimers = new WeakMap();
   const buttonIdleLabels = new WeakMap();
 
+  /* Every label these buttons can show. Their sizes are measured once, before
+     the first action, so the button box never changes while it is reporting. */
+  const PREVIEW_ACTION_TEXT = {
+    clear: { busy: '清空中…', done: '已清空', failed: '清空失败' },
+    regen: {
+      busy: '生成中…',
+      done: '已生成',
+      failed: '生成失败',
+      none: '无需生成',
+      noData: '无数据',
+    },
+    repick: { busy: '拾取中…', done: '已拾取', failed: '拾取失败', none: '无需拾取' },
+  };
+
+  /* Largest intrinsic size this button's labels need. */
+  function measureButtonSize(button, labels) {
+    if (!button) return null;
+    const idle = button.textContent;
+    const previousWidth = button.style.width;
+    let maxWidth = 0;
+    let maxHeight = 0;
+    /* Measure the intrinsic content size even when CSS stretches the button to
+       100% on narrow screens; freezing that container width would overflow. */
+    button.style.width = 'max-content';
+    for (const label of labels) {
+      button.textContent = label;
+      maxWidth = Math.max(maxWidth, button.offsetWidth);
+      maxHeight = Math.max(maxHeight, button.offsetHeight);
+    }
+    button.textContent = idle;
+    button.style.width = previousWidth;
+    return { width: maxWidth, height: maxHeight };
+  }
+
+  let previewButtonWidthsReserved = false;
+  function reservePreviewButtonWidths() {
+    if (previewButtonWidthsReserved) return;
+    if (!advancedClearPreviews || !advancedRegenPreview || !advancedRepickColor) return;
+    /* Only measure with a real layout: the Advanced panel is hidden until its tab
+       is shown, and hidden buttons report 0. Retried on the next refresh. */
+    if (!advancedClearPreviews.offsetWidth) return;
+
+    const buttons = [advancedClearPreviews, advancedRegenPreview, advancedRepickColor];
+    const groups = [
+      [advancedClearPreviews, Object.values(PREVIEW_ACTION_TEXT.clear)],
+      [advancedRegenPreview, Object.values(PREVIEW_ACTION_TEXT.regen)],
+      [advancedRepickColor, Object.values(PREVIEW_ACTION_TEXT.repick)],
+    ];
+
+    let maxWidth = 0;
+    let maxHeight = 0;
+    for (const [button, labels] of groups) {
+      const size = measureButtonSize(button, labels);
+      if (!size) return;
+      maxWidth = Math.max(maxWidth, size.width);
+      maxHeight = Math.max(maxHeight, size.height);
+    }
+    if (!maxWidth) return;
+
+    /* One shared size for the whole section, so the button with the longest
+       label does not look out of place next to the others. */
+    for (const button of buttons) {
+      button.style.minWidth = (maxWidth + 2) + 'px';
+      button.style.minHeight = maxHeight + 'px';
+    }
+    previewButtonWidthsReserved = true;
+  }
+
   function setButtonBusy(button, text) {
     if (!button) return;
     if (!buttonIdleLabels.has(button)) buttonIdleLabels.set(button, button.textContent);
@@ -1594,6 +1662,7 @@ const Settings = (() => {
 
   async function refreshAdvancedInfo() {
     if (!advancedExportBtn) return;
+    reservePreviewButtonWidths();
     const seq = ++advancedRefreshSeq;
     const source = state.bgSource;
     const hasWallpaper = source !== 'color' && source !== 'none';
@@ -1730,7 +1799,7 @@ const Settings = (() => {
     if (!advancedClearPreviews) return;
     if (typeof Background === 'undefined' || !Background.clearAllPreviews) return;
 
-    setButtonBusy(advancedClearPreviews, '清空中…');
+    setButtonBusy(advancedClearPreviews, PREVIEW_ACTION_TEXT.clear.busy);
     /* Cancel settings-side late colour adoption as well as Background's own
        preview jobs, otherwise a result from before the clear could reappear. */
     pickSeq.bing++;
@@ -1745,7 +1814,10 @@ const Settings = (() => {
       cleared = false;
     }
 
-    setButtonResult(advancedClearPreviews, cleared ? '已清空' : '清空失败');
+    setButtonResult(
+      advancedClearPreviews,
+      cleared ? PREVIEW_ACTION_TEXT.clear.done : PREVIEW_ACTION_TEXT.clear.failed
+    );
     refreshAdvancedInfo();
   }
 
@@ -1753,15 +1825,15 @@ const Settings = (() => {
     if (!advancedRegenPreview) return;
     if (typeof Background === 'undefined' || !Background.regeneratePreview) return;
 
-    setButtonBusy(advancedRegenPreview, '生成中…');
+    setButtonBusy(advancedRegenPreview, PREVIEW_ACTION_TEXT.regen.busy);
     try {
       const current = await resolveCurrentWallpaperSource();
       if (current.source === 'color' || current.source === 'none') {
-        setButtonResult(advancedRegenPreview, '无需生成');
+        setButtonResult(advancedRegenPreview, PREVIEW_ACTION_TEXT.regen.none);
         return;
       }
       if (!current.src) {
-        setButtonResult(advancedRegenPreview, '无壁纸数据');
+        setButtonResult(advancedRegenPreview, PREVIEW_ACTION_TEXT.regen.noData);
         return;
       }
 
@@ -1772,9 +1844,12 @@ const Settings = (() => {
         return;
       }
       if (rec && rec.color) adoptPreviewColor(current.source, rec.color);
-      setButtonResult(advancedRegenPreview, rec ? '已生成' : '生成失败');
+      setButtonResult(
+        advancedRegenPreview,
+        rec ? PREVIEW_ACTION_TEXT.regen.done : PREVIEW_ACTION_TEXT.regen.failed
+      );
     } catch {
-      setButtonResult(advancedRegenPreview, '生成失败');
+      setButtonResult(advancedRegenPreview, PREVIEW_ACTION_TEXT.regen.failed);
     } finally {
       refreshAdvancedInfo();
     }
@@ -1784,23 +1859,23 @@ const Settings = (() => {
     if (!advancedRepickColor) return;
     if (typeof Background === 'undefined' || !Background.recomputePreviewColor) return;
 
-    setButtonBusy(advancedRepickColor, '拾取中…');
+    setButtonBusy(advancedRepickColor, PREVIEW_ACTION_TEXT.repick.busy);
     try {
       const current = await resolveCurrentWallpaperSource();
       if (current.source === 'color' || current.source === 'none') {
-        setButtonResult(advancedRepickColor, '无需拾取');
+        setButtonResult(advancedRepickColor, PREVIEW_ACTION_TEXT.repick.none);
         return;
       }
 
       const color = await Background.recomputePreviewColor(current.source, current.src);
       if (color) {
         adoptPreviewColor(current.source, color);
-        setButtonResult(advancedRepickColor, '已拾取');
+        setButtonResult(advancedRepickColor, PREVIEW_ACTION_TEXT.repick.done);
       } else {
-        setButtonResult(advancedRepickColor, '拾取失败');
+        setButtonResult(advancedRepickColor, PREVIEW_ACTION_TEXT.repick.failed);
       }
     } catch {
-      setButtonResult(advancedRepickColor, '拾取失败');
+      setButtonResult(advancedRepickColor, PREVIEW_ACTION_TEXT.repick.failed);
     } finally {
       refreshAdvancedInfo();
     }
