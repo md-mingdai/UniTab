@@ -1,0 +1,117 @@
+name: 打包扩展为 CRX
+
+# 仅允许在 Actions 页面手动触发，不响应 push / pull_request。
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pack-crx:
+    name: 打包并上传 CRX
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 准备扩展文件
+        run: |
+          set -euo pipefail
+          BUILD_DIR="$RUNNER_TEMP/crx-build"
+          EXT_DIR="$BUILD_DIR/UniTab"
+          rm -rf "$BUILD_DIR"
+          mkdir -p "$EXT_DIR"
+
+          # 只打包已提交到仓库的扩展文件，排除仓库自身的文档与 CI 配置。
+          git archive HEAD | tar -x -C "$EXT_DIR"
+          rm -rf \
+            "$EXT_DIR/.github" \
+            "$EXT_DIR/.claude" \
+            "$EXT_DIR/.gitignore" \
+            "$EXT_DIR/README.md" \
+            "$EXT_DIR/README_en.md"
+
+          VERSION="$(jq -r '.version // empty' "$EXT_DIR/manifest.json")"
+          if [ -z "$VERSION" ]; then
+            echo "::error::无法从 manifest.json 读取版本号"
+            exit 1
+          fi
+
+          echo "BUILD_DIR=$BUILD_DIR" >> "$GITHUB_ENV"
+          echo "EXT_DIR=$EXT_DIR" >> "$GITHUB_ENV"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: 写入签名私钥并打包
+        env:
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          umask 077
+
+          if [ -z "${PRIVATE_KEY:-}" ]; then
+            echo "::error::缺少仓库机密 PRIVATE_KEY"
+            exit 1
+          fi
+
+          KEY_FILE="$BUILD_DIR/extension-key.pem"
+          trap 'rm -f "$KEY_FILE"' EXIT
+          # 统一换行并保留结尾换行，兼容 PEM 解析器。
+          printf '%s\n' "$PRIVATE_KEY" | tr -d '\r' > "$KEY_FILE"
+
+          if ! openssl rsa -in "$KEY_FILE" -noout -check >/dev/null 2>&1; then
+            echo "::error::PRIVATE_KEY 不是有效的 RSA 私钥"
+            exit 1
+          fi
+
+          CHROME_BIN="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          if [ -z "$CHROME_BIN" ]; then
+            echo "::error::运行器上未找到 Chrome / Chromium"
+            exit 1
+          fi
+          "$CHROME_BIN" --version
+
+          # Chrome 会把 UniTab.crx 输出到扩展目录的上一级。
+          "$CHROME_BIN" \
+            --headless=new \
+            --no-sandbox \
+            --disable-gpu \
+            --disable-dev-shm-usage \
+            --user-data-dir="$BUILD_DIR/profile" \
+            --pack-extension="$EXT_DIR" \
+            --pack-extension-key="$KEY_FILE"
+
+          rm -f "$KEY_FILE"
+
+          if [ ! -f "$BUILD_DIR/UniTab.crx" ]; then
+            echo "::error::Chrome 未生成 CRX 文件"
+            exit 1
+          fi
+
+          mkdir -p dist
+          chmod 755 dist
+          CRX_PATH="dist/UniTab-v${VERSION}.crx"
+          cp "$BUILD_DIR/UniTab.crx" "$CRX_PATH"
+          chmod 644 "$CRX_PATH"
+          echo "CRX_PATH=$CRX_PATH" >> "$GITHUB_ENV"
+
+      - name: 输出校验信息
+        run: |
+          set -euo pipefail
+          SHA256="$(sha256sum "$CRX_PATH" | awk '{print $1}')"
+          {
+            echo "### CRX 打包完成"
+            echo ""
+            echo "- 扩展版本：\`$VERSION\`"
+            echo "- 文件：\`$CRX_PATH\`"
+            echo "- SHA-256：\`$SHA256\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 上传 CRX
+        uses: actions/upload-artifact@v4
+        with:
+          name: UniTab-v${{ env.VERSION }}-crx
+          path: ${{ env.CRX_PATH }}
+          if-no-files-found: error
+          retention-days: 30
