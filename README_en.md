@@ -1,6 +1,6 @@
 # UniTab
 
-> A minimalist, glassmorphism new tab page extension for all major browsers. Centered search box with live suggestions, customizable backgrounds, and a clean frosted-glass interface.
+> A minimalist, glassmorphism new tab page for all major browsers. Centered search with live suggestions, customizable backgrounds and video wallpapers, and a clean frosted-glass interface.
 
 - [![Author](https://img.shields.io/badge/Author-mingdai-green)](https://github.com/md-mingdai) [![Repo](https://img.shields.io/badge/github-repo-blue?logo=github)](https://github.com/md-mingdai/UniTab) [![License](https://img.shields.io/badge/License-MIT-red)](./LICENSE) [![Version](https://img.shields.io/github/v/release/md-mingdai/UniTab)](https://github.com/md-mingdai/UniTab/releases)
 
@@ -8,25 +8,24 @@
 
 ## Features
 
-- **Glassmorphism Design** — Frosted glass search box, suggestions dropdown, bookmarks bar, and settings panel, all built on `backdrop-filter`
-- **Multi-Engine Search** — Google, Bing, Sogou (搜狗), and Baidu (百度), with live suggestions across all engines
-- **Smart Suggestions** — Debounced fetch, keyboard navigation (↑ / ↓ / Enter / Esc), JSONP parsing for Baidu (GBK-aware)
-- **Custom Background** — Upload an image or paste a URL, with adjustable Gaussian blur (0–50px)
-- **Advanced Tools** — Export the current Bing, custom image, or video wallpaper, maintain preview cache/colour, clear the Bing cache, and wipe all local data behind a typed confirmation
-- **Overlay Control** — Adjustable opacity and color overlay for readability
-- **Bookmarks Bar** — Browser bookmarks + top sites, capped at 6, with letter-avatar favicons (no cross-origin favicon requests)
-- **Display Settings** — Toggle seconds in the clock display (HH:MM / HH:MM:SS)
-- **Dark Mode** — Automatically adapts to system theme preference
-- **Minimalist** — Clock display, centered search, slide-in settings panel, no clutter
-- **Cross-Browser** — Chrome, Edge, Arc, Brave, Firefox (all Manifest V3 compatible)
-- **Accessibility** — Respects `prefers-reduced-motion`, `prefers-reduced-transparency`, and `prefers-color-scheme`
+- **Glassmorphism UI** — Search box, suggestions, bottom dock and settings panel all use `backdrop-filter`, with frosted / liquid glass styles and a 0–32px corner radius
+- **Multi-engine search** — Google, Bing, Sogou and Baidu; live suggestions for Google / Bing / Baidu (Sogou has no public suggestion API)
+- **Smart suggestions** — 150ms debounce, LRU cache, keyboard navigation (↑ / ↓ / Enter / Esc), Baidu JSONP and GBK support
+- **Custom backgrounds** — Bing wallpaper of the day, uploaded image or image URL, solid color, or video; blur 0–50px, overlay 0–100% with 8 presets plus a custom color
+- **Video wallpaper** — Sound, volume and loop options; when playback ends, show black, hold the last frame, or switch to a custom image / Bing wallpaper
+- **Wallpaper previews** — Per-type low-resolution WebP previews and preview colors; startup fades in placeholder color → preview → full wallpaper
+- **Bottom dock** — Browser bookmarks and top sites merged and deduplicated, up to 6 items, with letter-avatar favicons
+- **Display & effects** — Clock seconds, dock toggle, and 5 cursor effects (confetti / rain / bubble / star / Kivotos)
+- **Advanced tools** — Export the current wallpaper, maintain or clear previews, clear the Bing cache, and wipe all data behind a typed confirmation
+- **Dark mode** — Follows the system theme and respects `prefers-reduced-motion` and `prefers-reduced-transparency`
+- **Cross-browser** — Chrome, Edge, Arc, Brave and Firefox, all on Manifest V3
 
 ## Installation
 
 ### Chrome / Edge / Arc / Brave
 
 1. Open `chrome://extensions` (or `edge://extensions` on Edge)
-2. Enable **Developer mode** (top-right toggle)
+2. Enable **Developer mode** (top-right)
 3. Click **Load unpacked** and select the `UniTab` folder
 4. Open a new tab
 
@@ -34,122 +33,109 @@
 
 1. Open `about:debugging#/runtime/this-firefox`
 2. Click **Load Temporary Add-on**
-3. Select the `manifest.json` file in the `UniTab` folder
+3. Select `manifest.json` in the `UniTab` folder
 4. Open a new tab
 
-> Firefox temporary add-ons are removed when the browser restarts. For persistent installation, sign the extension or use a Firefox-specific build.
+> Temporary add-ons are removed when Firefox restarts. For persistent installation, sign or package the extension.
 
 ## Usage
 
-- **Search** — Type in the search box and press Enter, or click the arrow button
-- **Switch Engine** — Open Settings (gear icon, top-right) and pick a default engine. Switch persists across sessions
-- **Suggestions** — Start typing to see live suggestions; use ↑ / ↓ to navigate, Enter to select, Esc to dismiss
-- **Background** — Settings → Background: upload an image file or paste a URL
-- **Blur** — Slider 0–50px; updates live
-- **Overlay** — Slider 0–100% + color picker (9 presets + custom); updates live
-- **Show Seconds** — Settings → Display: toggle between HH:MM and HH:MM:SS for the clock
-- **Bookmarks** — Bottom glass bar; combines your bookmarks bar with top sites (most visited), up to 6 items
-- **Export Wallpaper** — Settings → Advanced → Export Current Wallpaper; Bing, custom image, and video wallpapers all go through the browser download manager
-- **Preview Maintenance** — Settings → Advanced: clear the preview buffer, regenerate the current preview, or re-pick its colour
-- **Clear Cache** — Settings → Advanced → Storage & Cache: remove the cached Bing wallpaper
-- **Reset** — The footer's "恢复默认设置" only resets the active tab. To delete every setting, wallpaper, preview, and cache entry, use Advanced → Danger Zone → Clear All Configuration and type the warning phrase by hand (pasting is blocked)
+- **Search** — Type a query and press Enter or click the arrow button; the default engine can be changed in Settings → Search and is persisted
+- **Suggestions** — Start typing to see suggestions; ↑ / ↓ to navigate, Enter to select, Esc to dismiss
+- **Background** — Settings → Background: choose Bing wallpaper of the day, upload an image, paste an image URL, use a solid color, or upload a video
+- **Video wallpaper** — After choosing a local video, configure sound, volume, looping, and what happens when playback ends
+- **Appearance** — Settings → Background for blur and overlay; Settings → Display for glass style and corner radius
+- **Display & effects** — Settings → Display: clock seconds, dock, cursor effects and style
+- **Dock** — Automatically merges the bookmarks bar with top sites (up to 6 items)
+- **Advanced tools** — Settings → Advanced: export the current wallpaper, clear / regenerate previews, re-pick the preview color, clear the Bing cache
+- **Reset** — The footer's "Restore defaults" only resets the active tab. To delete every setting, wallpaper, preview and cache entry, use Advanced → Danger Zone → Clear All Configuration and type the warning phrase by hand (pasting is blocked)
 
 ## Keyboard Shortcuts
 
 | Key | Action |
 | --- | --- |
-| `/` | Focus search box (when no input is focused) |
+| `/` | Focus search (when no input is focused) |
 | `Enter` | Execute search / select highlighted suggestion |
-| `Arrow Up / Down` | Navigate suggestions |
-| `Escape` | Close suggestions, settings, or blur input |
+| `↑ / ↓` | Navigate suggestions |
+| `Esc` | Close suggestions or settings, blur input |
 
 ## Project Structure
 
 ```
 UniTab/
-├── manifest.json         # Extension manifest (Manifest V3)
-├── background.js         # Service worker — CORS proxy for suggestion APIs
-├── newtab.html           # New tab page markup
+├── manifest.json           # Extension manifest (Manifest V3)
+├── background.js           # Service worker: CORS proxy for suggestions and the Bing API
+├── newtab.html             # New tab page markup
 ├── css/
-│   └── style.css         # All styles (glassmorphism, layout, dark mode)
+│   └── style.css           # All styles (frosted / liquid glass, dark mode, responsive)
 ├── js/
-│   ├── boot.js           # Runs before the first paint: applies the saved look (glass style / radius / blur / mask) to <html>
-│   ├── main.js           # Entry point, Clock module, init order
-│   ├── search.js         # Search engines, suggestions (cached), JSONP parsing
-│   ├── settings.js       # Settings panel, custom dropdowns & toggles, batched persistence
-│   ├── bookmarks.js      # Bookmarks + top sites, letter-avatar favicons
-│   ├── background.js     # Background image / video / blur / overlay (IndexedDB storage)
-│   ├── cursor.js         # Cursor effects (canvas and listeners created on demand)
-│   └── effect-kivotos.js # Kivotos effect (loaded together with lib/anime.min.js only when that style is selected)
+│   ├── boot.js             # Applies the saved look before first paint; warms the preview
+│   ├── main.js             # Entry point, Clock module, init order
+│   ├── search.js           # Search engines, cached suggestions, JSONP parsing
+│   ├── settings.js         # Settings panel, controls, persistence and advanced tools
+│   ├── bookmarks.js        # Bookmarks + top sites, letter-avatar favicons
+│   ├── background.js       # Wallpaper / video / blur / overlay (IndexedDB)
+│   ├── cursor.js           # Cursor effects (canvas and listeners created on demand)
+│   └── effect-kivotos.js   # Kivotos effect (loaded only when selected)
 ├── lib/
-│   └── anime.min.js      # Only used by the Kivotos effect, loaded on demand
+│   └── anime.min.js        # Used only by the Kivotos effect, loaded on demand
 ├── fonts/
-│   └── DingTalk_Sans.ttf # English/Latin font (unicode-range limited)
+│   ├── JetBrainsMono-Medium.ttf  # Latin font (unicode-range limited)
+│   └── OFL.txt
 ├── icons/
-│   ├── icon-16.svg
-│   ├── icon-48.svg
-│   └── icon-128.svg
-├── README.md             # Chinese (default)
-├── README_en.md          # English
+│   ├── icon-16.png
+│   ├── icon-48.png
+│   └── icon-128.png
+├── _locales/
+│   └── zh_CN/messages.json # Extension name and description
+├── README.md               # Chinese (default)
+├── README_en.md            # English
 ├── LICENSE
 └── .gitignore
 ```
 
+This is a static extension with no build step or dependencies; reload it from the extensions page after editing.
+
 ## How It Works
 
-### Suggestion Fetching
+### Search suggestions
 
-Browser extensions can't directly call search suggestion APIs due to CORS. UniTab solves this with a background service worker that acts as a privileged fetch proxy:
+The new tab page cannot call suggestion APIs directly because of CORS, so requests go through the service worker:
 
-- `chrome.runtime.sendMessage({ type: 'fetch_jsonp', url })` from the new tab page
-- Service worker fetches with `host_permissions` privileges (bypasses CORS)
-- Returns raw bytes; the SW decodes GBK / UTF-8 explicitly because some browsers ignore the charset parameter on `Content-Type` for cross-origin SW responses
-- Page parses JSONP: strips the wrapper, then `quoteKeys()` converts JS literal syntax `{q:"x",p:false}` to valid JSON by quoting unquoted identifier keys
+- The page sends `chrome.runtime.sendMessage({ type: 'fetch_jsonp', url })`; the worker fetches cross-origin with its `host_permissions`
+- The worker returns raw bytes and decodes them explicitly using BOM / `Content-Type` / GBK heuristics (some browsers ignore the charset on cross-origin responses)
+- The page strips the JSONP wrapper, then `quoteKeys()` quotes unquoted keys such as `{q:"x",p:false}` to produce valid JSON
 
-### Suggestions Dropdown
+### Backgrounds & storage
 
-Positioned `absolute` below the search container so it overlays the page instead of pushing the centered search box on every keystroke. Glass parameters (background, blur, shadow, border, radius) match the search box exactly so both panels read as one continuous surface.
+- Settings live in `localStorage` (`unitab_settings`, written in 300ms batches and immediately when the tab is hidden or closed)
+- Image / video blobs, the Bing wallpaper cache and three preview slots live in IndexedDB (`unitab_bg` / `media`)
+- Every wallpaper pick clears the old preview for that type, then silently generates a new WebP (first frame for video, longest side ≈ 512px)
+- Preview colors are stored per wallpaper type, so switching types immediately uses the target type's own color
+- A legacy base64 image left in `localStorage` is migrated to IndexedDB on the first visit
+- All data belongs to the extension's own storage and is removed when the extension is uninstalled
 
-### Bookmarks & Top Sites
+### Advanced tools
 
-Reads `chrome.bookmarks.getTree()` (bookmarks bar) and `chrome.topSites.get()`, merges and deduplicates by `(hostname + pathname)`, caps at 6. Favicons are rendered as colored letter avatars — domain hashed to an HSL hue, first letter as the initial — eliminating `chrome://favicon/` errors and cross-origin requests.
+"Export Current Wallpaper" reads the wallpaper into a Blob and hands it to the browser download manager via a temporary `<a download>`; when CORS or the CSP prevents reading the bytes, the browser downloads the URL directly. Uploaded files keep their original name, the extension is corrected from the Blob's real MIME type, and Bing wallpapers are named by date.
 
-### Background Storage
-
-Uploaded images and videos are stored as Blobs in IndexedDB (database `unitab_bg`); the panel's switches and values live in `localStorage` (key `unitab_settings`, a few hundred bytes, written in batches within 300 ms and immediately when the tab is hidden or closed). URLs are stored as-is and applied via CSS `background-image`; the latest Bing wallpaper's image data is cached in IndexedDB so a new tab reads it from disk. A base64 image saved by an older version in `localStorage` is migrated to IndexedDB automatically on the first visit. All of it is scoped to the extension's own storage; uninstalling the extension clears it automatically.
-
-### Wallpaper Previews
-
-Whenever a wallpaper is picked (image upload / image URL / Bing of-the-day fetch / video selection) a small, silent WebP preview is generated and stored under its own key per type in IndexedDB — `preview_bing` / `preview_image` / `preview_video` (images are downscaled, videos use the first frame, longest side ≈ 512 px, decode-first priority). The slot is emptied before each new preview is written, so the cache never piles up. Preview colours are persisted per type too (`bgThemeColorBing` / `bgThemeColorImage` / `bgThemeColorVideo`), so switching from Bing (yellow) to a custom image or video (green) swaps the placeholder to the target type's own colour immediately instead of keeping the previous one; if that type has no colour yet, a neutral colour stands in and the preview read/generation corrects it as soon as possible. The active type's preview read is warmed in `<head>` on startup, keeping the order preview colour → decoded preview → full wallpaper, with the colour placeholder visible for as short a time as possible.
-
-### Advanced Tools & Storage Cleanup
-
-"Export Current Wallpaper" first tries to read the active wallpaper as a Blob and hands it to the browser download manager through a temporary `<a download>`: uploaded images/videos come straight from IndexedDB, Bing reuses its local cache (downloading once if needed), and image URLs are fetched. If CORS or the CSP prevents reading the bytes, the browser is asked to download the URL directly. Uploaded files keep their original name, the extension is corrected from the Blob's real MIME type, and Bing wallpapers are named by date.
-
-Preview maintenance only touches the `preview_*` slots, never the active wallpaper. "Regenerate current preview" builds a fresh WebP and updates its colour; "Re-pick preview colour" averages the existing preview first and only falls back to the wallpaper source when no preview exists. Clear All Configuration removes every `unitab_*` key from `localStorage` and all records in the `unitab_bg` IndexedDB database, then reloads the page. The confirmation input blocks `paste`, paste/drop `beforeinput` input types, and `drop` events, so the warning phrase must be typed by hand.
+Preview maintenance only touches the `preview_*` slots and never deletes the active wallpaper. Clear All Configuration removes every `unitab_*` key from `localStorage` and all records in `unitab_bg`, then reloads the page.
 
 ## Design
 
-Built with the glassmorphism aesthetic:
+- Frosted and liquid glass are switched via `[data-glass]` and CSS variables; inner highlights simulate edge refraction
+- The clock uses `font-variant-numeric: tabular-nums` and ticks on second / minute boundaries
+- Restrained 150–300ms motion, gated behind `prefers-reduced-motion`, with an opaque fallback for reduced transparency
+- JetBrains Mono for Latin characters (`unicode-range` limited), system stack for CJK; slate-blue `#8b9dc3` accent
 
-- `backdrop-filter: blur(24px) saturate(180%)` for authentic frosted glass
-- Layered borders with inner highlights for edge refraction
-- Tabular-nums clock for stable width when toggling seconds
-- `font-variant-numeric: tabular-nums` keeps digits monospaced
-- Restrained motion: 150–300ms cubic-bezier easing, all gated behind `prefers-reduced-motion: no-preference`
-- Single accent color (slate-blue `#8b9dc3`) for focus states
-- DingTalk Sans for Latin characters (`unicode-range` limited); system stack for CJK
-
-## Compatibility Notes
+## Compatibility
 
 | Feature | Chrome / Edge | Firefox |
 | --- | --- | --- |
-| Suggestion APIs | ✅ via service worker | ✅ via service worker |
+| Suggestions (Google / Bing / Baidu) | ✅ via service worker | ✅ via service worker |
 | Bookmarks API | ✅ | ✅ (`browser.bookmarks`) |
-| Top Sites API | ✅ | ⚠️ partial (Firefox doesn't expose `topSites`) |
+| Top Sites API | ✅ | ⚠️ not available (bookmarks only) |
 | Manifest V3 | ✅ | ✅ (109+) |
-
-Firefox falls back to bookmarks only when `topSites` isn't available.
 
 ## License
 
