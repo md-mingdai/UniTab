@@ -1,0 +1,390 @@
+/* ============================================
+   UniTab - Liquid Glass material
+   Active when <html data-glass="liquid">; the frosted style is untouched.
+
+   A pane is one element:
+     backdrop-filter   refracted rim + frosted middle (an SVG filter made by
+                       js/liquid-glass.js, --lg-lens) + saturate/brightness
+     background        the tint that keeps text readable
+     ::before          soft light from the top
+     ::after           rim: specular line + inner glow (a generated image, --lg-shade)
+   There is no border and no nested glass: a backdrop-filter inside another
+   backdrop-filter cannot see the wallpaper, so every pane is a sibling of the others.
+
+   Light or dark ink, and the tint strength of each pane, are chosen by the engine from
+   what is behind the pane and written to <style id="lg-tokens">. The values below are
+   the dark-glass defaults that apply until it has run (boot.js replays the last result
+   before the first paint).
+   ============================================ */
+
+/* --- Defaults: dark glass with white ink ---------------------------------- */
+
+html[data-glass="liquid"] :is(
+  .search-stack,
+  .bookmarks-container,
+  .settings-toggle,
+  .settings-panel,
+  .confirm-dialog-body
+) {
+  --fg-rgb: 255 255 255;
+  --lg-tint: 9 13 24;
+  --lg-sat: 1.5;
+  --lg-bright: 1.04;
+  --lg-sheen: 0.15;
+  --lg-sh: 2 6 16;
+  --lg-shk: 1;
+  --lg-hair: 255 255 255 / 0.10;
+  --lg-focus: 180 200 255;
+
+  /* Ink for everything drawn on the glass. Same family as the frosted style, but
+     denser: the contrast target is solved against exactly these alphas. */
+  --text-primary: rgb(var(--fg-rgb) / 0.96);
+  --text-secondary: rgb(var(--fg-rgb) / 0.78);
+  --text-tertiary: rgb(var(--fg-rgb) / 0.58);
+}
+
+html[data-glass="liquid"] :is(.search-container, .suggestions-dropdown, .bookmarks-container, .settings-toggle) { --lg-a: 0.3; }
+html[data-glass="liquid"] :is(.settings-panel, .confirm-dialog-body) { --lg-a: 0.42; }
+
+/* Frost (blur radius in the middle of the glass) and shadow per pane. Bigger and
+   higher panes blur more and cast a longer shadow. */
+html[data-glass="liquid"] .search-container {
+  --lg-frost: 10px;
+  --lg-elev:
+    0 1px 2px rgb(var(--lg-sh) / calc(0.20 * var(--lg-shk))),
+    0 12px 30px -10px rgb(var(--lg-sh) / calc(0.42 * var(--lg-shk))),
+    0 30px 64px -28px rgb(var(--lg-sh) / calc(0.34 * var(--lg-shk)));
+}
+html[data-glass="liquid"] .suggestions-dropdown {
+  --lg-frost: 12px;
+  --lg-elev:
+    0 1px 2px rgb(var(--lg-sh) / calc(0.20 * var(--lg-shk))),
+    0 16px 36px -12px rgb(var(--lg-sh) / calc(0.46 * var(--lg-shk))),
+    0 40px 80px -34px rgb(var(--lg-sh) / calc(0.38 * var(--lg-shk)));
+}
+html[data-glass="liquid"] .bookmarks-container {
+  --lg-frost: 12px;
+  --lg-elev:
+    0 1px 2px rgb(var(--lg-sh) / calc(0.18 * var(--lg-shk))),
+    0 10px 28px -10px rgb(var(--lg-sh) / calc(0.40 * var(--lg-shk))),
+    0 24px 56px -26px rgb(var(--lg-sh) / calc(0.32 * var(--lg-shk)));
+}
+html[data-glass="liquid"] .settings-toggle {
+  --lg-frost: 8px;
+  --lg-elev:
+    0 1px 2px rgb(var(--lg-sh) / calc(0.22 * var(--lg-shk))),
+    0 8px 20px -8px rgb(var(--lg-sh) / calc(0.40 * var(--lg-shk)));
+}
+html[data-glass="liquid"] :is(.settings-panel, .confirm-dialog-body) {
+  --lg-frost: 22px;
+  --lg-elev:
+    0 2px 4px rgb(var(--lg-sh) / calc(0.22 * var(--lg-shk))),
+    0 24px 56px -16px rgb(var(--lg-sh) / calc(0.48 * var(--lg-shk))),
+    0 64px 120px -40px rgb(var(--lg-sh) / calc(0.42 * var(--lg-shk)));
+}
+
+/* --- The pane ------------------------------------------------------------- */
+
+html[data-glass="liquid"] :is(
+  .search-container,
+  .suggestions-dropdown,
+  .bookmarks-container,
+  .settings-toggle,
+  .settings-panel,
+  .confirm-dialog-body
+) {
+  isolation: isolate;
+  /* The rim is painted by ::after; a border would also shift it off the filter's
+     coordinate box. */
+  border: 0;
+  background: rgb(var(--lg-tint) / var(--lg-a));
+  /* --lg-lens is set per pane by the engine (SVG refraction + frost). Without it
+     (Firefox, Safari, before the first map) a plain blur gives the same material. */
+  -webkit-backdrop-filter: var(--lg-lens, blur(var(--lg-frost))) saturate(var(--lg-sat)) brightness(var(--lg-bright));
+  backdrop-filter: var(--lg-lens, blur(var(--lg-frost))) saturate(var(--lg-sat)) brightness(var(--lg-bright));
+  box-shadow: var(--lg-elev), 0 0 0 0.5px rgb(var(--lg-hair));
+}
+
+/* until the rim image exists, a plain top highlight stands in for it */
+html[data-glass="liquid"] :is(
+  .search-container,
+  .suggestions-dropdown,
+  .bookmarks-container,
+  .settings-toggle,
+  .settings-panel,
+  .confirm-dialog-body
+):not([data-lg]) {
+  box-shadow: var(--lg-elev), 0 0 0 0.5px rgb(var(--lg-hair)), inset 0 1px 0 rgb(255 255 255 / 0.28);
+}
+
+html[data-glass="liquid"] :is(
+  .search-container,
+  .suggestions-dropdown,
+  .bookmarks-container,
+  .settings-toggle,
+  .settings-panel,
+  .confirm-dialog-body
+)::before,
+html[data-glass="liquid"] :is(
+  .search-container,
+  .suggestions-dropdown,
+  .bookmarks-container,
+  .settings-toggle,
+  .settings-panel,
+  .confirm-dialog-body
+)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;           /* above the glass, below the content */
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+/* light from above: a soft cap of white that fades out by the middle */
+html[data-glass="liquid"] :is(
+  .search-container,
+  .suggestions-dropdown,
+  .bookmarks-container,
+  .settings-toggle,
+  .settings-panel,
+  .confirm-dialog-body
+)::before {
+  background:
+    radial-gradient(130% 100% at 50% -30%, rgb(255 255 255 / var(--lg-sheen)), transparent 62%),
+    linear-gradient(180deg, rgb(255 255 255 / calc(var(--lg-sheen) * 0.5)), rgb(255 255 255 / calc(var(--lg-sheen) * 0.06)) 46%, transparent 82%);
+}
+
+/* the rim: specular line + inner glow, generated for this pane's size and radius */
+html[data-glass="liquid"] :is(
+  .search-container,
+  .suggestions-dropdown,
+  .bookmarks-container,
+  .settings-toggle,
+  .settings-panel,
+  .confirm-dialog-body
+)::after {
+  background: var(--lg-shade, none) 0 0 / 100% 100% no-repeat;
+}
+
+/* --- Interaction ---------------------------------------------------------- */
+
+html[data-glass="liquid"] .search-container:focus-within {
+  box-shadow: var(--lg-elev), 0 0 0 0.5px rgb(var(--lg-hair)), 0 0 0 3px rgb(var(--lg-focus) / 0.22);
+}
+
+html[data-glass="liquid"] .settings-toggle:hover {
+  background: rgb(var(--lg-tint) / calc(var(--lg-a) + 0.06));
+}
+
+html[data-glass="liquid"] .search-button {
+  background: rgb(var(--fg-rgb) / 0.10);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.20), 0 1px 2px rgb(var(--lg-sh) / calc(0.18 * var(--lg-shk)));
+}
+html[data-glass="liquid"] .search-button:hover {
+  background: rgb(var(--fg-rgb) / 0.18);
+}
+
+html[data-glass="liquid"] .bookmark-item:hover,
+html[data-glass="liquid"] .suggestion-item:hover,
+html[data-glass="liquid"] .suggestion-item.active {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.16);
+}
+
+/* The panel's own pop-up menus (search engine, cursor effect, ...) open inside the panel,
+   i.e. inside its backdrop root: they cannot see the wallpaper, so glass would be a
+   lie. A nearly opaque sheet in the panel's tone instead of the stock white card. */
+html[data-glass="liquid"] .custom-select-dropdown {
+  background: rgb(var(--lg-tint) / 0.95);
+  border: 0;
+  box-shadow:
+    0 0 0 0.5px rgb(var(--lg-hair)),
+    inset 0 1px 0 rgb(255 255 255 / 0.14),
+    0 14px 34px -8px rgb(var(--lg-sh) / calc(0.5 * var(--lg-shk)));
+}
+html[data-glass="liquid"] .custom-select-option {
+  color: rgb(var(--fg-rgb) / 0.78);
+}
+html[data-glass="liquid"] .custom-select-option:hover,
+html[data-glass="liquid"] .custom-select-option.selected {
+  color: rgb(var(--fg-rgb) / 0.98);
+  background: rgb(var(--fg-rgb) / 0.09);
+}
+
+/* --- Scrims behind the modal panes ---------------------------------------- */
+
+html[data-glass="liquid"] .settings-overlay {
+  background: rgb(4 8 18 / 0.30);
+  -webkit-backdrop-filter: blur(3px) saturate(1.1);
+  backdrop-filter: blur(3px) saturate(1.1);
+}
+
+/* A dialog's glass must reach the wallpaper through its wrapper. A wrapper with a
+   backdrop-filter, or an opacity animation, would cut it off (it would only "see"
+   the wrapper's own pixels), so the scrim moves to a sibling layer and the fade-in
+   runs on the scrim and on the pane themselves. */
+html[data-glass="liquid"] .confirm-dialog {
+  background: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  animation: none;
+}
+html[data-glass="liquid"] .confirm-dialog::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgb(4 8 18 / 0.30);
+  -webkit-backdrop-filter: blur(3px) saturate(1.1);
+  backdrop-filter: blur(3px) saturate(1.1);
+  animation: confirm-fade-in 0.18s var(--ease-out-expo) both;
+}
+html[data-glass="liquid"] .confirm-dialog-body {
+  animation: lg-pop 0.24s var(--ease-out-expo) both;
+}
+@keyframes lg-pop {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+
+/* --- The clock (no glass: ink and halo follow the wallpaper) ------------- */
+
+html[data-glass="liquid"] .clock {
+  --fg-rgb: 255 255 255;
+  --text-primary: rgb(var(--fg-rgb) / 0.96);
+  text-shadow: var(--lg-text-shadow, 0 1px 2px rgb(0 0 0 / 0.22), 0 2px 22px rgb(0 0 0 / 0.3));
+}
+
+/* A tone flip is applied in one step: transitions would fade the ink through grey. */
+:root.lg-snap *,
+:root.lg-snap *::before,
+:root.lg-snap *::after {
+  transition: none !important;
+}
+
+/* --- Light glass: semantic colours that were tuned for dark glass --------- */
+
+html[data-glass="liquid"][data-lg-panel="light"] :is(.settings-panel, .confirm-dialog-body) :is(
+  .setting-meta-error,
+  .advanced-section-title--danger,
+  .reset-all-icon,
+  .export-dialog-icon--error,
+  .setting-btn-reset:hover
+) {
+  color: #b42318;
+}
+html[data-glass="liquid"][data-lg-panel="light"] .confirm-dialog-body .reset-all-phrase {
+  color: #9f1d1d;
+  border-color: rgb(180 35 24 / 0.45);
+  background: rgb(180 35 24 / 0.08);
+}
+html[data-glass="liquid"][data-lg-panel="light"] .confirm-dialog-body .export-dialog-icon:not(.export-dialog-icon--error) {
+  color: #067647;
+}
+html[data-glass="liquid"][data-lg-panel="light"] .settings-panel .setting-btn-danger {
+  color: #9f1d1d;
+  border-color: rgb(180 35 24 / 0.55);
+  background: rgb(220 60 50 / 0.12);
+}
+html[data-glass="liquid"][data-lg-panel="light"] .settings-panel .setting-btn-danger:hover {
+  background: rgb(220 60 50 / 0.2);
+}
+html[data-glass="liquid"][data-lg-panel="light"] .settings-panel :focus-visible {
+  outline-color: rgb(40 90 200 / 0.6);
+}
+
+/* --- Accessibility and fallbacks ------------------------------------------ */
+
+/* "Increase contrast": a visible edge on top of the (engine-raised) tint */
+@media (prefers-contrast: more) {
+  html[data-glass="liquid"] :is(
+    .search-container,
+    .suggestions-dropdown,
+    .bookmarks-container,
+    .settings-toggle,
+    .settings-panel,
+    .confirm-dialog-body
+  ) {
+    border: 1px solid rgb(var(--fg-rgb) / 0.6);
+  }
+  html[data-glass="liquid"] {
+    --text-secondary-boost: 1;
+  }
+  html[data-glass="liquid"] :is(.search-stack, .bookmarks-container, .settings-toggle, .settings-panel, .confirm-dialog-body) {
+    --text-secondary: rgb(var(--fg-rgb) / 0.92);
+    --text-tertiary: rgb(var(--fg-rgb) / 0.78);
+  }
+}
+
+/* "Reduce transparency": solid panes, still light or dark with the scene */
+@media (prefers-reduced-transparency: reduce) {
+  html[data-glass="liquid"] :is(
+    .search-container,
+    .suggestions-dropdown,
+    .bookmarks-container,
+    .settings-toggle,
+    .settings-panel,
+    .confirm-dialog-body
+  ) {
+    background: rgb(var(--lg-tint) / 0.97);
+    background: color-mix(in srgb, rgb(var(--lg-tint)) 88%, rgb(var(--fg-rgb)));
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  html[data-glass="liquid"] .settings-overlay,
+  html[data-glass="liquid"] .confirm-dialog::before {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* No backdrop-filter at all: opaque enough to read on any wallpaper */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  html[data-glass="liquid"] :is(
+    .search-container,
+    .suggestions-dropdown,
+    .bookmarks-container,
+    .settings-toggle,
+    .settings-panel,
+    .confirm-dialog-body
+  ) {
+    background: rgb(var(--lg-tint) / 0.94);
+  }
+}
+
+@media (forced-colors: active) {
+  html[data-glass="liquid"] :is(
+    .search-container,
+    .suggestions-dropdown,
+    .bookmarks-container,
+    .settings-toggle,
+    .settings-panel,
+    .confirm-dialog-body
+  ) {
+    background: Canvas;
+    border: 1px solid CanvasText;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  html[data-glass="liquid"] :is(
+    .search-container,
+    .suggestions-dropdown,
+    .bookmarks-container,
+    .settings-toggle,
+    .settings-panel,
+    .confirm-dialog-body
+  )::before,
+  html[data-glass="liquid"] :is(
+    .search-container,
+    .suggestions-dropdown,
+    .bookmarks-container,
+    .settings-toggle,
+    .settings-panel,
+    .confirm-dialog-body
+  )::after {
+    display: none;
+  }
+  html[data-glass="liquid"] .clock {
+    text-shadow: none;
+  }
+}

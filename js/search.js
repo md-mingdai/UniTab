@@ -95,7 +95,7 @@ const Search = (() => {
 
     /* Close suggestions on outside click */
     document.addEventListener('click', (e) => {
-      if (!e.target.closest('#search-container')) {
+      if (!e.target.closest('.search-stack')) {
         hideSuggestions();
       }
     });

@@ -63,20 +63,29 @@
     }
     if (typeof placeholder === 'string' && placeholder) {
       style.setProperty('--bg-theme-color', placeholder);
-      /* How bright the scene behind the glass is decides how dense the liquid
-         tint must be (see [data-wallpaper-tone] in style.css). Kept in sync
-         with wallpaperTone() in settings.js. */
-      var m = /^#([0-9a-f]{6})$/i.exec(placeholder.trim());
-      if (m) {
-        var n = parseInt(m[1], 16);
-        var lin = function (v) {
-          v /= 255;
-          return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-        };
-        var lum = 0.2126 * lin((n >> 16) & 255)
-          + 0.7152 * lin((n >> 8) & 255)
-          + 0.0722 * lin(n & 255);
-        root.dataset.wallpaperTone = lum > 0.16 ? 'light' : 'dark';
+    }
+
+    /* Liquid glass: replay what js/liquid-glass.js measured for this wallpaper last
+       time (light or dark glass, tint strength per pane), so the first frame is
+       already right. The key must equal cacheKey() in that file. */
+    if (saved.glassStyle === 'liquid') {
+      try {
+        var lg = JSON.parse(localStorage.getItem('unitab_lg'));
+        var val = function (n) { return style.getPropertyValue(n).trim(); };
+        var theme = val('--bg-theme-color');
+        var key = [theme === 'transparent' ? '' : theme, val('--overlay-opacity'), val('--overlay-color'),
+          val('--bg-filter'),
+          window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'd' : 'l',
+          Math.round(window.innerWidth / 320), Math.round(window.innerHeight / 320)].join('|');
+        if (lg && lg.k === key && typeof lg.css === 'string') {
+          var tokens = document.createElement('style');
+          tokens.id = 'lg-tokens';
+          tokens.textContent = lg.css;
+          document.head.appendChild(tokens);
+          for (var group in lg.tones) root.setAttribute('data-lg-' + group, lg.tones[group]);
+        }
+      } catch (e3) {
+        /* no cache: the stylesheet's dark defaults apply until the engine has measured */
       }
     }
   } catch (e) {

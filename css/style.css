@@ -25,6 +25,10 @@
   --glass-highlight: rgba(255, 255, 255, 0.22);
   --glass-shadow: rgba(0, 0, 0, 0.10);
 
+  /* Foreground ink, as space-separated RGB so it can carry any alpha: white on
+     the dark glass, deep navy on the light glass (see css/liquid-glass.css). */
+  --fg-rgb: 255 255 255;
+
   /* Text */
   --text-primary: rgba(255, 255, 255, 0.92);
   --text-secondary: rgba(255, 255, 255, 0.60);
@@ -233,10 +237,17 @@ body {
    Search Container - Glassmorphism Core
    ============================================ */
 
-.search-container {
+/* Holds the search box and, as its sibling, the suggestions dropdown (which is
+   positioned against this box so it overlays the page instead of pushing the layout). */
+.search-stack {
   position: relative;
   width: 100%;
   max-width: var(--search-max-width);
+}
+
+.search-container {
+  position: relative;
+  width: 100%;
   background: var(--glass-bg-light);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
@@ -251,7 +262,7 @@ body {
 }
 
 .search-container:focus-within {
-  border-color: rgba(255, 255, 255, 0.32);
+  border-color: rgb(var(--fg-rgb) / 0.32);
   box-shadow:
     inset 0 1px 0 var(--glass-highlight),
     0 0 0 3px rgba(139, 157, 195, 0.15),
@@ -304,7 +315,7 @@ body {
   height: 42px;
   border: none;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgb(var(--fg-rgb) / 0.08);
   color: var(--text-secondary);
   cursor: pointer;
   transition:
@@ -314,7 +325,7 @@ body {
 }
 
 .search-button:hover {
-  background: rgba(255, 255, 255, 0.16);
+  background: rgb(var(--fg-rgb) / 0.16);
   color: var(--text-primary);
 }
 
@@ -341,7 +352,7 @@ body {
      empty glass surface — without extra fill weight, it reads as
      noticeably more transparent. 0.22 brings the perceived density in
      line with the search box across both light and dark backgrounds. */
-  background: rgba(255, 255, 255, 0.22);
+  background: rgb(var(--fg-rgb) / 0.22);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   border: 1px solid var(--glass-border-light);
@@ -399,7 +410,7 @@ body {
 }
 
 .suggestions-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgb(var(--fg-rgb) / 0.12);
   border-radius: 2px;
 }
 
@@ -446,7 +457,7 @@ body {
 
 .suggestion-item:hover,
 .suggestion-item.active {
-  background: rgba(255, 255, 255, 0.10);
+  background: rgb(var(--fg-rgb) / 0.10);
   color: var(--text-primary);
 }
 
@@ -573,9 +584,9 @@ body {
 }
 
 .bookmark-item:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgb(var(--fg-rgb) / 0.12);
   color: var(--text-primary);
-  border-color: rgba(255, 255, 255, 0.22);
+  border-color: rgb(var(--fg-rgb) / 0.22);
   transform: translateY(-1px);
 }
 
@@ -607,7 +618,7 @@ body {
   height: 16px;
   border-radius: 3px;
   flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgb(var(--fg-rgb) / 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -652,7 +663,7 @@ body {
 }
 
 .settings-toggle:hover {
-  background: rgba(255, 255, 255, 0.18);
+  background: rgb(var(--fg-rgb) / 0.18);
   color: var(--text-primary);
 }
 
@@ -738,7 +749,7 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 24px 32px 18px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgb(var(--fg-rgb) / 0.08);
   flex-shrink: 0;
 }
 
@@ -755,9 +766,9 @@ body {
   justify-content: center;
   width: 36px;
   height: 36px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgb(var(--fg-rgb) / 0.12);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgb(var(--fg-rgb) / 0.06);
   color: var(--text-secondary);
   cursor: pointer;
   transition:
@@ -766,7 +777,7 @@ body {
 }
 
 .settings-close:hover {
-  background: rgba(255, 255, 255, 0.14);
+  background: rgb(var(--fg-rgb) / 0.14);
   color: var(--text-primary);
 }
 
@@ -776,7 +787,7 @@ body {
   display: flex;
   gap: 4px;
   padding: 14px 24px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgb(var(--fg-rgb) / 0.08);
   flex-shrink: 0;
 }
 
@@ -798,7 +809,7 @@ body {
 
 .settings-tab:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.04);
+  background: rgb(var(--fg-rgb) / 0.04);
 }
 
 .settings-tab[aria-selected="true"] {
@@ -877,7 +888,7 @@ body {
 }
 
 .settings-body::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgb(var(--fg-rgb) / 0.12);
   border-radius: 2px;
 }
 
@@ -923,8 +934,8 @@ body {
   display: inline-block;
   width: 38px;
   height: 22px;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgb(var(--fg-rgb) / 0.12);
+  border: 1px solid rgb(var(--fg-rgb) / 0.18);
   border-radius: 999px;
   cursor: pointer;
   transition:
@@ -963,9 +974,9 @@ body {
 .setting-input {
   width: 100%;
   padding: 10px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgb(var(--fg-rgb) / 0.12);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgb(var(--fg-rgb) / 0.06);
   color: var(--text-primary);
   font-size: 14px;
   font-family: inherit;
@@ -977,8 +988,8 @@ body {
 }
 
 .setting-input:focus {
-  border-color: rgba(255, 255, 255, 0.28);
-  background: rgba(255, 255, 255, 0.10);
+  border-color: rgb(var(--fg-rgb) / 0.28);
+  background: rgb(var(--fg-rgb) / 0.10);
 }
 
 .setting-input[aria-invalid="true"] {
@@ -1000,7 +1011,7 @@ body {
   height: 6px;
   -webkit-appearance: none;
   appearance: none;
-  background: rgba(255, 255, 255, 0.12);
+  background: rgb(var(--fg-rgb) / 0.12);
   border-radius: 3px;
   outline: none;
   cursor: pointer;
@@ -1013,7 +1024,7 @@ body {
   height: 20px;
   border-radius: 50%;
   background: var(--text-primary);
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  border: 2px solid rgb(var(--fg-rgb) / 0.3);
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   transition: transform 0.15s var(--ease-out-expo);
@@ -1028,7 +1039,7 @@ body {
   height: 20px;
   border-radius: 50%;
   background: var(--text-primary);
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  border: 2px solid rgb(var(--fg-rgb) / 0.3);
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
@@ -1059,9 +1070,9 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 11px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgb(var(--fg-rgb) / 0.12);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgb(var(--fg-rgb) / 0.06);
   color: var(--text-primary);
   font-size: 14px;
   font-family: inherit;
@@ -1073,12 +1084,12 @@ body {
 }
 
 .custom-select-trigger:hover {
-  border-color: rgba(255, 255, 255, 0.22);
-  background: rgba(255, 255, 255, 0.09);
+  border-color: rgb(var(--fg-rgb) / 0.22);
+  background: rgb(var(--fg-rgb) / 0.09);
 }
 
 .custom-select-trigger:focus-visible {
-  border-color: rgba(255, 255, 255, 0.32);
+  border-color: rgb(var(--fg-rgb) / 0.32);
   box-shadow: 0 0 0 2px rgba(139, 157, 195, 0.15);
 }
 
@@ -1151,7 +1162,7 @@ body {
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  border: 2px solid rgba(255, 255, 255, 0.12);
+  border: 2px solid rgb(var(--fg-rgb) / 0.12);
   cursor: pointer;
   transition:
     border-color 0.2s var(--ease-out-expo),
@@ -1162,17 +1173,17 @@ body {
 }
 
 .color-swatch:hover {
-  border-color: rgba(255, 255, 255, 0.35);
+  border-color: rgb(var(--fg-rgb) / 0.35);
   transform: scale(1.1);
 }
 
 .color-swatch.active {
-  border-color: rgba(255, 255, 255, 0.7);
+  border-color: rgb(var(--fg-rgb) / 0.7);
   box-shadow: 0 0 0 2px rgba(139, 157, 195, 0.35);
 }
 
 .custom-swatch {
-  background: rgba(255, 255, 255, 0.08) !important;
+  background: rgb(var(--fg-rgb) / 0.08) !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1203,9 +1214,9 @@ body {
   align-items: center;
   gap: 8px;
   padding: 8px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgb(var(--fg-rgb) / 0.14);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.04);
+  background: rgb(var(--fg-rgb) / 0.04);
   color: var(--text-secondary);
   font-size: 13px;
   font-family: inherit;
@@ -1221,8 +1232,8 @@ body {
 }
 
 .radio-option:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.22);
+  background: rgb(var(--fg-rgb) / 0.08);
+  border-color: rgb(var(--fg-rgb) / 0.22);
 }
 
 .radio-option:focus-visible {
@@ -1240,7 +1251,7 @@ body {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.35);
+  border: 2px solid rgb(var(--fg-rgb) / 0.35);
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -1298,9 +1309,9 @@ body {
   display: inline-flex;
   align-items: center;
   padding: 8px 16px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgb(var(--fg-rgb) / 0.14);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgb(var(--fg-rgb) / 0.08);
   color: var(--text-primary);
   font-size: 13px;
   font-weight: 400;
@@ -1310,7 +1321,7 @@ body {
 }
 
 .file-upload-btn:hover {
-  background: rgba(255, 255, 255, 0.14);
+  background: rgb(var(--fg-rgb) / 0.14);
 }
 
 .file-name {
@@ -1327,9 +1338,9 @@ body {
   display: inline-flex;
   align-items: center;
   padding: 8px 16px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgb(var(--fg-rgb) / 0.14);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgb(var(--fg-rgb) / 0.08);
   color: var(--text-primary);
   font-size: 13px;
   font-weight: 400;
@@ -1340,7 +1351,7 @@ body {
 }
 
 .setting-btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.14);
+  background: rgb(var(--fg-rgb) / 0.14);
 }
 
 .setting-btn-secondary:disabled {
@@ -1379,9 +1390,9 @@ body {
 .setting-btn-reset {
   width: 100%;
   padding: 12px 20px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgb(var(--fg-rgb) / 0.12);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.04);
+  background: rgb(var(--fg-rgb) / 0.04);
   color: var(--text-secondary);
   font-size: 14px;
   font-weight: 400;
@@ -1417,7 +1428,7 @@ body {
 .advanced-section {
   margin-top: 26px;
   padding-top: 22px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid rgb(var(--fg-rgb) / 0.08);
 }
 
 .advanced-section-title {
@@ -1446,7 +1457,7 @@ body {
   justify-content: space-between;
   gap: 20px;
   padding: 14px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgb(var(--fg-rgb) / 0.06);
 }
 
 .advanced-action:last-child {
@@ -1585,537 +1596,6 @@ body {
       visibility 0s linear 0s;
   }
 }
-
-/* ============================================
-   Liquid Glass Effect
-   Activated by [data-glass="liquid"] on <html>
-
-   A layered material modelled on iOS Liquid Glass and Microsoft Acrylic:
-     1. saturated backdrop blur        — carries the wallpaper's colour
-     2. adaptive smoked tint           — holds text contrast on bright scenes
-     3. top-left specular bloom        — makes the pane feel lit from above
-     4. hairline rim + inner bevel     — reads as thickness and polish
-     5. fine grain                    — breaks up banding on soft gradients
-     6. layered ambient shadow         — separates the pane from the wallpaper
-   The tint gets deeper automatically when the wallpaper's dominant colour is
-   light (see [data-wallpaper-tone] set by boot.js / settings.js).
-   ============================================ */
-
-[data-glass="liquid"] {
-  /* Surface tint: near-black blue with a trace of the wallpaper in the glow. */
-  --liquid-tint-rgb: 8 12 22;
-  --liquid-tint-alpha: 0.54;
-  --liquid-extra-tint: 0;
-
-  /* Optical recipe. */
-  --liquid-blur: 24px;
-  --liquid-saturate: 160%;
-  --liquid-brightness: 1.03;
-  --liquid-contrast: 1.02;
-
-  /* Text is intentionally brighter than the frosted surfaces: the liquid pane
-     is darker, so secondary copy can stay readable without looking grey. */
-  --text-primary: rgba(255, 255, 255, 0.96);
-  --text-secondary: rgba(255, 255, 255, 0.82);
-  --text-tertiary: rgba(255, 255, 255, 0.70);
-
-  /* Bright top and bottom hairlines, quieter flanks — the measured iOS rim. */
-  --liquid-rim: linear-gradient(180deg,
-    rgba(255, 255, 255, 0.86) 0%,
-    rgba(232, 241, 255, 0.42) 5%,
-    rgba(255, 255, 255, 0.08) 26%,
-    rgba(255, 255, 255, 0.03) 62%,
-    rgba(218, 232, 255, 0.24) 94%,
-    rgba(255, 255, 255, 0.62) 100%);
-
-  /* A cool haze in the lower-right corner; @supports swaps in the wallpaper's
-     own dominant colour so the glass feels native to each scene. */
-  --liquid-theme-glow: radial-gradient(100% 150% at 96% 130%,
-    rgba(124, 154, 210, 0.10) 0%,
-    transparent 56%);
-
-  --liquid-elevation:
-    0 1px 2px rgba(2, 5, 12, 0.30),
-    0 12px 30px -10px rgba(2, 5, 12, 0.42),
-    0 36px 80px -26px rgba(2, 5, 12, 0.46);
-
-  --liquid-surface-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.50),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.06),
-    inset 0 -16px 28px -24px rgba(255, 255, 255, 0.16),
-    inset 0 0 0 1px rgba(0, 0, 0, 0.07),
-    var(--liquid-elevation);
-
-  /* Very low-frequency monochrome grain, generated by the browser (no asset). */
-  --liquid-noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.32'/%3E%3C/svg%3E");
-}
-
-/* Bright scenes get a denser scrim; dark scenes can stay clearer. The pair is
-   intentionally biased toward contrast: a misclassified mid-tone only makes the
-   glass a little richer, never washes the type out. */
-html[data-wallpaper-tone="light"][data-glass="liquid"] {
-  --liquid-tint-alpha: 0.60;
-}
-
-html[data-wallpaper-tone="dark"][data-glass="liquid"] {
-  --liquid-tint-alpha: 0.44;
-}
-
-@media (prefers-color-scheme: dark) {
-  [data-glass="liquid"] {
-    --liquid-tint-rgb: 6 10 19;
-    --liquid-tint-alpha: 0.52;
-    --liquid-brightness: 1.04;
-  }
-
-  html[data-wallpaper-tone="light"][data-glass="liquid"] {
-    --liquid-tint-alpha: 0.61;
-  }
-
-  html[data-wallpaper-tone="dark"][data-glass="liquid"] {
-    --liquid-tint-alpha: 0.43;
-  }
-}
-
-@supports (color: color-mix(in srgb, white, black)) {
-  [data-glass="liquid"] {
-    --liquid-theme-glow: radial-gradient(100% 150% at 96% 130%,
-      color-mix(in srgb, var(--bg-theme-color, #7c9ad2) 24%, transparent) 0%,
-      transparent 56%);
-  }
-}
-
-/* --- The shared pane -------------------------------------------------------
-   Every liquid surface uses the same material recipe. Only tint strength,
-   blur and elevation vary per component. */
-[data-glass="liquid"] :is(
-  .search-container,
-  .suggestions-dropdown,
-  .bookmarks-container,
-  .settings-toggle,
-  .settings-panel,
-  .confirm-dialog-body
-) {
-  isolation: isolate;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-
-  /* Fallback for engines without calc() in colour alpha. */
-  background-color: rgba(10, 15, 26, 0.62);
-  background-color: rgb(var(--liquid-tint-rgb) /
-    calc(var(--liquid-tint-alpha) + var(--liquid-extra-tint)));
-  background-image:
-    radial-gradient(120% 160% at 12% -38%,
-      rgba(255, 255, 255, 0.20) 0%,
-      rgba(255, 255, 255, 0.05) 32%,
-      transparent 60%),
-    var(--liquid-theme-glow),
-    linear-gradient(180deg,
-      rgba(255, 255, 255, 0.075) 0%,
-      rgba(255, 255, 255, 0.015) 22%,
-      rgba(255, 255, 255, 0) 48%,
-      rgba(0, 0, 0, 0.08) 100%);
-  background-repeat: no-repeat;
-
-  -webkit-backdrop-filter:
-    blur(var(--liquid-blur))
-    saturate(var(--liquid-saturate))
-    brightness(var(--liquid-brightness))
-    contrast(var(--liquid-contrast));
-  backdrop-filter:
-    blur(var(--liquid-blur))
-    saturate(var(--liquid-saturate))
-    brightness(var(--liquid-brightness))
-    contrast(var(--liquid-contrast));
-
-  box-shadow: var(--liquid-surface-shadow);
-}
-
-/* Fine grain sits above the tint but below every child. */
-[data-glass="liquid"] :is(
-  .search-container,
-  .suggestions-dropdown,
-  .bookmarks-container,
-  .settings-toggle,
-  .settings-panel,
-  .confirm-dialog-body
-)::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: inherit;
-  pointer-events: none;
-  background-image: var(--liquid-noise);
-  background-size: 160px 160px;
-  opacity: 0.09;
-  mix-blend-mode: soft-light;
-}
-
-/* --- Component tuning ---------------------------------------------------- */
-
-[data-glass="liquid"] .search-container {
-  /* The hero surface: the clearest pane in the interface. */
-  --liquid-extra-tint: 0;
-}
-
-[data-glass="liquid"] .search-container:focus-within {
-  border-color: rgba(255, 255, 255, 0.34);
-  box-shadow:
-    var(--liquid-surface-shadow),
-    0 0 0 3px rgba(148, 184, 255, 0.13),
-    0 18px 52px -12px rgba(6, 15, 36, 0.58),
-    0 0 46px -10px rgba(111, 158, 255, 0.18);
-}
-
-[data-glass="liquid"] .suggestions-dropdown {
-  --liquid-extra-tint: 0.04;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.44),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.05),
-    inset 0 0 0 1px rgba(0, 0, 0, 0.07),
-    0 1px 2px rgba(2, 5, 12, 0.30),
-    0 20px 48px -14px rgba(2, 5, 12, 0.55),
-    0 48px 96px -36px rgba(2, 5, 12, 0.52);
-}
-
-[data-glass="liquid"] .bookmarks-container {
-  --liquid-extra-tint: 0.045;
-}
-
-[data-glass="liquid"] .settings-toggle {
-  --liquid-extra-tint: 0.02;
-  --liquid-blur: 18px;
-  --liquid-elevation:
-    0 1px 1px rgba(2, 5, 12, 0.28),
-    0 8px 20px -8px rgba(2, 5, 12, 0.38),
-    0 20px 40px -20px rgba(2, 5, 12, 0.34);
-}
-
-[data-glass="liquid"] .settings-toggle:hover {
-  border-color: rgba(255, 255, 255, 0.32);
-  color: var(--text-primary);
-  box-shadow:
-    var(--liquid-surface-shadow),
-    0 0 24px -6px rgba(133, 172, 255, 0.20);
-}
-
-[data-glass="liquid"] .settings-panel {
-  --liquid-extra-tint: 0.10;
-  --liquid-blur: 30px;
-  --liquid-elevation:
-    0 2px 4px rgba(2, 5, 12, 0.30),
-    0 28px 64px -18px rgba(2, 5, 12, 0.54),
-    0 72px 140px -42px rgba(2, 5, 12, 0.58);
-}
-
-[data-glass="liquid"] .confirm-dialog-body {
-  --liquid-extra-tint: 0.14;
-  --liquid-blur: 32px;
-  --liquid-elevation:
-    0 2px 4px rgba(2, 5, 12, 0.32),
-    0 30px 70px -16px rgba(2, 5, 12, 0.58),
-    0 80px 160px -44px rgba(2, 5, 12, 0.62);
-}
-
-/* The overlay/backdrop is part of the material: deepen it slightly so the pane
-   has a convincing darkroom instead of a bright frame around it. */
-[data-glass="liquid"] .settings-overlay {
-  background: rgba(2, 6, 14, 0.40);
-  -webkit-backdrop-filter: blur(6px) saturate(115%);
-  backdrop-filter: blur(6px) saturate(115%);
-}
-
-[data-glass="liquid"] .confirm-dialog {
-  background: rgba(2, 6, 14, 0.52);
-  -webkit-backdrop-filter: blur(10px) saturate(120%);
-  backdrop-filter: blur(10px) saturate(120%);
-}
-
-/* --- Text, icons and inner controls ------------------------------------- */
-
-[data-glass="liquid"] .search-input {
-  color: var(--text-primary);
-}
-
-[data-glass="liquid"] .search-input::placeholder {
-  color: var(--text-tertiary);
-}
-
-[data-glass="liquid"] .search-icon {
-  color: rgba(255, 255, 255, 0.66);
-}
-
-[data-glass="liquid"] .search-button {
-  background: linear-gradient(180deg,
-    rgba(255, 255, 255, 0.13) 0%,
-    rgba(255, 255, 255, 0.055) 100%);
-  color: rgba(255, 255, 255, 0.82);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.08),
-    0 1px 2px rgba(2, 5, 12, 0.20);
-}
-
-[data-glass="liquid"] .search-button:hover {
-  background: linear-gradient(180deg,
-    rgba(255, 255, 255, 0.20) 0%,
-    rgba(255, 255, 255, 0.09) 100%);
-  color: #fff;
-}
-
-[data-glass="liquid"] .bookmark-item {
-  color: rgba(255, 255, 255, 0.80);
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.18);
-}
-
-[data-glass="liquid"] .bookmark-item:hover {
-  background: linear-gradient(180deg,
-    rgba(255, 255, 255, 0.15) 0%,
-    rgba(255, 255, 255, 0.07) 100%);
-  border-color: rgba(255, 255, 255, 0.15);
-  color: #fff;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    0 1px 2px rgba(2, 5, 12, 0.16);
-}
-
-[data-glass="liquid"] .suggestion-item {
-  color: rgba(255, 255, 255, 0.78);
-}
-
-[data-glass="liquid"] .suggestion-item:hover,
-[data-glass="liquid"] .suggestion-item.active {
-  background: linear-gradient(90deg,
-    rgba(255, 255, 255, 0.15) 0%,
-    rgba(255, 255, 255, 0.055) 100%);
-  color: #fff;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
-}
-
-[data-glass="liquid"] .suggestion-icon {
-  color: rgba(255, 255, 255, 0.55);
-}
-
-/* The clock floats directly on the wallpaper: a wider, softer shadow keeps it
-   legible over bright skies without turning it into outlined text. */
-[data-glass="liquid"] .clock {
-  text-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.55),
-    0 2px 12px rgba(0, 0, 0, 0.38),
-    0 12px 40px rgba(0, 0, 0, 0.30);
-}
-
-/* --- Refractive hairline rim --------------------------------------------
-   A masked 1px gradient ring catches the light differently from the face. The
-   border underneath remains the fallback where mask-composite is unavailable. */
-@supports (mask-composite: exclude) or (-webkit-mask-composite: xor) {
-  [data-glass="liquid"] :is(
-    .search-container,
-    .suggestions-dropdown,
-    .bookmarks-container,
-    .settings-toggle,
-    .settings-panel,
-    .confirm-dialog-body
-  )::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: 4;
-    padding: 1px;
-    border-radius: inherit;
-    background: var(--liquid-rim);
-    -webkit-mask:
-      linear-gradient(#000 0 0) content-box,
-      linear-gradient(#000 0 0);
-    mask:
-      linear-gradient(#000 0 0) content-box,
-      linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    opacity: 0.92;
-    pointer-events: none;
-  }
-
-  [data-glass="liquid"] .settings-panel::after,
-  [data-glass="liquid"] .confirm-dialog-body::after {
-    opacity: 0.78;
-  }
-
-  [data-glass="liquid"] .search-container:focus-within::after {
-    opacity: 1;
-  }
-}
-
-/* --- Accessibility and graceful degradation ----------------------------- */
-
-@media (prefers-contrast: more) {
-  html[data-glass="liquid"],
-  html[data-wallpaper-tone="light"][data-glass="liquid"],
-  html[data-wallpaper-tone="dark"][data-glass="liquid"] {
-    --liquid-tint-alpha: 0.76;
-    --liquid-tint-rgb: 5 8 16;
-  }
-
-  [data-glass="liquid"] {
-    --text-secondary: rgba(255, 255, 255, 0.94);
-    --text-tertiary: rgba(255, 255, 255, 0.82);
-  }
-
-  [data-glass="liquid"] :is(
-    .search-container,
-    .suggestions-dropdown,
-    .bookmarks-container,
-    .settings-toggle,
-    .settings-panel,
-    .confirm-dialog-body
-  ) {
-    border-color: rgba(255, 255, 255, 0.42);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.70),
-      inset 0 0 0 1px rgba(0, 0, 0, 0.18),
-      var(--liquid-elevation);
-  }
-
-  [data-glass="liquid"] .search-input::placeholder {
-    color: rgba(255, 255, 255, 0.82);
-  }
-}
-
-@media (prefers-reduced-transparency: reduce) {
-  [data-glass="liquid"] {
-    --text-secondary: rgba(255, 255, 255, 0.84);
-    --text-tertiary: rgba(255, 255, 255, 0.68);
-  }
-
-  [data-glass="liquid"] :is(
-    .search-container,
-    .suggestions-dropdown,
-    .bookmarks-container,
-    .settings-toggle,
-    .settings-panel,
-    .confirm-dialog-body
-  ) {
-    background-color: rgba(24, 29, 40, 0.98);
-    background-image: none;
-    border-color: rgba(255, 255, 255, 0.18);
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.16),
-      0 12px 34px rgba(2, 5, 12, 0.32);
-  }
-
-  [data-glass="liquid"] :is(
-    .search-container,
-    .suggestions-dropdown,
-    .bookmarks-container,
-    .settings-toggle,
-    .settings-panel,
-    .confirm-dialog-body
-  )::before,
-  [data-glass="liquid"] :is(
-    .search-container,
-    .suggestions-dropdown,
-    .bookmarks-container,
-    .settings-toggle,
-    .settings-panel,
-    .confirm-dialog-body
-  )::after {
-    display: none;
-  }
-
-  [data-glass="liquid"] .settings-overlay,
-  [data-glass="liquid"] .confirm-dialog {
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
-}
-
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  [data-glass="liquid"] :is(
-    .search-container,
-    .suggestions-dropdown,
-    .bookmarks-container,
-    .settings-toggle,
-    .settings-panel,
-    .confirm-dialog-body
-  ) {
-    background-color: rgba(18, 23, 35, 0.94);
-  }
-}
-
-@media (forced-colors: active) {
-  [data-glass="liquid"] {
-    --text-primary: CanvasText;
-    --text-secondary: CanvasText;
-    --text-tertiary: GrayText;
-  }
-
-  [data-glass="liquid"] :is(
-    .search-container,
-    .suggestions-dropdown,
-    .bookmarks-container,
-    .settings-toggle,
-    .settings-panel,
-    .confirm-dialog-body
-  ) {
-    background: Canvas;
-    border: 1px solid CanvasText;
-    box-shadow: none;
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
-
-  [data-glass="liquid"] :is(
-    .search-container,
-    .suggestions-dropdown,
-    .bookmarks-container,
-    .settings-toggle,
-    .settings-panel,
-    .confirm-dialog-body
-  )::before,
-  [data-glass="liquid"] :is(
-    .search-container,
-    .suggestions-dropdown,
-    .bookmarks-container,
-    .settings-toggle,
-    .settings-panel,
-    .confirm-dialog-body
-  )::after {
-    display: none;
-  }
-}
-
-/* Phones and low-powered machines: less blur, a slightly denser tint. Keeping
-   the same composition means the visual language survives the cheaper recipe. */
-@media (max-width: 640px), (update: slow) {
-  [data-glass="liquid"] {
-    --liquid-blur: 16px;
-    --liquid-saturate: 160%;
-    --liquid-brightness: 1.02;
-    --liquid-tint-alpha: 0.58;
-  }
-
-  html[data-wallpaper-tone="light"][data-glass="liquid"] {
-    --liquid-tint-alpha: 0.64;
-  }
-
-  html[data-wallpaper-tone="dark"][data-glass="liquid"] {
-    --liquid-tint-alpha: 0.50;
-  }
-
-  [data-glass="liquid"] :is(
-    .search-container,
-    .suggestions-dropdown,
-    .bookmarks-container,
-    .settings-toggle,
-    .settings-panel,
-    .confirm-dialog-body
-  )::before {
-    opacity: 0.06;
-  }
-}
-
 
 /* ============================================
    Dark Mode Adjustments
@@ -2263,20 +1743,20 @@ html[data-wallpaper-tone="dark"][data-glass="liquid"] {
 }
 
 .confirm-dialog-btn--ghost {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgb(var(--fg-rgb) / 0.08);
   color: var(--text-secondary);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgb(var(--fg-rgb) / 0.1);
 }
 .confirm-dialog-btn--ghost:hover {
-  background: rgba(255, 255, 255, 0.14);
+  background: rgb(var(--fg-rgb) / 0.14);
 }
 
 .confirm-dialog-btn--solid {
-  background: rgba(255, 255, 255, 0.18);
+  background: rgb(var(--fg-rgb) / 0.18);
   color: var(--text-primary);
 }
 .confirm-dialog-btn--solid:hover {
-  background: rgba(255, 255, 255, 0.26);
+  background: rgb(var(--fg-rgb) / 0.26);
 }
 
 @keyframes confirm-fade-in {
