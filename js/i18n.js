@@ -171,6 +171,14 @@ const I18n = (() => {
     });
   }
 
+  function getCurrentLocale() {
+    return currentLocale;
+  }
+
+  function getMessages() {
+    return { ...messages };
+  }
+
   /* --- Public API --- */
   return {
     init,
