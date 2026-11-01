@@ -470,12 +470,43 @@ const Search = (() => {
     }
   }
 
-  /* --- Search execution --- */
+  /* --- Search execution ---
+     A query that is already a URL or a bare domain is navigated to directly instead
+     of being sent to the search engine. This is the default, non-configurable
+     behaviour: typing "example.com" or "https://..." opens that page. */
   function performSearch(query) {
+    if (isUrlOrDomain(query)) {
+      hideSuggestions();
+      window.location.href = normalizeUrl(query);
+      return;
+    }
     const engine = ENGINES[currentEngine];
     const url = engine.searchUrl + encodeURIComponent(query);
     hideSuggestions();
     window.location.href = url;
+  }
+
+  /* A full URL is recognized via the URL parser, which also rejects malformed input.
+     A bare domain needs its own check: host segments separated by dots, the final
+     segment acting as a TLD (letters only, so "3.14" stays a search query). */
+  function isUrlOrDomain(query) {
+    const q = query.trim();
+    if (!q) return false;
+    try {
+      const u = new URL(q);
+      if (u.protocol === 'http:' || u.protocol === 'https:') return true;
+    } catch {}
+    return /^(?:[^\s./]+\.)+[a-z]{2,}(?::\d+)?(?:\/[^\s]*)?$/iu.test(q);
+  }
+
+  function normalizeUrl(query) {
+    const q = query.trim();
+    try {
+      return new URL(q).href;
+    } catch {
+      /* No scheme: assume https rather than letting the browser guess. */
+      return 'https://' + q;
+    }
   }
 
   /* --- Engine management --- */
