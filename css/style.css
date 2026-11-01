@@ -1058,19 +1058,6 @@ body {
   display: none;
 }
 
-/* Visible select for language choice */
-.setting-select-visible {
-  display: block;
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid rgb(var(--fg-rgb) / 0.12);
-  border-radius: 8px;
-  background: var(--bg-surface, #23272f);
-  color: var(--text-primary);
-  font-size: 14px;
-  cursor: pointer;
-}
-
 /* Custom Select */
 .custom-select-wrapper {
   position: relative;

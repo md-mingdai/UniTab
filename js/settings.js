@@ -47,8 +47,39 @@ const Settings = (() => {
     video: 'bgThemeColorVideo'
   };
 
-  /* Must be typed by hand in the Advanced danger zone. Pasting is blocked. */
-  const RESET_PHRASE = '我确认清空全部配置且无法恢复';
+  /* Value -> i18n key maps for the custom-select trigger labels, so the visible
+     label re-translates when the language changes (native <option> text is static). */
+  const ENGINE_LABEL_KEY = {
+    google: 'settings.search.engine.google',
+    bing: 'settings.search.engine.bing',
+    sogou: 'settings.search.engine.sogou',
+    baidu: 'settings.search.engine.baidu'
+  };
+  const CURSOR_STYLE_LABEL_KEY = {
+    confetti: 'settings.display.cursorStyle.confetti',
+    rain: 'settings.display.cursorStyle.rain',
+    bubble: 'settings.display.cursorStyle.bubble',
+    star: 'settings.display.cursorStyle.star',
+    kivotos: 'settings.display.cursorStyle.kivotos'
+  };
+  const GLASS_STYLE_LABEL_KEY = {
+    frosted: 'settings.display.glassStyle.frosted',
+    liquid: 'settings.display.glassStyle.liquid',
+    matte: 'settings.display.glassStyle.matte'
+  };
+  const VIDEO_ONENDED_LABEL_KEY = {
+    black: 'settings.bg.video.onEnded.black',
+    lastframe: 'settings.bg.video.onEnded.lastframe',
+    customimage: 'settings.bg.video.onEnded.customimage',
+    bing: 'settings.bg.video.onEnded.bing'
+  };
+  /* Language names are shown as endonyms (each language in its own script), the
+     usual convention for a language picker — only "Follow System" translates. */
+  const LANG_ENDONYM = {
+    zh_CN: '简体中文',
+    zh_TW: '繁體中文',
+    en: 'English'
+  };
 
   /* Writes are batched (see saveSettings): a slider drag fires `input` ~60 times a
      second, and every one of those used to JSON.stringify + synchronously write the
@@ -79,6 +110,7 @@ const Settings = (() => {
   let blurSlider, blurDisplay, opacitySlider, opacityDisplay;
   let overlayColorSwatches, customColorTrigger, overlayColorInput, colorHexDisplay;
   let engineSelectWrapper, engineSelectTrigger, engineSelectDropdown, engineSelectLabel, engineSelectNative;
+  let languageSelectWrapper, languageSelectTrigger, languageSelectDropdown, languageSelectLabel, languageSelectNative;
   let showSecondsToggle;
   let showBookmarksToggle;
   let cursorEffectToggle;
@@ -193,7 +225,11 @@ const Settings = (() => {
     engineSelectNative = document.getElementById('engine-select');
 
     /* Language select */
-    languageSelect = document.getElementById('language-select');
+    languageSelectWrapper = document.getElementById('language-select-wrapper');
+    languageSelectTrigger = document.getElementById('language-select-trigger');
+    languageSelectDropdown = document.getElementById('language-select-dropdown');
+    languageSelectLabel = document.getElementById('language-select-label');
+    languageSelectNative = document.getElementById('language-select');
 
     /* Display */
     showSecondsToggle = document.getElementById('show-seconds-toggle');
@@ -239,24 +275,82 @@ const Settings = (() => {
   }
 
   /* --- Language Selector --- */
-  function initLanguageSelector() {
-    if (!languageSelect) return;
-    const saved = localStorage.getItem('unitab_locale');
-    languageSelect.value = saved || 'auto';
+  function updateLanguageLabel(val) {
+    languageSelectLabel.textContent = val === 'auto' ? I18n.t('settings.lang.auto') : (LANG_ENDONYM[val] || val);
+  }
 
-    languageSelect.addEventListener('change', async (e) => {
-      const val = e.target.value;
-      if (val === 'auto') {
-        localStorage.removeItem('unitab_locale');
-        const detected = I18n.detectBrowserLocale() || 'en';
-        await I18n.loadMessages(detected);
-      } else {
-        localStorage.setItem('unitab_locale', val);
-        await I18n.loadMessages(val);
+  function updateLanguageDropdown(val) {
+    languageSelectDropdown.querySelectorAll('.custom-select-option').forEach(opt => {
+      opt.classList.toggle('selected', opt.dataset.value === val);
+    });
+  }
+
+  async function setLocale(val) {
+    if (val === 'auto') {
+      localStorage.removeItem('unitab_locale');
+      const detected = I18n.detectBrowserLocale() || I18n.DEFAULT_LOCALE;
+      await I18n.loadMessages(detected);
+    } else {
+      localStorage.setItem('unitab_locale', val);
+      await I18n.loadMessages(val);
+    }
+    document.documentElement.lang = I18n.getCurrentLocale().replace('_', '-');
+    I18n.applyTranslations();
+    refreshDynamicTranslations();
+    languageSelectNative.value = val;
+    updateLanguageLabel(val);
+    updateLanguageDropdown(val);
+  }
+
+  function refreshDynamicTranslations() {
+    /* The preview-action button reservation was measured for the previous
+       locale's labels; let refreshAdvancedInfo() re-measure it. */
+    previewButtonWidthsReserved = false;
+    syncFormToState();
+    refreshVideoInfo();
+    refreshAdvancedInfo();
+    updateLanguageLabel(languageSelectNative.value || 'auto');
+    if (resetAllPhrase) resetAllPhrase.textContent = I18n.t('settings.advanced.danger.resetAll.phrase');
+    /* Tab label widths change with locale (e.g. 高级 ↔ Advanced), which shifts
+       each button's offsetLeft. The indicator was measured for the old widths,
+       so re-measure it now that the translations are in the DOM. Reading the
+       offset values forces a synchronous reflow, so this is accurate. */
+    moveIndicator(getActiveTab());
+    updateFooterVisibility(getActiveTab());
+  }
+
+  function initLanguageSelector() {
+    if (!languageSelectWrapper || !languageSelectTrigger) return;
+    const saved = localStorage.getItem('unitab_locale');
+    const val = saved && I18n.SUPPORTED_LOCALES.includes(saved) ? saved : 'auto';
+    languageSelectNative.value = val;
+    updateLanguageLabel(val);
+    updateLanguageDropdown(val);
+
+    languageSelectTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = !languageSelectDropdown.hidden;
+      languageSelectDropdown.hidden = isOpen;
+      languageSelectTrigger.classList.toggle('open', !isOpen);
+      languageSelectWrapper.classList.remove('drop-up');
+      if (!isOpen && languageSelectDropdown.getBoundingClientRect().bottom > panel.getBoundingClientRect().bottom - 12) {
+        languageSelectWrapper.classList.add('drop-up');
       }
-      I18n.applyTranslations();
-      /* Update html lang attribute */
-      document.documentElement.lang = I18n.getCurrentLocale().replace('_', '-');
+    });
+    languageSelectDropdown.querySelectorAll('.custom-select-option').forEach(opt => {
+      opt.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const v = opt.dataset.value;
+        languageSelectDropdown.hidden = true;
+        languageSelectTrigger.classList.remove('open');
+        setLocale(v);
+      });
+    });
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#language-select-wrapper')) {
+        languageSelectDropdown.hidden = true;
+        languageSelectTrigger.classList.remove('open');
+      }
     });
   }
 
@@ -840,8 +934,8 @@ const Settings = (() => {
 
   /* --- Engine Select --- */
   function updateEngineLabel(engineKey) {
-    const option = engineSelectNative.querySelector(`option[value="${engineKey}"]`);
-    engineSelectLabel.textContent = option ? option.textContent : engineKey;
+    const key = ENGINE_LABEL_KEY[engineKey];
+    engineSelectLabel.textContent = key ? I18n.t(key) : engineKey;
   }
 
   function updateEngineDropdown(engineKey) {
@@ -875,8 +969,8 @@ const Settings = (() => {
   }
 
   function updateCursorStyleLabel(styleKey) {
-    const opt = cursorStyleNative.querySelector(`option[value="${styleKey}"]`);
-    cursorStyleLabel.textContent = opt ? opt.textContent : styleKey;
+    const key = CURSOR_STYLE_LABEL_KEY[styleKey];
+    cursorStyleLabel.textContent = key ? I18n.t(key) : styleKey;
   }
 
   function updateCursorStyleDropdown(styleKey) {
@@ -891,8 +985,8 @@ const Settings = (() => {
   }
 
   function updateGlassStyleLabel(styleKey) {
-    const opt = glassStyleNative.querySelector(`option[value="${styleKey}"]`);
-    glassStyleLabel.textContent = opt ? opt.textContent : styleKey;
+    const key = GLASS_STYLE_LABEL_KEY[styleKey];
+    glassStyleLabel.textContent = key ? I18n.t(key) : styleKey;
   }
 
   function updateGlassStyleDropdown(styleKey) {
@@ -908,8 +1002,8 @@ const Settings = (() => {
   }
 
   function updateVideoOnEndedLabel(val) {
-    const opt = videoOnEndedNative.querySelector(`option[value="${val}"]`);
-    videoOnEndedLabel.textContent = opt ? opt.textContent : val;
+    const key = VIDEO_ONENDED_LABEL_KEY[val];
+    videoOnEndedLabel.textContent = key ? I18n.t(key) : val;
   }
 
   function updateVideoOnEndedDropdown(val) {
@@ -1516,7 +1610,7 @@ const Settings = (() => {
           applyBackground();
           if (bgUrlInput) bgUrlInput.value = '';
           showUrlError('');
-          bgVideoName.textContent = '未选择文件';
+          bgVideoName.textContent = I18n.t('settings.bg.video.noFile');
           Background.clearVideoBlob();
           Background.clearImageBlob();
           Background.clearBingCache();
@@ -1558,7 +1652,7 @@ const Settings = (() => {
      ================================================================ */
 
   function formatBytes(bytes) {
-    if (typeof bytes !== 'number' || !Number.isFinite(bytes) || bytes < 0) return '未知';
+    if (typeof bytes !== 'number' || !Number.isFinite(bytes) || bytes < 0) return I18n.t('general.unknown');
     if (bytes < 1024) return Math.round(bytes) + ' B';
     const units = ['KB', 'MB', 'GB', 'TB'];
     let value = bytes;
@@ -1635,18 +1729,25 @@ const Settings = (() => {
     if (!button) return null;
     const idle = button.textContent;
     const previousWidth = button.style.width;
+    const previousMinWidth = button.style.minWidth;
     let maxWidth = 0;
     let maxHeight = 0;
     /* Measure the intrinsic content size even when CSS stretches the button to
-       100% on narrow screens; freezing that container width would overflow. */
+       100% on narrow screens; freezing that container width would overflow.
+       A stale min-width from a previous locale must also be dropped, or the
+       re-measure would just re-read the old (too wide) reservation. */
     button.style.width = 'max-content';
+    button.style.minWidth = '0';
     for (const label of labels) {
-      button.textContent = label;
+      /* labels are i18n keys — translate before measuring, or the key string
+         itself (longer than any UI text) gets reserved as the button width. */
+      button.textContent = I18n.t(label);
       maxWidth = Math.max(maxWidth, button.offsetWidth);
       maxHeight = Math.max(maxHeight, button.offsetHeight);
     }
     button.textContent = idle;
     button.style.width = previousWidth;
+    button.style.minWidth = previousMinWidth;
     return { width: maxWidth, height: maxHeight };
   }
 
@@ -1983,7 +2084,7 @@ const Settings = (() => {
       }
 
       function syncConfirm() {
-        const matches = resetAllInput.value.trim() === RESET_PHRASE;
+        const matches = resetAllInput.value.trim() === I18n.t('settings.advanced.danger.resetAll.phrase');
         resetAllConfirm.disabled = !matches;
         if (matches) setError('');
       }
@@ -2050,7 +2151,7 @@ const Settings = (() => {
       }
 
       function onConfirm() {
-        if (resetAllInput.value.trim() !== RESET_PHRASE) {
+        if (resetAllInput.value.trim() !== I18n.t('settings.advanced.danger.resetAll.phrase')) {
           setError(I18n.t('settings.advanced.danger.resetAll.error.mismatch'));
           syncConfirm();
           return;
@@ -2062,7 +2163,7 @@ const Settings = (() => {
         cleanup(false);
       }
 
-      if (resetAllPhrase) resetAllPhrase.textContent = RESET_PHRASE;
+      if (resetAllPhrase) resetAllPhrase.textContent = I18n.t('settings.advanced.danger.resetAll.phrase');
       resetAllInput.value = '';
       resetAllInput.removeAttribute('aria-invalid');
       resetAllConfirm.disabled = true;
@@ -2335,6 +2436,8 @@ const Settings = (() => {
     if (glassStyleTrigger) glassStyleTrigger.classList.remove('open');
     if (videoOnEndedDropdown) videoOnEndedDropdown.hidden = true;
     if (videoOnEndedTrigger) videoOnEndedTrigger.classList.remove('open');
+    if (languageSelectDropdown) languageSelectDropdown.hidden = true;
+    if (languageSelectTrigger) languageSelectTrigger.classList.remove('open');
   }
 
   /* --- Panel state --- */

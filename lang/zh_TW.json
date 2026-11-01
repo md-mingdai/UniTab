@@ -1,640 +1,215 @@
 {
-  "extName": {
-    "message": "UniTab",
-    "description": "Extension name"
-  },
-  "extDescription": {
-    "message": "Minimalist frosted glass new tab page with customizable background and search engine, supports search suggestions.",
-    "description": "Extension description"
-  },
-  "general.cancel": {
-    "message": "取消"
-  },
-  "general.confirm": {
-    "message": "確認"
-  },
-  "general.ok": {
-    "message": "確定"
-  },
-  "general.close": {
-    "message": "關閉"
-  },
-  "general.save": {
-    "message": "儲存"
-  },
-  "general.apply": {
-    "message": "套用"
-  },
-  "general.refresh": {
-    "message": "重新整理"
-  },
-  "general.export": {
-    "message": "匯出"
-  },
-  "general.reset": {
-    "message": "重設"
-  },
-  "general.clear": {
-    "message": "清除"
-  },
-  "general.delete": {
-    "message": "刪除"
-  },
-  "general.error": {
-    "message": "錯誤"
-  },
-  "general.success": {
-    "message": "成功"
-  },
-  "general.loading": {
-    "message": "載入中…"
-  },
-  "general.unknown": {
-    "message": "未知"
-  },
-  "general.none": {
-    "message": "無"
-  },
-  "general.auto": {
-    "message": "自動"
-  },
-  "settings.title": {
-    "message": "設定"
-  },
-  "settings.tabs.label": {
-    "message": "設定分類"
-  },
-  "settings.tabs.background": {
-    "message": "背景"
-  },
-  "settings.tabs.search": {
-    "message": "搜尋"
-  },
-  "settings.tabs.display": {
-    "message": "顯示"
-  },
-  "settings.tabs.advanced": {
-    "message": "進階"
-  },
-  "settings.lang.select": {
-    "message": "語言"
-  },
-  "settings.lang.auto": {
-    "message": "跟隨系統"
-  },
-  "settings.lang.zh_CN": {
-    "message": "簡體中文"
-  },
-  "settings.lang.zh_TW": {
-    "message": "繁體中文"
-  },
-  "settings.lang.en": {
-    "message": "English"
-  },
-  "settings.bg.source": {
-    "message": "背景來源"
-  },
-  "settings.bg.source.bing": {
-    "message": "必應每日壁紙"
-  },
-  "settings.bg.source.image": {
-    "message": "自訂圖片"
-  },
-  "settings.bg.source.color": {
-    "message": "純色"
-  },
-  "settings.bg.source.video": {
-    "message": "視訊壁紙"
-  },
-  "settings.bg.refresh": {
-    "message": "重新整理壁紙"
-  },
-  "settings.bg.upload": {
-    "message": "選擇圖片"
-  },
-  "settings.bg.url.placeholder": {
-    "message": "https://..."
-  },
-  "settings.bg.url.apply": {
-    "message": "套用"
-  },
-  "settings.bg.url.label": {
-    "message": "或輸入圖片連結"
-  },
-  "settings.bg.url.error.empty": {
-    "message": "請輸入圖片連結"
-  },
-  "settings.bg.url.error.invalid": {
-    "message": "連結格式不合法"
-  },
-  "settings.bg.url.error.scheme": {
-    "message": "僅支援 http/https 連結"
-  },
-  "settings.bg.file.noFile": {
-    "message": "未選擇檔案"
-  },
-  "settings.bg.file.uploaded": {
-    "message": "已上傳圖片"
-  },
-  "settings.bg.file.loadFailed": {
-    "message": "圖片載入失敗"
-  },
-  "settings.bg.file.selectImage": {
-    "message": "請選擇圖片檔案"
-  },
-  "settings.bg.color.custom": {
-    "message": "自訂顏色"
-  },
-  "settings.bg.color.label": {
-    "message": "背景顏色"
-  },
-  "settings.bg.video.select": {
-    "message": "選擇視訊"
-  },
-  "settings.bg.video.noFile": {
-    "message": "未選擇檔案"
-  },
-  "settings.bg.video.selectVideo": {
-    "message": "請選擇視訊檔案"
-  },
-  "settings.bg.video.loadFailed": {
-    "message": "視訊儲存失敗"
-  },
-  "settings.bg.video.sound": {
-    "message": "開啟聲音"
-  },
-  "settings.bg.video.volume": {
-    "message": "音量"
-  },
-  "settings.bg.video.loop": {
-    "message": "循環播放"
-  },
-  "settings.bg.video.onEnded": {
-    "message": "播放結束後"
-  },
-  "settings.bg.video.onEnded.black": {
-    "message": "黑畫面"
-  },
-  "settings.bg.video.onEnded.lastframe": {
-    "message": "顯示最後一幀"
-  },
-  "settings.bg.video.onEnded.customimage": {
-    "message": "顯示自訂圖片背景"
-  },
-  "settings.bg.video.onEnded.bing": {
-    "message": "顯示必應壁紙"
-  },
-  "settings.bg.video.sizeWarning": {
-    "message": "檔案大小 {1}MB，較大的視訊可能導致瀏覽器卡頓。是否繼續使用？"
-  },
-  "settings.bg.blur": {
-    "message": "背景模糊"
-  },
-  "settings.bg.blur.value": {
-    "message": "{1}px"
-  },
-  "settings.bg.overlayOpacity": {
-    "message": "蒙版不透明度"
-  },
-  "settings.bg.overlayOpacity.value": {
-    "message": "{1}%"
-  },
-  "settings.bg.overlayColor": {
-    "message": "蒙版顏色"
-  },
-  "settings.search.engine": {
-    "message": "預設搜尋引擎"
-  },
-  "settings.search.engine.google": {
-    "message": "Google"
-  },
-  "settings.search.engine.bing": {
-    "message": "Bing"
-  },
-  "settings.search.engine.sogou": {
-    "message": "搜狗"
-  },
-  "settings.search.engine.baidu": {
-    "message": "百度"
-  },
-  "settings.display.seconds": {
-    "message": "顯示秒數"
-  },
-  "settings.display.bookmarks": {
-    "message": "常用網址 Dock 列"
-  },
-  "settings.display.cursorEffect": {
-    "message": "滑鼠特效"
-  },
-  "settings.display.cursorStyle": {
-    "message": "特效樣式"
-  },
-  "settings.display.cursorStyle.confetti": {
-    "message": "彩紙"
-  },
-  "settings.display.cursorStyle.rain": {
-    "message": "落雨"
-  },
-  "settings.display.cursorStyle.bubble": {
-    "message": "氣泡"
-  },
-  "settings.display.cursorStyle.star": {
-    "message": "星光"
-  },
-  "settings.display.cursorStyle.kivotos": {
-    "message": "基沃托斯"
-  },
-  "settings.display.glassRadius": {
-    "message": "元件圓角"
-  },
-  "settings.display.glassRadius.value": {
-    "message": "{1}px"
-  },
-  "settings.display.glassStyle": {
-    "message": "玻璃效果"
-  },
-  "settings.display.glassStyle.frosted": {
-    "message": "毛玻璃"
-  },
-  "settings.display.glassStyle.liquid": {
-    "message": "液態玻璃"
-  },
-  "settings.display.glassStyle.matte": {
-    "message": "磨砂質感"
-  },
-  "settings.advanced.intro": {
-    "message": "這些工具用於匯出壁紙、維護預覽快取和清理本地資料。操作只影響本擴充功能自己的儲存空間。"
-  },
-  "settings.advanced.wallpaper.title": {
-    "message": "壁紙工具"
-  },
-  "settings.advanced.wallpaper.export.title": {
-    "message": "匯出目前壁紙"
-  },
-  "settings.advanced.wallpaper.export.desc": {
-    "message": "把目前使用的必應、自訂圖片或視訊壁紙儲存到瀏覽器的下載資料夾。"
-  },
-  "settings.advanced.wallpaper.export.hint": {
-    "message": "目前：{1}"
-  },
-  "settings.advanced.preview.title": {
-    "message": "預覽維護"
-  },
-  "settings.advanced.preview.status.loading": {
-    "message": "正在讀取預覽狀態…"
-  },
-  "settings.advanced.preview.status.noPreview": {
-    "message": "純色背景不使用壁紙預覽。"
-  },
-  "settings.advanced.preview.status.cannotRead": {
-    "message": "目前預覽：無法讀取。"
-  },
-  "settings.advanced.preview.status.reading": {
-    "message": "目前預覽：正在讀取…"
-  },
-  "settings.advanced.preview.status.cached": {
-    "message": "目前預覽：已快取（{1}） · 預覽色 {2}"
-  },
-  "settings.advanced.preview.status.noCache": {
-    "message": "目前預覽：未快取，可點擊「重新生成目前預覽」。"
-  },
-  "settings.advanced.preview.status.readFailed": {
-    "message": "目前預覽：讀取失敗。"
-  },
-  "settings.advanced.preview.clear.title": {
-    "message": "清空預覽緩衝區"
-  },
-  "settings.advanced.preview.clear.desc": {
-    "message": "刪除必應、圖片、視訊三種壁紙的預覽快取；目前壁紙不會被刪除。"
-  },
-  "settings.advanced.preview.clear.btn": {
-    "message": "清空"
-  },
-  "settings.advanced.preview.clear.busy": {
-    "message": "清空中…"
-  },
-  "settings.advanced.preview.clear.done": {
-    "message": "已清空"
-  },
-  "settings.advanced.preview.clear.failed": {
-    "message": "清空失敗"
-  },
-  "settings.advanced.preview.regen.title": {
-    "message": "重新生成目前預覽"
-  },
-  "settings.advanced.preview.regen.desc": {
-    "message": "按目前壁紙重新截取一張低解析度預覽，並同步更新預覽色。"
-  },
-  "settings.advanced.preview.regen.btn": {
-    "message": "重新生成"
-  },
-  "settings.advanced.preview.regen.busy": {
-    "message": "生成中…"
-  },
-  "settings.advanced.preview.regen.done": {
-    "message": "已生成"
-  },
-  "settings.advanced.preview.regen.failed": {
-    "message": "生成失敗"
-  },
-  "settings.advanced.preview.regen.none": {
-    "message": "無需生成"
-  },
-  "settings.advanced.preview.regen.noData": {
-    "message": "無資料"
-  },
-  "settings.advanced.preview.repick.title": {
-    "message": "重新拾取預覽色"
-  },
-  "settings.advanced.preview.repick.desc": {
-    "message": "從目前預覽或壁紙重新計算佔位色，不重新生成預覽圖。"
-  },
-  "settings.advanced.preview.repick.btn": {
-    "message": "重新拾取"
-  },
-  "settings.advanced.preview.repick.busy": {
-    "message": "拾取中…"
-  },
-  "settings.advanced.preview.repick.done": {
-    "message": "已拾取"
-  },
-  "settings.advanced.preview.repick.failed": {
-    "message": "拾取失敗"
-  },
-  "settings.advanced.preview.repick.none": {
-    "message": "無需拾取"
-  },
-  "settings.advanced.storage.title": {
-    "message": "儲存空間與快取"
-  },
-  "settings.advanced.storage.status.loading": {
-    "message": "正在讀取本地儲存空間佔用…"
-  },
-  "settings.advanced.storage.status.usage": {
-    "message": "本地儲存空間佔用：約{1}{2}"
-  },
-  "settings.advanced.storage.status.cannotRead": {
-    "message": "本地儲存空間佔用：無法讀取。"
-  },
-  "settings.advanced.storage.status.unsupported": {
-    "message": "目前瀏覽器不支援儲存空間佔用查詢。"
-  },
-  "settings.advanced.storage.status.readFailed": {
-    "message": "本地儲存空間佔用：讀取失敗。"
-  },
-  "settings.advanced.storage.clearBing.title": {
-    "message": "清除必應壁紙快取"
-  },
-  "settings.advanced.storage.clearBing.desc": {
-    "message": "刪除最近一張必應壁紙的本地快取；下次使用必應壁紙時會重新下載。"
-  },
-  "settings.advanced.storage.clearBing.btn": {
-    "message": "清除快取"
-  },
-  "settings.advanced.storage.clearBing.busy": {
-    "message": "清理中…"
-  },
-  "settings.advanced.storage.clearBing.success.title": {
-    "message": "必應快取已清除"
-  },
-  "settings.advanced.storage.clearBing.success.desc": {
-    "message": "下次使用必應壁紙時會重新下載最新壁紙。"
-  },
-  "settings.advanced.storage.clearBing.failed.title": {
-    "message": "清除失敗"
-  },
-  "settings.advanced.storage.clearBing.failed.desc": {
-    "message": "{1}"
-  },
-  "settings.advanced.danger.title": {
-    "message": "危險區域"
-  },
-  "settings.advanced.danger.resetAll.title": {
-    "message": "清空全部設定"
-  },
-  "settings.advanced.danger.resetAll.desc": {
-    "message": "刪除全部設定、壁紙、預覽和快取，並恢復首次安裝狀態。此操作無法復原。"
-  },
-  "settings.advanced.danger.resetAll.btn": {
-    "message": "清空全部設定"
-  },
-  "settings.advanced.danger.resetAll.confirmTitle": {
-    "message": "清空全部設定？"
-  },
-  "settings.advanced.danger.resetAll.confirmMsg": {
-    "message": "這會刪除所有設定、壁紙、預覽和快取，且無法復原。請手動輸入下面的警告文字以確認："
-  },
-  "settings.advanced.danger.resetAll.phrase": {
-    "message": "我確認清空全部配置且無法恢復"
-  },
-  "settings.advanced.danger.resetAll.inputLabel": {
-    "message": "警告文字"
-  },
-  "settings.advanced.danger.resetAll.inputPlaceholder": {
-    "message": "在此手動輸入上面的文字"
-  },
-  "settings.advanced.danger.resetAll.error.paste": {
-    "message": "此輸入框禁止貼上，請手動輸入警告文字。"
-  },
-  "settings.advanced.danger.resetAll.error.drop": {
-    "message": "此輸入框禁止拖放文字，請手動輸入警告文字。"
-  },
-  "settings.advanced.danger.resetAll.error.mismatch": {
-    "message": "輸入內容不匹配，請重新輸入。"
-  },
-  "settings.advanced.danger.resetAll.error.incomplete": {
-    "message": "請完整輸入上面的警告文字。"
-  },
-  "settings.advanced.danger.resetAll.busy": {
-    "message": "正在清空…"
-  },
-  "settings.advanced.danger.resetAll.done": {
-    "message": "已清空"
-  },
-  "settings.advanced.danger.resetAll.success.title": {
-    "message": "已清空全部設定"
-  },
-  "settings.advanced.danger.resetAll.success.desc": {
-    "message": "頁面將重新載入，恢復首次安裝狀態。"
-  },
-  "settings.advanced.danger.resetAll.partial.title": {
-    "message": "設定已清除，但快取清理不完整"
-  },
-  "settings.advanced.danger.resetAll.partial.desc": {
-    "message": "設定已清除，但部分本地快取可能仍在。頁面將重新載入。"
-  },
-  "settings.advanced.danger.resetAll.reloadBtn": {
-    "message": "重新載入"
-  },
-  "settings.footer.reset": {
-    "message": "恢復預設設定"
-  },
-  "dialog.confirm.title": {
-    "message": "確認"
-  },
-  "dialog.confirm.cancel": {
-    "message": "取消"
-  },
-  "dialog.confirm.ok": {
-    "message": "確定"
-  },
-  "dialog.export.success.title": {
-    "message": "匯出完成"
-  },
-  "dialog.export.success.desc": {
-    "message": "{1} ({2})"
-  },
-  "dialog.export.browser.title": {
-    "message": "已交給瀏覽器下載"
-  },
-  "dialog.export.browser.desc": {
-    "message": "{1}\nIf browser opened the image directly, right-click to save."
-  },
-  "dialog.export.failed.title": {
-    "message": "匯出失敗"
-  },
-  "dialog.export.failed.desc": {
-    "message": "Download blocked or failed by browser, check download permissions for this site.\n{1}"
-  },
-  "dialog.export.noWallpaper.title": {
-    "message": "沒有可匯出的壁紙"
-  },
-  "dialog.export.noWallpaper.desc": {
-    "message": "目前背景是純色，請先切換到必應、自訂圖片或視訊壁紙。"
-  },
-  "dialog.export.notReady.desc": {
-    "message": "壁紙模組尚未準備好，請稍後重試。"
-  },
-  "dialog.export.noData.title": {
-    "message": "沒有可匯出的壁紙"
-  },
-  "dialog.export.noData.desc": {
-    "message": "目前壁紙的資料不存在，或本地儲存已被清除。"
-  },
-  "dialog.export.ok": {
-    "message": "知道了"
-  },
-  "dialog.export.exporting": {
-    "message": "匯出中…"
-  },
-  "search.placeholder": {
-    "message": "搜尋網頁..."
-  },
-  "search.ariaLabel": {
-    "message": "搜尋網頁"
-  },
-  "search.button.ariaLabel": {
-    "message": "執行搜尋"
-  },
-  "settings.toggle.ariaLabel": {
-    "message": "開啟設定"
-  },
-  "settings.close.ariaLabel": {
-    "message": "關閉設定"
-  },
-  "settings.panel.ariaLabel": {
-    "message": "設定面板"
-  },
-  "clock.ariaLabel": {
-    "message": "目前時間"
-  },
-  "bookmarks.empty": {
-    "message": "無書籤"
-  },
-  "export.filename.bing": {
-    "message": "unitab-必應壁紙-{1}.{2}"
-  },
-  "export.filename.image": {
-    "message": "unitab-圖片壁紙.{1}"
-  },
-  "export.filename.video": {
-    "message": "unitab-視訊壁紙.{1}"
-  },
-  "unit.bytes": {
-    "message": "{1} B"
-  },
-  "unit.kb": {
-    "message": "{1} KB"
-  },
-  "unit.mb": {
-    "message": "{1} MB"
-  },
-  "unit.gb": {
-    "message": "{1} GB"
-  },
-  "unit.tb": {
-    "message": "{1} TB"
-  },
-  "bing.meta.fetching": {
-    "message": "正在獲取…"
-  },
-  "bing.meta.failed": {
-    "message": "獲取失敗：{1}"
-  },
-  "bing.wallpaper": {
-    "message": "必應每日壁紙"
-  },
-  "image.wallpaper.uploaded": {
-    "message": "自訂圖片 · {1}"
-  },
-  "image.wallpaper.url": {
-    "message": "自訂圖片（連結）"
-  },
-  "image.wallpaper.unset": {
-    "message": "自訂圖片（未設定）"
-  },
-  "video.wallpaper": {
-    "message": "視訊壁紙"
-  },
-  "color.wallpaper": {
-    "message": "純色背景"
-  },
-  "wallpaper.unset": {
-    "message": "未設定"
-  },
-  "preview.action.clear.busy": {
-    "message": "清空中…"
-  },
-  "preview.action.clear.done": {
-    "message": "已清空"
-  },
-  "preview.action.clear.failed": {
-    "message": "清空失敗"
-  },
-  "preview.action.regen.busy": {
-    "message": "生成中…"
-  },
-  "preview.action.regen.done": {
-    "message": "已生成"
-  },
-  "preview.action.regen.failed": {
-    "message": "生成失敗"
-  },
-  "preview.action.regen.none": {
-    "message": "無需生成"
-  },
-  "preview.action.regen.noData": {
-    "message": "無資料"
-  },
-  "preview.action.repick.busy": {
-    "message": "拾取中…"
-  },
-  "preview.action.repick.done": {
-    "message": "已拾取"
-  },
-  "preview.action.repick.failed": {
-    "message": "拾取失敗"
-  },
-  "preview.action.repick.none": {
-    "message": "無需拾取"
-  },
-  "toast.settingsSaved": {
-    "message": "設定已儲存"
-  },
-  "toast.copied": {
-    "message": "已複製到剪貼簿"
-  },
-  "toast.copyFailed": {
-    "message": "複製失敗"
-  }
+  "extName": "UniTab",
+  "extDescription": "Minimalist frosted glass new tab page with customizable background and search engine, supports search suggestions.",
+  "general.cancel": "取消",
+  "general.confirm": "確認",
+  "general.ok": "確定",
+  "general.close": "關閉",
+  "general.save": "儲存",
+  "general.apply": "套用",
+  "general.refresh": "重新整理",
+  "general.export": "匯出",
+  "general.reset": "重設",
+  "general.clear": "清除",
+  "general.delete": "刪除",
+  "general.error": "錯誤",
+  "general.success": "成功",
+  "general.loading": "載入中…",
+  "general.unknown": "未知",
+  "general.none": "無",
+  "general.auto": "自動",
+  "settings.title": "設定",
+  "settings.tabs.label": "設定分類",
+  "settings.tabs.background": "背景",
+  "settings.tabs.search": "搜尋",
+  "settings.tabs.display": "顯示",
+  "settings.tabs.advanced": "進階",
+  "settings.lang.select": "語言",
+  "settings.lang.auto": "跟隨系統",
+  "settings.lang.zh_CN": "簡體中文",
+  "settings.lang.zh_TW": "繁體中文",
+  "settings.lang.en": "English",
+  "settings.bg.source": "背景來源",
+  "settings.bg.source.bing": "必應每日壁紙",
+  "settings.bg.source.image": "自訂圖片",
+  "settings.bg.source.color": "純色",
+  "settings.bg.source.video": "視訊壁紙",
+  "settings.bg.refresh": "重新整理壁紙",
+  "settings.bg.upload": "選擇圖片",
+  "settings.bg.url.placeholder": "https://...",
+  "settings.bg.url.apply": "套用",
+  "settings.bg.url.label": "或輸入圖片連結",
+  "settings.bg.url.error.empty": "請輸入圖片連結",
+  "settings.bg.url.error.invalid": "連結格式不合法",
+  "settings.bg.url.error.scheme": "僅支援 http/https 連結",
+  "settings.bg.file.noFile": "未選擇檔案",
+  "settings.bg.file.uploaded": "已上傳圖片",
+  "settings.bg.file.loadFailed": "圖片載入失敗",
+  "settings.bg.file.selectImage": "請選擇圖片檔案",
+  "settings.bg.color.custom": "自訂顏色",
+  "settings.bg.color.label": "背景顏色",
+  "settings.bg.video.select": "選擇視訊",
+  "settings.bg.video.noFile": "未選擇檔案",
+  "settings.bg.video.selectVideo": "請選擇視訊檔案",
+  "settings.bg.video.loadFailed": "視訊儲存失敗",
+  "settings.bg.video.sound": "開啟聲音",
+  "settings.bg.video.volume": "音量",
+  "settings.bg.video.loop": "循環播放",
+  "settings.bg.video.onEnded": "播放結束後",
+  "settings.bg.video.onEnded.black": "黑畫面",
+  "settings.bg.video.onEnded.lastframe": "顯示最後一幀",
+  "settings.bg.video.onEnded.customimage": "顯示自訂圖片背景",
+  "settings.bg.video.onEnded.bing": "顯示必應壁紙",
+  "settings.bg.video.sizeWarning": "檔案大小 {1}MB，較大的視訊可能導致瀏覽器卡頓。是否繼續使用？",
+  "settings.bg.blur": "背景模糊",
+  "settings.bg.blur.value": "{1}px",
+  "settings.bg.overlayOpacity": "蒙版不透明度",
+  "settings.bg.overlayOpacity.value": "{1}%",
+  "settings.bg.overlayColor": "蒙版顏色",
+  "settings.search.engine": "預設搜尋引擎",
+  "settings.search.engine.google": "Google",
+  "settings.search.engine.bing": "Bing",
+  "settings.search.engine.sogou": "搜狗",
+  "settings.search.engine.baidu": "百度",
+  "settings.display.seconds": "顯示秒數",
+  "settings.display.bookmarks": "常用網址 Dock 列",
+  "settings.display.cursorEffect": "滑鼠特效",
+  "settings.display.cursorStyle": "特效樣式",
+  "settings.display.cursorStyle.confetti": "彩紙",
+  "settings.display.cursorStyle.rain": "落雨",
+  "settings.display.cursorStyle.bubble": "氣泡",
+  "settings.display.cursorStyle.star": "星光",
+  "settings.display.cursorStyle.kivotos": "基沃托斯",
+  "settings.display.glassRadius": "元件圓角",
+  "settings.display.glassRadius.value": "{1}px",
+  "settings.display.glassStyle": "玻璃效果",
+  "settings.display.glassStyle.frosted": "毛玻璃",
+  "settings.display.glassStyle.liquid": "液態玻璃",
+  "settings.display.glassStyle.matte": "磨砂質感",
+  "settings.advanced.intro": "這些工具用於匯出壁紙、維護預覽快取和清理本地資料。操作只影響本擴充功能自己的儲存空間。",
+  "settings.advanced.wallpaper.title": "壁紙工具",
+  "settings.advanced.wallpaper.export.title": "匯出目前壁紙",
+  "settings.advanced.wallpaper.export.desc": "把目前使用的必應、自訂圖片或視訊壁紙儲存到瀏覽器的下載資料夾。",
+  "settings.advanced.wallpaper.export.hint": "目前：{1}",
+  "settings.advanced.preview.title": "預覽維護",
+  "settings.advanced.preview.status.loading": "正在讀取預覽狀態…",
+  "settings.advanced.preview.status.noPreview": "純色背景不使用壁紙預覽。",
+  "settings.advanced.preview.status.cannotRead": "目前預覽：無法讀取。",
+  "settings.advanced.preview.status.reading": "目前預覽：正在讀取…",
+  "settings.advanced.preview.status.cached": "目前預覽：已快取（{1}） · 預覽色 {2}",
+  "settings.advanced.preview.status.noCache": "目前預覽：未快取，可點擊「重新生成目前預覽」。",
+  "settings.advanced.preview.status.readFailed": "目前預覽：讀取失敗。",
+  "settings.advanced.preview.clear.title": "清空預覽緩衝區",
+  "settings.advanced.preview.clear.desc": "刪除必應、圖片、視訊三種壁紙的預覽快取；目前壁紙不會被刪除。",
+  "settings.advanced.preview.clear.btn": "清空",
+  "settings.advanced.preview.clear.busy": "清空中…",
+  "settings.advanced.preview.clear.done": "已清空",
+  "settings.advanced.preview.clear.failed": "清空失敗",
+  "settings.advanced.preview.regen.title": "重新生成目前預覽",
+  "settings.advanced.preview.regen.desc": "按目前壁紙重新截取一張低解析度預覽，並同步更新預覽色。",
+  "settings.advanced.preview.regen.btn": "重新生成",
+  "settings.advanced.preview.regen.busy": "生成中…",
+  "settings.advanced.preview.regen.done": "已生成",
+  "settings.advanced.preview.regen.failed": "生成失敗",
+  "settings.advanced.preview.regen.none": "無需生成",
+  "settings.advanced.preview.regen.noData": "無資料",
+  "settings.advanced.preview.repick.title": "重新拾取預覽色",
+  "settings.advanced.preview.repick.desc": "從目前預覽或壁紙重新計算佔位色，不重新生成預覽圖。",
+  "settings.advanced.preview.repick.btn": "重新拾取",
+  "settings.advanced.preview.repick.busy": "拾取中…",
+  "settings.advanced.preview.repick.done": "已拾取",
+  "settings.advanced.preview.repick.failed": "拾取失敗",
+  "settings.advanced.preview.repick.none": "無需拾取",
+  "settings.advanced.storage.title": "儲存空間與快取",
+  "settings.advanced.storage.status.loading": "正在讀取本地儲存空間佔用…",
+  "settings.advanced.storage.status.usage": "本地儲存空間佔用：約{1}{2}",
+  "settings.advanced.storage.status.cannotRead": "本地儲存空間佔用：無法讀取。",
+  "settings.advanced.storage.status.unsupported": "目前瀏覽器不支援儲存空間佔用查詢。",
+  "settings.advanced.storage.status.readFailed": "本地儲存空間佔用：讀取失敗。",
+  "settings.advanced.storage.clearBing.title": "清除必應壁紙快取",
+  "settings.advanced.storage.clearBing.desc": "刪除最近一張必應壁紙的本地快取；下次使用必應壁紙時會重新下載。",
+  "settings.advanced.storage.clearBing.btn": "清除快取",
+  "settings.advanced.storage.clearBing.busy": "清理中…",
+  "settings.advanced.storage.clearBing.success.title": "必應快取已清除",
+  "settings.advanced.storage.clearBing.success.desc": "下次使用必應壁紙時會重新下載最新壁紙。",
+  "settings.advanced.storage.clearBing.failed.title": "清除失敗",
+  "settings.advanced.storage.clearBing.failed.desc": "{1}",
+  "settings.advanced.danger.title": "危險區域",
+  "settings.advanced.danger.resetAll.title": "清空全部設定",
+  "settings.advanced.danger.resetAll.desc": "刪除全部設定、壁紙、預覽和快取，並恢復首次安裝狀態。此操作無法復原。",
+  "settings.advanced.danger.resetAll.btn": "清空全部設定",
+  "settings.advanced.danger.resetAll.confirmTitle": "清空全部設定？",
+  "settings.advanced.danger.resetAll.confirmMsg": "這會刪除所有設定、壁紙、預覽和快取，且無法復原。請手動輸入下面的警告文字以確認：",
+  "settings.advanced.danger.resetAll.phrase": "我確認清空全部配置且無法恢復",
+  "settings.advanced.danger.resetAll.inputLabel": "警告文字",
+  "settings.advanced.danger.resetAll.inputPlaceholder": "在此手動輸入上面的文字",
+  "settings.advanced.danger.resetAll.error.paste": "此輸入框禁止貼上，請手動輸入警告文字。",
+  "settings.advanced.danger.resetAll.error.drop": "此輸入框禁止拖放文字，請手動輸入警告文字。",
+  "settings.advanced.danger.resetAll.error.mismatch": "輸入內容不匹配，請重新輸入。",
+  "settings.advanced.danger.resetAll.error.incomplete": "請完整輸入上面的警告文字。",
+  "settings.advanced.danger.resetAll.busy": "正在清空…",
+  "settings.advanced.danger.resetAll.done": "已清空",
+  "settings.advanced.danger.resetAll.success.title": "已清空全部設定",
+  "settings.advanced.danger.resetAll.success.desc": "頁面將重新載入，恢復首次安裝狀態。",
+  "settings.advanced.danger.resetAll.partial.title": "設定已清除，但快取清理不完整",
+  "settings.advanced.danger.resetAll.partial.desc": "設定已清除，但部分本地快取可能仍在。頁面將重新載入。",
+  "settings.advanced.danger.resetAll.reloadBtn": "重新載入",
+  "settings.footer.reset": "恢復預設設定",
+  "dialog.confirm.title": "確認",
+  "dialog.confirm.cancel": "取消",
+  "dialog.confirm.ok": "確定",
+  "dialog.export.success.title": "匯出完成",
+  "dialog.export.success.desc": "{1} ({2})",
+  "dialog.export.browser.title": "已交給瀏覽器下載",
+  "dialog.export.browser.desc": "{1}\nIf browser opened the image directly, right-click to save.",
+  "dialog.export.failed.title": "匯出失敗",
+  "dialog.export.failed.desc": "Download blocked or failed by browser, check download permissions for this site.\n{1}",
+  "dialog.export.noWallpaper.title": "沒有可匯出的壁紙",
+  "dialog.export.noWallpaper.desc": "目前背景是純色，請先切換到必應、自訂圖片或視訊壁紙。",
+  "dialog.export.notReady.desc": "壁紙模組尚未準備好，請稍後重試。",
+  "dialog.export.noData.title": "沒有可匯出的壁紙",
+  "dialog.export.noData.desc": "目前壁紙的資料不存在，或本地儲存已被清除。",
+  "dialog.export.ok": "知道了",
+  "dialog.export.exporting": "匯出中…",
+  "search.placeholder": "搜尋網頁...",
+  "search.ariaLabel": "搜尋網頁",
+  "search.button.ariaLabel": "執行搜尋",
+  "settings.toggle.ariaLabel": "開啟設定",
+  "settings.close.ariaLabel": "關閉設定",
+  "settings.panel.ariaLabel": "設定面板",
+  "clock.ariaLabel": "目前時間",
+  "bookmarks.empty": "無書籤",
+  "export.filename.bing": "unitab-必應壁紙-{1}.{2}",
+  "export.filename.image": "unitab-圖片壁紙.{1}",
+  "export.filename.video": "unitab-視訊壁紙.{1}",
+  "unit.bytes": "{1} B",
+  "unit.kb": "{1} KB",
+  "unit.mb": "{1} MB",
+  "unit.gb": "{1} GB",
+  "unit.tb": "{1} TB",
+  "bing.meta.fetching": "正在獲取…",
+  "bing.meta.failed": "獲取失敗：{1}",
+  "bing.wallpaper": "必應每日壁紙",
+  "image.wallpaper.uploaded": "自訂圖片 · {1}",
+  "image.wallpaper.url": "自訂圖片（連結）",
+  "image.wallpaper.unset": "自訂圖片（未設定）",
+  "video.wallpaper": "視訊壁紙",
+  "color.wallpaper": "純色背景",
+  "wallpaper.unset": "未設定",
+  "preview.action.clear.busy": "清空中…",
+  "preview.action.clear.done": "已清空",
+  "preview.action.clear.failed": "清空失敗",
+  "preview.action.regen.busy": "生成中…",
+  "preview.action.regen.done": "已生成",
+  "preview.action.regen.failed": "生成失敗",
+  "preview.action.regen.none": "無需生成",
+  "preview.action.regen.noData": "無資料",
+  "preview.action.repick.busy": "拾取中…",
+  "preview.action.repick.done": "已拾取",
+  "preview.action.repick.failed": "拾取失敗",
+  "preview.action.repick.none": "無需拾取",
+  "toast.settingsSaved": "設定已儲存",
+  "toast.copied": "已複製到剪貼簿",
+  "toast.copyFailed": "複製失敗",
+  "newtab.title": "新分頁"
 }
