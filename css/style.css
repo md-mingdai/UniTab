@@ -1131,6 +1131,44 @@ body {
   bottom: calc(100% + 4px);
 }
 
+/* Dropdown open/close animation (settings.js toggles [hidden] and the
+   .dropdown-closing class; the close commits [hidden] after the keyframe). */
+.custom-select-dropdown:not([hidden]):not(.dropdown-closing) {
+  animation: dropdown-in 0.18s var(--ease-out-expo);
+}
+
+.custom-select-dropdown.dropdown-closing {
+  animation: dropdown-out 0.18s var(--ease-out-expo) forwards;
+}
+
+.custom-select-wrapper.drop-up .custom-select-dropdown:not([hidden]):not(.dropdown-closing) {
+  animation-name: dropdown-in-up;
+}
+
+.custom-select-wrapper.drop-up .custom-select-dropdown.dropdown-closing {
+  animation-name: dropdown-out-up;
+}
+
+@keyframes dropdown-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes dropdown-in-up {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes dropdown-out {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(-6px) scale(0.98); }
+}
+
+@keyframes dropdown-out-up {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(6px) scale(0.98); }
+}
+
 .custom-select-option {
   width: 100%;
   padding: 10px 14px;
@@ -1389,37 +1427,6 @@ body {
 }
 
 /* Reset Button */
-.settings-footer {
-  padding-top: 8px;
-}
-
-.setting-btn-reset {
-  width: 100%;
-  padding: 12px 20px;
-  border: 1px solid rgb(var(--fg-rgb) / 0.12);
-  border-radius: 12px;
-  background: rgb(var(--fg-rgb) / 0.04);
-  color: var(--text-secondary);
-  font-size: 14px;
-  font-weight: 400;
-  font-family: inherit;
-  cursor: pointer;
-  transition:
-    background 0.2s var(--ease-out-expo),
-    color 0.2s var(--ease-out-expo),
-    border-color 0.2s var(--ease-out-expo);
-}
-
-.setting-btn-reset:hover {
-  background: rgba(255, 80, 80, 0.12);
-  color: #f87171;
-  border-color: rgba(248, 113, 113, 0.2);
-}
-
-.settings-footer[hidden] {
-  display: none;
-}
-
 /* ============================================
    Advanced Settings
    ============================================ */

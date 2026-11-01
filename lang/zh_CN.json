@@ -154,7 +154,6 @@
   "settings.advanced.danger.resetAll.partial.title": "配置已清除，但缓存清理不完整",
   "settings.advanced.danger.resetAll.partial.desc": "设置已清除，但部分本地缓存可能仍在。页面将重新加载。",
   "settings.advanced.danger.resetAll.reloadBtn": "重新加载",
-  "settings.footer.reset": "恢复默认设置",
   "dialog.confirm.title": "确认",
   "dialog.confirm.cancel": "取消",
   "dialog.confirm.ok": "确定",

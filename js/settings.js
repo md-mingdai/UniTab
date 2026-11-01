@@ -117,7 +117,6 @@ const Settings = (() => {
   let cursorStyleGroup, cursorStyleWrapper, cursorStyleTrigger, cursorStyleDropdown, cursorStyleLabel, cursorStyleNative;
   let glassStyleWrapper, glassStyleTrigger, glassStyleDropdown, glassStyleLabel, glassStyleNative;
   let glassRadiusSlider, glassRadiusDisplay;
-  let resetBtn, settingsFooter;
 
   /* Advanced tab */
   let advancedExportBtn, advancedExportHint;
@@ -140,7 +139,6 @@ const Settings = (() => {
     /* The closed panel is laid out (just invisible), so the tab indicator can be
        placed now, while the page is still in `preload` and nothing transitions. */
     moveIndicator(getActiveTab());
-    updateFooterVisibility(getActiveTab());
     migrateLegacyImage();
 
     /* Make sure the latest changes reach localStorage when the tab goes away. */
@@ -251,8 +249,6 @@ const Settings = (() => {
     glassRadiusSlider = document.getElementById('glass-radius-slider');
     glassRadiusDisplay = document.getElementById('radius-value-display');
 
-    resetBtn = document.getElementById('settings-reset');
-    settingsFooter = document.getElementById('settings-footer');
 
     /* Advanced tab */
     advancedExportBtn = document.getElementById('advanced-export-wallpaper');
@@ -316,7 +312,6 @@ const Settings = (() => {
        so re-measure it now that the translations are in the DOM. Reading the
        offset values forces a synchronous reflow, so this is accurate. */
     moveIndicator(getActiveTab());
-    updateFooterVisibility(getActiveTab());
   }
 
   function initLanguageSelector() {
@@ -326,32 +321,7 @@ const Settings = (() => {
     languageSelectNative.value = val;
     updateLanguageLabel(val);
     updateLanguageDropdown(val);
-
-    languageSelectTrigger.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const isOpen = !languageSelectDropdown.hidden;
-      languageSelectDropdown.hidden = isOpen;
-      languageSelectTrigger.classList.toggle('open', !isOpen);
-      languageSelectWrapper.classList.remove('drop-up');
-      if (!isOpen && languageSelectDropdown.getBoundingClientRect().bottom > panel.getBoundingClientRect().bottom - 12) {
-        languageSelectWrapper.classList.add('drop-up');
-      }
-    });
-    languageSelectDropdown.querySelectorAll('.custom-select-option').forEach(opt => {
-      opt.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const v = opt.dataset.value;
-        languageSelectDropdown.hidden = true;
-        languageSelectTrigger.classList.remove('open');
-        setLocale(v);
-      });
-    });
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('#language-select-wrapper')) {
-        languageSelectDropdown.hidden = true;
-        languageSelectTrigger.classList.remove('open');
-      }
-    });
+    initCustomSelect(languageSelectWrapper, (v) => setLocale(v));
   }
 
   /* --- Confirm Dialog --- */
@@ -1028,16 +998,9 @@ const Settings = (() => {
       tabPanels.forEach(p => {
         p.hidden = p.dataset.tabPanel !== tabName;
       });
-      updateFooterVisibility(tabName);
     });
     moveIndicator(tabName);
     if (tabName === 'advanced') refreshAdvancedInfo();
-  }
-
-  /* The Advanced tab has its own danger zone, so the per-tab "restore
-     defaults" footer would be redundant (and has no defaults to restore). */
-  function updateFooterVisibility(tabName) {
-    if (settingsFooter) settingsFooter.hidden = tabName === 'advanced';
   }
 
   function moveIndicator(tabName) {
@@ -1297,36 +1260,12 @@ const Settings = (() => {
     });
 
     /* --- Engine select --- */
-    engineSelectTrigger.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const isOpen = !engineSelectDropdown.hidden;
-      if (isOpen) {
-        engineSelectDropdown.hidden = true;
-        engineSelectTrigger.classList.remove('open');
-      } else {
-        engineSelectDropdown.hidden = false;
-        engineSelectTrigger.classList.add('open');
-      }
-    });
-    engineSelectDropdown.querySelectorAll('.custom-select-option').forEach(opt => {
-      opt.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const val = opt.dataset.value;
-        engineSelectNative.value = val;
-        state.engine = val;
-        updateEngineLabel(val);
-        updateEngineDropdown(val);
-        applyToDom('engine', val);
-        saveSettings();
-        engineSelectDropdown.hidden = true;
-        engineSelectTrigger.classList.remove('open');
-      });
-    });
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('#engine-select-wrapper')) {
-        engineSelectDropdown.hidden = true;
-        engineSelectTrigger.classList.remove('open');
-      }
+    initCustomSelect(engineSelectWrapper, (val) => {
+      state.engine = val;
+      updateEngineLabel(val);
+      updateEngineDropdown(val);
+      applyToDom('engine', val);
+      saveSettings();
     });
 
     /* --- Show seconds toggle --- */
@@ -1373,65 +1312,23 @@ const Settings = (() => {
     });
 
     /* --- Cursor style select --- */
-    cursorStyleTrigger.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const isOpen = !cursorStyleDropdown.hidden;
-      cursorStyleDropdown.hidden = isOpen;
-      cursorStyleTrigger.classList.toggle('open', !isOpen);
-    });
-    cursorStyleDropdown.querySelectorAll('.custom-select-option').forEach(opt => {
-      opt.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const val = opt.dataset.value;
-        cursorStyleNative.value = val;
-        state.cursorEffectStyle = val;
-        updateCursorStyleLabel(val);
-        updateCursorStyleDropdown(val);
-        applyToDom('cursorEffectStyle', val);
-        saveSettings();
-        cursorStyleDropdown.hidden = true;
-        cursorStyleTrigger.classList.remove('open');
-      });
-    });
-    /* Close dropdown on outside click */
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('#cursor-style-wrapper')) {
-        cursorStyleDropdown.hidden = true;
-        cursorStyleTrigger.classList.remove('open');
-      }
+    /* --- Cursor style select --- */
+    initCustomSelect(cursorStyleWrapper, (val) => {
+      state.cursorEffectStyle = val;
+      updateCursorStyleLabel(val);
+      updateCursorStyleDropdown(val);
+      applyToDom('cursorEffectStyle', val);
+      saveSettings();
     });
 
     /* --- Glass style select --- */
-    glassStyleTrigger.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const isOpen = !glassStyleDropdown.hidden;
-      glassStyleDropdown.hidden = isOpen;
-      glassStyleTrigger.classList.toggle('open', !isOpen);
-      /* the last control of a short tab: its list would be cut off by the panel's edge */
-      glassStyleWrapper.classList.remove('drop-up');
-      if (!isOpen && glassStyleDropdown.getBoundingClientRect().bottom > panel.getBoundingClientRect().bottom - 12) {
-        glassStyleWrapper.classList.add('drop-up');
-      }
-    });
-    glassStyleDropdown.querySelectorAll('.custom-select-option').forEach(opt => {
-      opt.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const val = opt.dataset.value;
-        glassStyleNative.value = val;
-        state.glassStyle = val;
-        updateGlassStyleLabel(val);
-        updateGlassStyleDropdown(val);
-        applyToDom('glassStyle', val);
-        saveSettings();
-        glassStyleDropdown.hidden = true;
-        glassStyleTrigger.classList.remove('open');
-      });
-    });
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('#glass-style-wrapper')) {
-        glassStyleDropdown.hidden = true;
-        glassStyleTrigger.classList.remove('open');
-      }
+    /* --- Glass style select --- */
+    initCustomSelect(glassStyleWrapper, (val) => {
+      state.glassStyle = val;
+      updateGlassStyleLabel(val);
+      updateGlassStyleDropdown(val);
+      applyToDom('glassStyle', val);
+      saveSettings();
     });
 
     /* --- Glass radius slider --- */
@@ -1523,31 +1420,12 @@ const Settings = (() => {
     });
 
     /* --- Video on-ended select --- */
-    videoOnEndedTrigger.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const isOpen = !videoOnEndedDropdown.hidden;
-      videoOnEndedDropdown.hidden = isOpen;
-      videoOnEndedTrigger.classList.toggle('open', !isOpen);
-    });
-    videoOnEndedDropdown.querySelectorAll('.custom-select-option').forEach(opt => {
-      opt.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const val = opt.dataset.value;
-        videoOnEndedNative.value = val;
-        state.bgVideoOnEnded = val;
-        updateVideoOnEndedLabel(val);
-        updateVideoOnEndedDropdown(val);
-        Background.setOnEnded(val, getVideoEndCallback());
-        saveSettings();
-        videoOnEndedDropdown.hidden = true;
-        videoOnEndedTrigger.classList.remove('open');
-      });
-    });
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('#video-onended-wrapper')) {
-        videoOnEndedDropdown.hidden = true;
-        videoOnEndedTrigger.classList.remove('open');
-      }
+    initCustomSelect(videoOnEndedTrigger.closest('.custom-select-wrapper'), (val) => {
+      state.bgVideoOnEnded = val;
+      updateVideoOnEndedLabel(val);
+      updateVideoOnEndedDropdown(val);
+      Background.setOnEnded(val, getVideoEndCallback());
+      saveSettings();
     });
 
     /* While a slider is held, the preview follows it 1:1 (.is-dragging in css). */
@@ -1573,78 +1451,6 @@ const Settings = (() => {
     if (advancedResetAll) {
       advancedResetAll.addEventListener('click', resetAllConfiguration);
     }
-
-    /* --- Reset (per-tab) --- */
-    resetBtn.addEventListener('click', () => {
-      const activeTab = getActiveTab();
-      switch (activeTab) {
-        case 'bg':
-          /* 丢弃仍在生成中的预览 / 取色结果：否则重置完成后，迟到的结果会把
-             刚刚清空的预览色又写回来。 */
-          pickSeq.bing++;
-          pickSeq.image++;
-          pickSeq.video++;
-          state.bgSource = DEFAULTS.bgSource;
-          state.bgBlur = DEFAULTS.bgBlur;
-          state.overlayOpacity = DEFAULTS.overlayOpacity;
-          state.overlayColor = DEFAULTS.overlayColor;
-          state.bgImageData = DEFAULTS.bgImageData;
-          state.bgImageStored = DEFAULTS.bgImageStored;
-          state.bgImageFileName = DEFAULTS.bgImageFileName;
-          state.bgImageUrl = DEFAULTS.bgImageUrl;
-          state.bgBingUrl = DEFAULTS.bgBingUrl;
-          state.bgBingCopyright = DEFAULTS.bgBingCopyright;
-          state.bgColor = DEFAULTS.bgColor;
-          state.bgThemeColor = DEFAULTS.bgThemeColor;
-          state.bgThemeColorBing = DEFAULTS.bgThemeColorBing;
-          state.bgThemeColorImage = DEFAULTS.bgThemeColorImage;
-          state.bgThemeColorVideo = DEFAULTS.bgThemeColorVideo;
-          state.bgVideoVolume = DEFAULTS.bgVideoVolume;
-          state.bgVideoLoop = DEFAULTS.bgVideoLoop;
-          state.bgVideoOnEnded = DEFAULTS.bgVideoOnEnded;
-          state.bgVideoFileName = DEFAULTS.bgVideoFileName;
-          state.bgVideoSoundOn = DEFAULTS.bgVideoSoundOn;
-          saveSettings();
-          syncFormToState();
-          applyAllToDom();
-          applyBackground();
-          if (bgUrlInput) bgUrlInput.value = '';
-          showUrlError('');
-          bgVideoName.textContent = I18n.t('settings.bg.video.noFile');
-          Background.clearVideoBlob();
-          Background.clearImageBlob();
-          Background.clearBingCache();
-          Background.clearAllPreviews();
-          setBingMeta('');
-          /* Back on the default source: fetch today's wallpaper, as a first run does. */
-          if (state.bgSource === 'bing' && !state.bgBingUrl && bgBingRefresh) {
-            bgBingRefresh.click();
-          }
-          break;
-        case 'search':
-          state.engine = DEFAULTS.engine;
-          saveSettings();
-          syncFormToState();
-          applyToDom('engine', state.engine);
-          break;
-        case 'display':
-          state.showSeconds = DEFAULTS.showSeconds;
-          state.showBookmarks = DEFAULTS.showBookmarks;
-          state.showCursorEffect = DEFAULTS.showCursorEffect;
-          state.cursorEffectStyle = DEFAULTS.cursorEffectStyle;
-          state.glassStyle = DEFAULTS.glassStyle;
-          state.glassRadius = DEFAULTS.glassRadius;
-          saveSettings();
-          syncFormToState();
-          applyToDom('showSeconds', state.showSeconds);
-          applyToDom('showBookmarks', state.showBookmarks);
-          applyToDom('showCursorEffect', state.showCursorEffect);
-          applyToDom('cursorEffectStyle', state.cursorEffectStyle);
-          applyToDom('glassStyle', state.glassStyle);
-          applyToDom('glassRadius', state.glassRadius);
-          break;
-      }
-    });
   }
 
   /* ================================================================
@@ -2427,17 +2233,98 @@ const Settings = (() => {
     return parts.join(' · ');
   }
 
+  /* --- Dropdown open/close animation ---
+     Toggling [hidden] alone pops the list instantly. Instead we play a short
+     fade/slide keyframe on open and a matching reverse one on close, committing
+     [hidden] only after the close animation finishes. A pending close timer is
+     cancelled by an immediate re-open, so rapid toggling stays responsive. */
+  const DROPDOWN_ANIM_MS = 200;
+
+  function showDropdown(dropdown, trigger) {
+    if (!dropdown) return;
+    if (dropdown._dropdownHideTimer) {
+      clearTimeout(dropdown._dropdownHideTimer);
+      dropdown._dropdownHideTimer = null;
+    }
+    dropdown.classList.remove('dropdown-closing');
+    dropdown.hidden = false;
+    if (trigger) trigger.classList.add('open');
+    /* Force reflow so re-opening restarts the animation (the class alone is
+       already present after the first open, so no transition would re-run). */
+    void dropdown.offsetWidth;
+  }
+
+  function hideDropdown(dropdown, trigger) {
+    if (!dropdown) return;
+    if (trigger) trigger.classList.remove('open');
+    if (dropdown.hidden || dropdown.classList.contains('dropdown-closing')) return;
+    if (reduceMotionQuery && reduceMotionQuery.matches) {
+      dropdown.hidden = true;
+      return;
+    }
+    dropdown.classList.add('dropdown-closing');
+    dropdown._dropdownHideTimer = setTimeout(() => {
+      dropdown.hidden = true;
+      dropdown.classList.remove('dropdown-closing');
+      dropdown._dropdownHideTimer = null;
+    }, DROPDOWN_ANIM_MS);
+  }
+
+  function isDropdownOpen(dropdown) {
+    return !!dropdown && !dropdown.hidden && !dropdown.classList.contains('dropdown-closing');
+  }
+
+  /* --- Custom select template ---
+     One wiring for every dropdown (engine / cursor style / glass style / video
+     on-ended / language): the trigger toggles the list with the open/close
+     animation, a selected option runs the caller's onSelect callback, and the
+     list flips upward when the panel edge would cut it off. Adding a dropdown
+     later is just markup plus one call here. */
+  function initCustomSelect(wrapper, onSelect) {
+    if (!wrapper) return;
+    const trigger = wrapper.querySelector('.custom-select-trigger');
+    const dropdown = wrapper.querySelector('.custom-select-dropdown');
+    if (!trigger || !dropdown) return;
+
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (isDropdownOpen(dropdown)) {
+        hideDropdown(dropdown, trigger);
+      } else {
+        closeAllDropdowns(); /* only one list at a time */
+        showDropdown(dropdown, trigger);
+        /* Last control of a short tab: flip up instead of clipping at the panel edge. */
+        wrapper.classList.remove('drop-up');
+        if (dropdown.getBoundingClientRect().bottom > panel.getBoundingClientRect().bottom - 12) {
+          wrapper.classList.add('drop-up');
+        }
+      }
+    });
+
+    dropdown.querySelectorAll('.custom-select-option').forEach(opt => {
+      opt.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const val = opt.dataset.value;
+        const native = wrapper.querySelector('select');
+        if (native) native.value = val;
+        onSelect(val);
+        hideDropdown(dropdown, trigger);
+      });
+    });
+
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('.custom-select-wrapper') !== wrapper) {
+        hideDropdown(dropdown, trigger);
+      }
+    });
+  }
+
   function closeAllDropdowns() {
-    if (engineSelectDropdown) engineSelectDropdown.hidden = true;
-    if (engineSelectTrigger) engineSelectTrigger.classList.remove('open');
-    if (cursorStyleDropdown) cursorStyleDropdown.hidden = true;
-    if (cursorStyleTrigger) cursorStyleTrigger.classList.remove('open');
-    if (glassStyleDropdown) glassStyleDropdown.hidden = true;
-    if (glassStyleTrigger) glassStyleTrigger.classList.remove('open');
-    if (videoOnEndedDropdown) videoOnEndedDropdown.hidden = true;
-    if (videoOnEndedTrigger) videoOnEndedTrigger.classList.remove('open');
-    if (languageSelectDropdown) languageSelectDropdown.hidden = true;
-    if (languageSelectTrigger) languageSelectTrigger.classList.remove('open');
+    hideDropdown(engineSelectDropdown, engineSelectTrigger);
+    hideDropdown(cursorStyleDropdown, cursorStyleTrigger);
+    hideDropdown(glassStyleDropdown, glassStyleTrigger);
+    hideDropdown(videoOnEndedDropdown, videoOnEndedTrigger);
+    hideDropdown(languageSelectDropdown, languageSelectTrigger);
   }
 
   /* --- Panel state --- */

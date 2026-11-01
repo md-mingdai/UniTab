@@ -154,7 +154,6 @@
   "settings.advanced.danger.resetAll.partial.title": "Configuration Cleared, but Cache Cleanup Incomplete",
   "settings.advanced.danger.resetAll.partial.desc": "Settings cleared, but some local cache may remain. Page will reload.",
   "settings.advanced.danger.resetAll.reloadBtn": "Reload",
-  "settings.footer.reset": "Restore Default Settings",
   "dialog.confirm.title": "Confirm",
   "dialog.confirm.cancel": "Cancel",
   "dialog.confirm.ok": "OK",

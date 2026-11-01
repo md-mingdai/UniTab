@@ -154,7 +154,6 @@
   "settings.advanced.danger.resetAll.partial.title": "設定已清除，但快取清理不完整",
   "settings.advanced.danger.resetAll.partial.desc": "設定已清除，但部分本地快取可能仍在。頁面將重新載入。",
   "settings.advanced.danger.resetAll.reloadBtn": "重新載入",
-  "settings.footer.reset": "恢復預設設定",
   "dialog.confirm.title": "確認",
   "dialog.confirm.cancel": "取消",
   "dialog.confirm.ok": "確定",
