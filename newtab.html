@@ -274,12 +274,44 @@
               <button class="custom-select-option" data-value="bing" data-i18n="settings.search.engine.bing">Bing</button>
               <button class="custom-select-option" data-value="sogou" data-i18n="settings.search.engine.sogou">搜狗</button>
               <button class="custom-select-option" data-value="baidu" data-i18n="settings.search.engine.baidu">百度</button>
+              <button class="custom-select-option" data-value="custom" data-i18n="settings.search.engine.custom">自定义</button>
             </div>
           </div>
           <select id="engine-select" class="setting-select-hidden" hidden>
             <option value="google">Google</option>
             <option value="bing">Bing</option>
             <option value="sogou">搜狗</option>
+            <option value="baidu">百度</option>
+            <option value="custom">自定义</option>
+          </select>
+        </div>
+
+        <!-- Custom engine configuration: shown only when engine === custom -->
+        <div class="setting-group custom-engine-config" id="custom-engine-config" hidden>
+          <label class="setting-label" for="custom-engine-url" data-i18n="settings.search.custom.url">搜索 URL</label>
+          <div class="custom-engine-url-row">
+            <input type="text" id="custom-engine-url" class="setting-input" spellcheck="false">
+            <button type="button" id="custom-engine-save" class="setting-btn-secondary"
+                    data-i18n="settings.search.custom.save">保存</button>
+          </div>
+          <span id="custom-engine-save-status" class="setting-save-status" aria-live="polite"></span>
+          <p class="setting-hint" data-i18n="settings.search.custom.urlHint">将 {{query}} 作为搜索关键词占位符，例如 https://example.com/search?q={{query}}。留空则使用默认搜索引擎。</p>
+
+          <label class="setting-label" for="custom-engine-suggest" data-i18n="settings.search.custom.suggest">联想 API</label>
+          <div class="custom-select-wrapper" id="custom-engine-suggest-wrapper">
+            <button class="custom-select-trigger" id="custom-engine-suggest-trigger" type="button">
+              <span id="custom-engine-suggest-label">Bing</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <div class="custom-select-dropdown" id="custom-engine-suggest-dropdown" hidden>
+              <button class="custom-select-option" data-value="google" data-i18n="settings.search.engine.google">Google</button>
+              <button class="custom-select-option" data-value="bing" data-i18n="settings.search.engine.bing">Bing</button>
+              <button class="custom-select-option" data-value="baidu" data-i18n="settings.search.engine.baidu">百度</button>
+            </div>
+          </div>
+          <select id="custom-engine-suggest" class="setting-select-hidden" hidden>
+            <option value="google">Google</option>
+            <option value="bing">Bing</option>
             <option value="baidu">百度</option>
           </select>
         </div>

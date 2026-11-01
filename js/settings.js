@@ -53,8 +53,14 @@ const Settings = (() => {
     google: 'settings.search.engine.google',
     bing: 'settings.search.engine.bing',
     sogou: 'settings.search.engine.sogou',
-    baidu: 'settings.search.engine.baidu'
+    baidu: 'settings.search.engine.baidu',
+    custom: 'settings.search.engine.custom'
   };
+  /* Custom engine config lives in its own keys (search.js reads them directly),
+     so they are not duplicated into the unitab_settings blob. The full reset
+     removes every unitab_* key, so these are cleared along with everything else. */
+  const CUSTOM_URL_KEY = 'unitab_engine_custom_url';
+  const CUSTOM_SUGGEST_KEY = 'unitab_engine_custom_suggest';
   const CURSOR_STYLE_LABEL_KEY = {
     confetti: 'settings.display.cursorStyle.confetti',
     rain: 'settings.display.cursorStyle.rain',
@@ -110,6 +116,8 @@ const Settings = (() => {
   let blurSlider, blurDisplay, opacitySlider, opacityDisplay;
   let overlayColorSwatches, customColorTrigger, overlayColorInput, colorHexDisplay;
   let engineSelectWrapper, engineSelectTrigger, engineSelectDropdown, engineSelectLabel, engineSelectNative;
+  let customEngineConfig, customEngineUrlInput, customEngineSaveBtn, customEngineSaveStatus;
+  let customSuggestWrapper, customSuggestTrigger, customSuggestDropdown, customSuggestLabel, customSuggestNative;
   let languageSelectWrapper, languageSelectTrigger, languageSelectDropdown, languageSelectLabel, languageSelectNative;
   let showSecondsToggle;
   let showBookmarksToggle;
@@ -221,6 +229,17 @@ const Settings = (() => {
     engineSelectDropdown = document.getElementById('engine-select-dropdown');
     engineSelectLabel = document.getElementById('engine-select-label');
     engineSelectNative = document.getElementById('engine-select');
+
+    /* Custom engine config (URL template + suggestion provider) */
+    customEngineConfig = document.getElementById('custom-engine-config');
+    customEngineUrlInput = document.getElementById('custom-engine-url');
+    customEngineSaveBtn = document.getElementById('custom-engine-save');
+    customEngineSaveStatus = document.getElementById('custom-engine-save-status');
+    customSuggestWrapper = document.getElementById('custom-engine-suggest-wrapper');
+    customSuggestTrigger = document.getElementById('custom-engine-suggest-trigger');
+    customSuggestDropdown = document.getElementById('custom-engine-suggest-dropdown');
+    customSuggestLabel = document.getElementById('custom-engine-suggest-label');
+    customSuggestNative = document.getElementById('custom-engine-suggest');
 
     /* Language select */
     languageSelectWrapper = document.getElementById('language-select-wrapper');
@@ -630,6 +649,8 @@ const Settings = (() => {
     engineSelectNative.value = state.engine;
     updateEngineLabel(state.engine);
     updateEngineDropdown(state.engine);
+    setCustomEngineConfigVisible(state.engine === 'custom');
+    syncCustomEngineConfig();
 
     /* Show seconds toggle */
     updateShowSecondsToggle(state.showSeconds);
@@ -912,6 +933,118 @@ const Settings = (() => {
     engineSelectDropdown.querySelectorAll('.custom-select-option').forEach(opt => {
       opt.classList.toggle('selected', opt.dataset.value === engineKey);
     });
+  }
+
+  /* --- Custom engine config --- */
+  function setCustomEngineConfigVisible(visible) {
+    if (customEngineConfig) customEngineConfig.hidden = !visible;
+  }
+
+  function customSuggestProvider() {
+    const v = localStorage.getItem(CUSTOM_SUGGEST_KEY);
+    return (v === 'google' || v === 'baidu') ? v : 'bing';
+  }
+
+  function updateCustomSuggestLabel(provider) {
+    if (!customSuggestLabel) return;
+    const key = provider === 'google'
+      ? 'settings.search.engine.google'
+      : provider === 'baidu'
+        ? 'settings.search.engine.baidu'
+        : 'settings.search.engine.bing';
+    customSuggestLabel.textContent = I18n.t(key);
+  }
+
+  function updateCustomSuggestDropdown(provider) {
+    if (!customSuggestDropdown) return;
+    customSuggestDropdown.querySelectorAll('.custom-select-option').forEach(opt => {
+      opt.classList.toggle('selected', opt.dataset.value === provider);
+    });
+  }
+
+  /* The template must contain the {{query}} placeholder and produce a real
+     http(s) URL once it is substituted. */
+  /* A blank field, or one holding only the bare scheme, counts as "no custom URL"
+     (the search then falls back to the default engine). */
+  function isEmptyCustomUrl(template) {
+    const t = (template || '').trim();
+    return t === '' || t === 'https://' || t === 'http://';
+  }
+
+  /* An empty template is allowed: it means "no custom URL", so the search falls
+     back to the default engine. A non-empty template must contain the {{query}}
+     placeholder and produce a real http(s) URL once it is substituted. */
+  function isValidCustomEngineUrl(template) {
+    const t = (template || '').trim();
+    if (isEmptyCustomUrl(t)) return true;
+    if (!t.includes('{{query}}')) return false;
+    try {
+      const u = new URL(t.replace('{{query}}', 'test'));
+      return u.protocol === 'http:' || u.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
+
+  function validateCustomEngineUrl() {
+    if (!customEngineUrlInput) return;
+    const ok = isValidCustomEngineUrl(customEngineUrlInput.value.trim());
+    customEngineUrlInput.setAttribute('aria-invalid', ok ? 'false' : 'true');
+  }
+
+  /* Default the scheme to https://: if the user typed a URL without an explicit
+     http(s) scheme, prepend https:// so "example.com/s?q={{query}}" is usable. */
+  function normalizeCustomEngineUrl(raw) {
+    let v = (raw || '').trim();
+    if (v && !/^https?:\/\//i.test(v)) v = 'https://' + v;
+    return v;
+  }
+
+  let customSaveTimer = 0;
+
+  function showCustomSaveStatus(text, ok) {
+    if (!customEngineSaveStatus) return;
+    customEngineSaveStatus.textContent = text;
+    customEngineSaveStatus.classList.toggle('saved', ok !== false);
+    customEngineSaveStatus.classList.toggle('error', ok === false);
+    clearTimeout(customSaveTimer);
+    customSaveTimer = setTimeout(() => {
+      if (customEngineSaveStatus) customEngineSaveStatus.textContent = '';
+    }, 1600);
+  }
+
+  /* Manual save: normalize the scheme, validate, and persist only when valid. */
+  function saveCustomEngineUrl() {
+    if (!customEngineUrlInput) return false;
+    const url = normalizeCustomEngineUrl(customEngineUrlInput.value);
+    if (url !== customEngineUrlInput.value) customEngineUrlInput.value = url;
+    validateCustomEngineUrl();
+    const ok = isValidCustomEngineUrl(url);
+    if (ok) {
+      /* A bare scheme (https://) means "no custom URL" -> store empty. */
+      localStorage.setItem(CUSTOM_URL_KEY, isEmptyCustomUrl(url) ? '' : url);
+      showCustomSaveStatus(I18n.t('settings.search.custom.saved'), true);
+    } else {
+      showCustomSaveStatus(I18n.t('settings.search.custom.invalid'), false);
+    }
+    return ok;
+  }
+
+  /* Populate the URL input and suggestion provider from localStorage, then mark
+     the config visible only when the custom engine is the active one. */
+  function syncCustomEngineConfig() {
+    if (!customEngineUrlInput) return;
+    if (customEngineSaveStatus) customEngineSaveStatus.textContent = '';
+    const stored = localStorage.getItem(CUSTOM_URL_KEY) || '';
+    /* An empty saved URL shows the bare https:// scheme as the starting point,
+       so the user only has to type the host + {{query}} part. */
+    const display = isEmptyCustomUrl(stored) ? 'https://' : stored;
+    if (customEngineUrlInput.value !== display) customEngineUrlInput.value = display;
+    const provider = customSuggestProvider();
+    if (customSuggestNative) customSuggestNative.value = provider;
+    updateCustomSuggestLabel(provider);
+    updateCustomSuggestDropdown(provider);
+    validateCustomEngineUrl();
   }
 
   function updateShowSecondsToggle(on) {
@@ -1264,8 +1397,40 @@ const Settings = (() => {
       state.engine = val;
       updateEngineLabel(val);
       updateEngineDropdown(val);
+      setCustomEngineConfigVisible(val === 'custom');
       applyToDom('engine', val);
       saveSettings();
+    });
+
+    /* --- Custom engine config --- */
+    if (customEngineUrlInput) {
+      /* Live validation only while typing; nothing is persisted until Save. */
+      customEngineUrlInput.addEventListener('input', () => {
+        validateCustomEngineUrl();
+        if (customEngineSaveStatus) customEngineSaveStatus.textContent = '';
+      });
+      customEngineUrlInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          saveCustomEngineUrl();
+        }
+      });
+      /* On commit (blur/change), show the https:// prefix but do not save. */
+      customEngineUrlInput.addEventListener('change', () => {
+        const url = normalizeCustomEngineUrl(customEngineUrlInput.value);
+        if (url !== customEngineUrlInput.value) customEngineUrlInput.value = url;
+        validateCustomEngineUrl();
+      });
+      if (customEngineSaveBtn) {
+        customEngineSaveBtn.addEventListener('click', () => {
+          saveCustomEngineUrl();
+        });
+      }
+    }
+    initCustomSelect(customSuggestWrapper, (val) => {
+      localStorage.setItem(CUSTOM_SUGGEST_KEY, val);
+      updateCustomSuggestLabel(val);
+      updateCustomSuggestDropdown(val);
     });
 
     /* --- Show seconds toggle --- */

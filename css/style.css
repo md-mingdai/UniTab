@@ -1005,6 +1005,62 @@ body {
   color: var(--text-tertiary);
 }
 
+/* Small helper line under a setting input (used by the custom engine URL) */
+.setting-hint {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-tertiary);
+  margin: -2px 0 14px;
+}
+
+/* Custom engine config block: tighten spacing between the URL input and the
+   suggestion-provider dropdown that follows it */
+.custom-engine-config .setting-input {
+  margin-bottom: 6px;
+}
+
+/* URL input + manual Save button sit on one row */
+.custom-engine-url-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  margin-bottom: 6px;
+}
+
+.custom-engine-url-row .setting-input {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.custom-engine-url-row .setting-btn-secondary {
+  flex-shrink: 0;
+  padding: 0 16px;
+  white-space: nowrap;
+}
+
+/* Transient feedback line under the URL row (e.g. "Saved") */
+.setting-save-status {
+  display: block;
+  min-height: 18px;
+  margin: -2px 0 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-tertiary);
+}
+
+.setting-save-status.saved {
+  color: var(--accent);
+}
+
+.setting-save-status.error {
+  color: #e07a7a;
+}
+
+.custom-engine-config .custom-select-wrapper {
+  margin-bottom: 4px;
+}
+
 /* Slider */
 .setting-slider {
   width: 100%;

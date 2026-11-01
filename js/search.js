@@ -32,8 +32,24 @@ const Search = (() => {
       parser: (data) => {
         return (data && Array.isArray(data.s)) ? data.s : [];
       }
+    },
+    /* Custom engine: the user supplies a search URL template (with {{query}})
+       and picks which provider supplies the suggestion API (google | bing). The
+       concrete URLs are resolved per-use in getEngineConfig(). */
+    custom: {
+      name: 'Custom',
+      searchUrl: null,
+      suggestUrl: null,
+      parser: null,
+      custom: true
     }
   };
+
+  /* Custom engine config lives in its own localStorage keys (cleared by the full
+     reset, which removes every unitab_* key). Kept out of ENGINES so a custom
+     URL/suggestion choice does not have to be duplicated into the settings blob. */
+  const CUSTOM_URL_KEY = 'unitab_engine_custom_url';
+  const CUSTOM_SUGGEST_KEY = 'unitab_engine_custom_suggest';
 
   /* --- State --- */
   let currentEngine = 'google';
@@ -222,7 +238,7 @@ const Search = (() => {
   }
 
   function fetchSuggestions(query) {
-    const engine = ENGINES[currentEngine];
+    const engine = getEngineConfig();
     if (!engine.suggestUrl) {
       hideSuggestions();
       return;
@@ -237,7 +253,7 @@ const Search = (() => {
     const token = ++currentFetchToken;
 
     /* A query seen before (typed again, or reached by backspacing): answer from memory. */
-    const cacheKey = currentEngine + '\0' + query;
+    const cacheKey = engineCacheId() + '\0' + query;
     const cached = cacheGet(cacheKey);
     if (cached) {
       applySuggestions(cached);
@@ -480,10 +496,32 @@ const Search = (() => {
       window.location.href = normalizeUrl(query);
       return;
     }
-    const engine = ENGINES[currentEngine];
-    const url = engine.searchUrl + encodeURIComponent(query);
+    const engine = getEngineConfig();
+    let url = engine.custom
+      ? buildCustomSearchUrl(engine.searchUrl, query)
+      : engine.searchUrl + encodeURIComponent(query);
+    if (!url) {
+      /* Custom engine not configured (or invalid): fall back to a sane default
+         rather than navigating to a malformed URL. */
+      url = ENGINES.google.searchUrl + encodeURIComponent(query);
+    }
     hideSuggestions();
     window.location.href = url;
+  }
+
+  /* A custom engine search URL is a template with {{query}} as the placeholder.
+     Replace every occurrence with the encoded query; if the user left the
+     placeholder out, append the query as a q= parameter instead. */
+  function buildCustomSearchUrl(template, query) {
+    const encoded = encodeURIComponent(query);
+    if (!template) return '';
+    if (template.includes('{{query}}')) {
+      return template.split('{{query}}').join(encoded);
+    }
+    const sep = template.includes('?')
+      ? (template.endsWith('?') || template.endsWith('&') ? '' : '&')
+      : '?';
+    return template + sep + 'q=' + encoded;
   }
 
   /* A full URL is recognized via the URL parser, which also rejects malformed input.
@@ -510,6 +548,32 @@ const Search = (() => {
   }
 
   /* --- Engine management --- */
+  /* Resolve the engine definition actually in use. For the built-in engines this
+     is the static ENGINES entry; for the custom engine the search URL comes from
+     the user's template and the suggestion URL/parser from the chosen provider. */
+  function getEngineConfig() {
+    if (currentEngine !== 'custom') return ENGINES[currentEngine];
+    const provider = customSuggestProvider();
+    const base = ENGINES[provider];
+    return {
+      ...base,
+      custom: true,
+      searchUrl: localStorage.getItem(CUSTOM_URL_KEY) || ''
+    };
+  }
+
+  function customSuggestProvider() {
+    const v = localStorage.getItem(CUSTOM_SUGGEST_KEY);
+    return (v === 'google' || v === 'baidu') ? v : 'bing';
+  }
+
+  /* Cache identity: for the custom engine, changing the suggestion provider must
+     not serve suggestions fetched through the previous provider. */
+  function engineCacheId() {
+    if (currentEngine !== 'custom') return currentEngine;
+    return 'custom:' + customSuggestProvider();
+  }
+
   function setEngine(engineKey, save = true) {
     if (!ENGINES[engineKey]) return;
     currentEngine = engineKey;
