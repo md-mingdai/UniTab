@@ -1,0 +1,10 @@
+{
+  "extName": {
+    "message": "UniTab",
+    "description": "擴充功能名稱"
+  },
+  "extDescription": {
+    "message": "極簡毛玻璃新分頁，可自訂背景與搜尋引擎，支援搜尋建議預測。",
+    "description": "擴充功能描述"
+  }
+}

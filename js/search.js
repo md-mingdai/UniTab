@@ -18,13 +18,13 @@ const Search = (() => {
       parser: (data) => (data && data[1]) ? data[1] : []
     },
     sogou: {
-      name: '搜狗',
+      name: 'Sogou',
       searchUrl: 'https://www.sogou.com/web?query=',
-      suggestUrl: null, // 搜狗暂无公开 Suggestion API
+      suggestUrl: null, // Sogou has no public Suggestion API
       parser: null
     },
     baidu: {
-      name: '百度',
+      name: 'Baidu',
       searchUrl: 'https://www.baidu.com/s?wd=',
       // Baidu returns JSONP text: window.baidu.sug({...});
       // The SW proxy returns the raw text, which we strip in processResponse().

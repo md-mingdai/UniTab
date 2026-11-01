@@ -1,0 +1,10 @@
+{
+  "extName": {
+    "message": "UniTab",
+    "description": "Extension name"
+  },
+  "extDescription": {
+    "message": "Minimalist frosted glass new tab page with customizable background and search engine, supports search suggestions.",
+    "description": "Extension description"
+  }
+}

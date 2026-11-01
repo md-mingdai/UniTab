@@ -93,7 +93,10 @@
   window.Clock = Clock;
 
   /* --- Initialize --- */
-  function init() {
+  async function init() {
+    /* 0. Initialize i18n first (before any UI text is rendered) */
+    await I18n.init();
+
     /* The page starts in `preload` (css): transitions and animations are off, so the
        saved settings applied below take effect without animating "into" place. Lift
        it two frames after this task, i.e. once the first frame is on screen. Queued

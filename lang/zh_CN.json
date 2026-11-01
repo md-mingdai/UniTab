@@ -1,0 +1,640 @@
+{
+  "extName": {
+    "message": "UniTab",
+    "description": "Extension name"
+  },
+  "extDescription": {
+    "message": "Minimalist frosted glass new tab page with customizable background and search engine, supports search suggestions.",
+    "description": "Extension description"
+  },
+  "general.cancel": {
+    "message": "取消"
+  },
+  "general.confirm": {
+    "message": "确认"
+  },
+  "general.ok": {
+    "message": "确定"
+  },
+  "general.close": {
+    "message": "关闭"
+  },
+  "general.save": {
+    "message": "保存"
+  },
+  "general.apply": {
+    "message": "应用"
+  },
+  "general.refresh": {
+    "message": "刷新"
+  },
+  "general.export": {
+    "message": "导出"
+  },
+  "general.reset": {
+    "message": "重置"
+  },
+  "general.clear": {
+    "message": "清空"
+  },
+  "general.delete": {
+    "message": "删除"
+  },
+  "general.error": {
+    "message": "错误"
+  },
+  "general.success": {
+    "message": "成功"
+  },
+  "general.loading": {
+    "message": "加载中…"
+  },
+  "general.unknown": {
+    "message": "未知"
+  },
+  "general.none": {
+    "message": "无"
+  },
+  "general.auto": {
+    "message": "自动"
+  },
+  "settings.title": {
+    "message": "设置"
+  },
+  "settings.tabs.label": {
+    "message": "设置分类"
+  },
+  "settings.tabs.background": {
+    "message": "背景"
+  },
+  "settings.tabs.search": {
+    "message": "搜索"
+  },
+  "settings.tabs.display": {
+    "message": "显示"
+  },
+  "settings.tabs.advanced": {
+    "message": "高级"
+  },
+  "settings.lang.select": {
+    "message": "语言"
+  },
+  "settings.lang.auto": {
+    "message": "跟随系统"
+  },
+  "settings.lang.zh_CN": {
+    "message": "简体中文"
+  },
+  "settings.lang.zh_TW": {
+    "message": "繁體中文"
+  },
+  "settings.lang.en": {
+    "message": "English"
+  },
+  "settings.bg.source": {
+    "message": "背景来源"
+  },
+  "settings.bg.source.bing": {
+    "message": "必应每日壁纸"
+  },
+  "settings.bg.source.image": {
+    "message": "自定义图片"
+  },
+  "settings.bg.source.color": {
+    "message": "纯色"
+  },
+  "settings.bg.source.video": {
+    "message": "视频壁纸"
+  },
+  "settings.bg.refresh": {
+    "message": "刷新壁纸"
+  },
+  "settings.bg.upload": {
+    "message": "选择图片"
+  },
+  "settings.bg.url.placeholder": {
+    "message": "https://..."
+  },
+  "settings.bg.url.apply": {
+    "message": "应用"
+  },
+  "settings.bg.url.label": {
+    "message": "或输入图片链接"
+  },
+  "settings.bg.url.error.empty": {
+    "message": "请输入图片链接"
+  },
+  "settings.bg.url.error.invalid": {
+    "message": "链接格式不合法"
+  },
+  "settings.bg.url.error.scheme": {
+    "message": "仅支持 http / https 链接"
+  },
+  "settings.bg.file.noFile": {
+    "message": "未选择文件"
+  },
+  "settings.bg.file.uploaded": {
+    "message": "已上传图片"
+  },
+  "settings.bg.file.loadFailed": {
+    "message": "图片加载失败"
+  },
+  "settings.bg.file.selectImage": {
+    "message": "请选择图片文件"
+  },
+  "settings.bg.color.custom": {
+    "message": "自定义颜色"
+  },
+  "settings.bg.color.label": {
+    "message": "背景颜色"
+  },
+  "settings.bg.video.select": {
+    "message": "选择视频"
+  },
+  "settings.bg.video.noFile": {
+    "message": "未选择文件"
+  },
+  "settings.bg.video.selectVideo": {
+    "message": "请选择视频文件"
+  },
+  "settings.bg.video.loadFailed": {
+    "message": "视频保存失败"
+  },
+  "settings.bg.video.sound": {
+    "message": "开启声音"
+  },
+  "settings.bg.video.volume": {
+    "message": "音量"
+  },
+  "settings.bg.video.loop": {
+    "message": "循环播放"
+  },
+  "settings.bg.video.onEnded": {
+    "message": "播放完成后"
+  },
+  "settings.bg.video.onEnded.black": {
+    "message": "黑屏"
+  },
+  "settings.bg.video.onEnded.lastframe": {
+    "message": "展示最后一帧"
+  },
+  "settings.bg.video.onEnded.customimage": {
+    "message": "展示自定义图片背景"
+  },
+  "settings.bg.video.onEnded.bing": {
+    "message": "展示必应壁纸"
+  },
+  "settings.bg.video.sizeWarning": {
+    "message": "文件大小 {1}MB，较大的视频可能导致浏览器卡顿。是否继续使用？"
+  },
+  "settings.bg.blur": {
+    "message": "背景模糊"
+  },
+  "settings.bg.blur.value": {
+    "message": "{1}px"
+  },
+  "settings.bg.overlayOpacity": {
+    "message": "蒙版不透明度"
+  },
+  "settings.bg.overlayOpacity.value": {
+    "message": "{1}%"
+  },
+  "settings.bg.overlayColor": {
+    "message": "蒙版颜色"
+  },
+  "settings.search.engine": {
+    "message": "默认搜索引擎"
+  },
+  "settings.search.engine.google": {
+    "message": "Google"
+  },
+  "settings.search.engine.bing": {
+    "message": "Bing"
+  },
+  "settings.search.engine.sogou": {
+    "message": "搜狗"
+  },
+  "settings.search.engine.baidu": {
+    "message": "百度"
+  },
+  "settings.display.seconds": {
+    "message": "显示秒"
+  },
+  "settings.display.bookmarks": {
+    "message": "常用网址 Dock 栏"
+  },
+  "settings.display.cursorEffect": {
+    "message": "鼠标特效"
+  },
+  "settings.display.cursorStyle": {
+    "message": "特效样式"
+  },
+  "settings.display.cursorStyle.confetti": {
+    "message": "彩纸"
+  },
+  "settings.display.cursorStyle.rain": {
+    "message": "落雨"
+  },
+  "settings.display.cursorStyle.bubble": {
+    "message": "气泡"
+  },
+  "settings.display.cursorStyle.star": {
+    "message": "星光"
+  },
+  "settings.display.cursorStyle.kivotos": {
+    "message": "基沃托斯"
+  },
+  "settings.display.glassRadius": {
+    "message": "组件圆角"
+  },
+  "settings.display.glassRadius.value": {
+    "message": "{1}px"
+  },
+  "settings.display.glassStyle": {
+    "message": "玻璃效果"
+  },
+  "settings.display.glassStyle.frosted": {
+    "message": "毛玻璃"
+  },
+  "settings.display.glassStyle.liquid": {
+    "message": "液态玻璃"
+  },
+  "settings.display.glassStyle.matte": {
+    "message": "磨砂质感"
+  },
+  "settings.advanced.intro": {
+    "message": "这些工具用于导出壁纸、维护预览缓存和清理本地数据。操作只影响本扩展自己的存储。"
+  },
+  "settings.advanced.wallpaper.title": {
+    "message": "壁纸工具"
+  },
+  "settings.advanced.wallpaper.export.title": {
+    "message": "导出当前壁纸"
+  },
+  "settings.advanced.wallpaper.export.desc": {
+    "message": "把当前使用的必应、自定义图片或视频壁纸保存到浏览器的下载目录。"
+  },
+  "settings.advanced.wallpaper.export.hint": {
+    "message": "当前：{1}"
+  },
+  "settings.advanced.preview.title": {
+    "message": "预览维护"
+  },
+  "settings.advanced.preview.status.loading": {
+    "message": "正在读取预览状态…"
+  },
+  "settings.advanced.preview.status.noPreview": {
+    "message": "纯色背景不使用壁纸预览。"
+  },
+  "settings.advanced.preview.status.cannotRead": {
+    "message": "当前预览：无法读取。"
+  },
+  "settings.advanced.preview.status.reading": {
+    "message": "当前预览：正在读取…"
+  },
+  "settings.advanced.preview.status.cached": {
+    "message": "当前预览：已缓存（{1}） · 预览色 {2}"
+  },
+  "settings.advanced.preview.status.noCache": {
+    "message": "当前预览：未缓存，可点击“重新生成当前预览”。"
+  },
+  "settings.advanced.preview.status.readFailed": {
+    "message": "当前预览：读取失败。"
+  },
+  "settings.advanced.preview.clear.title": {
+    "message": "清空预览缓冲区"
+  },
+  "settings.advanced.preview.clear.desc": {
+    "message": "删除必应、图片、视频三种壁纸的预览缓存；当前壁纸不会被删除。"
+  },
+  "settings.advanced.preview.clear.btn": {
+    "message": "清空"
+  },
+  "settings.advanced.preview.clear.busy": {
+    "message": "清空中…"
+  },
+  "settings.advanced.preview.clear.done": {
+    "message": "已清空"
+  },
+  "settings.advanced.preview.clear.failed": {
+    "message": "清空失败"
+  },
+  "settings.advanced.preview.regen.title": {
+    "message": "重新生成当前预览"
+  },
+  "settings.advanced.preview.regen.desc": {
+    "message": "按当前壁纸重新截取一张低分辨率预览，并同步更新预览色。"
+  },
+  "settings.advanced.preview.regen.btn": {
+    "message": "重新生成"
+  },
+  "settings.advanced.preview.regen.busy": {
+    "message": "生成中…"
+  },
+  "settings.advanced.preview.regen.done": {
+    "message": "已生成"
+  },
+  "settings.advanced.preview.regen.failed": {
+    "message": "生成失败"
+  },
+  "settings.advanced.preview.regen.none": {
+    "message": "无需生成"
+  },
+  "settings.advanced.preview.regen.noData": {
+    "message": "无数据"
+  },
+  "settings.advanced.preview.repick.title": {
+    "message": "重新拾取预览色"
+  },
+  "settings.advanced.preview.repick.desc": {
+    "message": "从当前预览或壁纸重新计算占位色，不重新生成预览图。"
+  },
+  "settings.advanced.preview.repick.btn": {
+    "message": "重新拾取"
+  },
+  "settings.advanced.preview.repick.busy": {
+    "message": "拾取中…"
+  },
+  "settings.advanced.preview.repick.done": {
+    "message": "已拾取"
+  },
+  "settings.advanced.preview.repick.failed": {
+    "message": "拾取失败"
+  },
+  "settings.advanced.preview.repick.none": {
+    "message": "无需拾取"
+  },
+  "settings.advanced.storage.title": {
+    "message": "存储与缓存"
+  },
+  "settings.advanced.storage.status.loading": {
+    "message": "正在读取本地存储占用…"
+  },
+  "settings.advanced.storage.status.usage": {
+    "message": "本地存储占用：约{1}{2}"
+  },
+  "settings.advanced.storage.status.cannotRead": {
+    "message": "本地存储占用：无法读取。"
+  },
+  "settings.advanced.storage.status.unsupported": {
+    "message": "当前浏览器不支持存储占用查询。"
+  },
+  "settings.advanced.storage.status.readFailed": {
+    "message": "本地存储占用：读取失败。"
+  },
+  "settings.advanced.storage.clearBing.title": {
+    "message": "清除必应壁纸缓存"
+  },
+  "settings.advanced.storage.clearBing.desc": {
+    "message": "删除最近一张必应壁纸的本地缓存；下次使用必应壁纸时会重新下载。"
+  },
+  "settings.advanced.storage.clearBing.btn": {
+    "message": "清除缓存"
+  },
+  "settings.advanced.storage.clearBing.busy": {
+    "message": "清理中…"
+  },
+  "settings.advanced.storage.clearBing.success.title": {
+    "message": "必应缓存已清除"
+  },
+  "settings.advanced.storage.clearBing.success.desc": {
+    "message": "下次使用必应壁纸时会重新下载最新壁纸。"
+  },
+  "settings.advanced.storage.clearBing.failed.title": {
+    "message": "清除失败"
+  },
+  "settings.advanced.storage.clearBing.failed.desc": {
+    "message": "{1}"
+  },
+  "settings.advanced.danger.title": {
+    "message": "危险区域"
+  },
+  "settings.advanced.danger.resetAll.title": {
+    "message": "清空全部配置"
+  },
+  "settings.advanced.danger.resetAll.desc": {
+    "message": "删除全部设置、壁纸、预览与缓存，并恢复首次安装状态。此操作无法撤销。"
+  },
+  "settings.advanced.danger.resetAll.btn": {
+    "message": "清空全部配置"
+  },
+  "settings.advanced.danger.resetAll.confirmTitle": {
+    "message": "清空全部配置？"
+  },
+  "settings.advanced.danger.resetAll.confirmMsg": {
+    "message": "这会删除所有设置、壁纸、预览和缓存，且无法撤销。请手动输入下面的警告文字以确认："
+  },
+  "settings.advanced.danger.resetAll.phrase": {
+    "message": "我确认清空全部配置且无法恢复"
+  },
+  "settings.advanced.danger.resetAll.inputLabel": {
+    "message": "警告文字"
+  },
+  "settings.advanced.danger.resetAll.inputPlaceholder": {
+    "message": "在此手动输入上面的文字"
+  },
+  "settings.advanced.danger.resetAll.error.paste": {
+    "message": "此输入框禁止粘贴，请手动输入警告文字。"
+  },
+  "settings.advanced.danger.resetAll.error.drop": {
+    "message": "此输入框禁止拖放文本，请手动输入警告文字。"
+  },
+  "settings.advanced.danger.resetAll.error.mismatch": {
+    "message": "输入内容不匹配，请重新输入。"
+  },
+  "settings.advanced.danger.resetAll.error.incomplete": {
+    "message": "请完整输入上面的警告文字。"
+  },
+  "settings.advanced.danger.resetAll.busy": {
+    "message": "正在清空…"
+  },
+  "settings.advanced.danger.resetAll.done": {
+    "message": "已清空"
+  },
+  "settings.advanced.danger.resetAll.success.title": {
+    "message": "已清空全部配置"
+  },
+  "settings.advanced.danger.resetAll.success.desc": {
+    "message": "页面将重新加载，恢复首次安装状态。"
+  },
+  "settings.advanced.danger.resetAll.partial.title": {
+    "message": "配置已清除，但缓存清理不完整"
+  },
+  "settings.advanced.danger.resetAll.partial.desc": {
+    "message": "设置已清除，但部分本地缓存可能仍在。页面将重新加载。"
+  },
+  "settings.advanced.danger.resetAll.reloadBtn": {
+    "message": "重新加载"
+  },
+  "settings.footer.reset": {
+    "message": "恢复默认设置"
+  },
+  "dialog.confirm.title": {
+    "message": "确认"
+  },
+  "dialog.confirm.cancel": {
+    "message": "取消"
+  },
+  "dialog.confirm.ok": {
+    "message": "确定"
+  },
+  "dialog.export.success.title": {
+    "message": "导出完成"
+  },
+  "dialog.export.success.desc": {
+    "message": "{1} ({2})"
+  },
+  "dialog.export.browser.title": {
+    "message": "已交给浏览器下载"
+  },
+  "dialog.export.browser.desc": {
+    "message": "{1}\nIf browser opened the image directly, right-click to save."
+  },
+  "dialog.export.failed.title": {
+    "message": "导出失败"
+  },
+  "dialog.export.failed.desc": {
+    "message": "Download blocked or failed by browser, check download permissions for this site.\n{1}"
+  },
+  "dialog.export.noWallpaper.title": {
+    "message": "没有可导出的壁纸"
+  },
+  "dialog.export.noWallpaper.desc": {
+    "message": "当前背景是纯色，请先切换到必应、自定义图片或视频壁纸。"
+  },
+  "dialog.export.notReady.desc": {
+    "message": "壁纸模块尚未准备好，请稍后重试。"
+  },
+  "dialog.export.noData.title": {
+    "message": "没有可导出的壁纸"
+  },
+  "dialog.export.noData.desc": {
+    "message": "当前壁纸的数据不存在，或本地存储已被清除。"
+  },
+  "dialog.export.ok": {
+    "message": "知道了"
+  },
+  "dialog.export.exporting": {
+    "message": "导出中…"
+  },
+  "search.placeholder": {
+    "message": "搜索网页..."
+  },
+  "search.ariaLabel": {
+    "message": "搜索网页"
+  },
+  "search.button.ariaLabel": {
+    "message": "执行搜索"
+  },
+  "settings.toggle.ariaLabel": {
+    "message": "打开设置"
+  },
+  "settings.close.ariaLabel": {
+    "message": "关闭设置"
+  },
+  "settings.panel.ariaLabel": {
+    "message": "设置面板"
+  },
+  "clock.ariaLabel": {
+    "message": "当前时间"
+  },
+  "bookmarks.empty": {
+    "message": "无书签"
+  },
+  "export.filename.bing": {
+    "message": "unitab-必应壁纸-{1}.{2}"
+  },
+  "export.filename.image": {
+    "message": "unitab-图片壁纸.{1}"
+  },
+  "export.filename.video": {
+    "message": "unitab-视频壁纸.{1}"
+  },
+  "unit.bytes": {
+    "message": "{1} B"
+  },
+  "unit.kb": {
+    "message": "{1} KB"
+  },
+  "unit.mb": {
+    "message": "{1} MB"
+  },
+  "unit.gb": {
+    "message": "{1} GB"
+  },
+  "unit.tb": {
+    "message": "{1} TB"
+  },
+  "bing.meta.fetching": {
+    "message": "正在获取…"
+  },
+  "bing.meta.failed": {
+    "message": "获取失败：{1}"
+  },
+  "bing.wallpaper": {
+    "message": "必应每日壁纸"
+  },
+  "image.wallpaper.uploaded": {
+    "message": "自定义图片 · {1}"
+  },
+  "image.wallpaper.url": {
+    "message": "自定义图片（链接）"
+  },
+  "image.wallpaper.unset": {
+    "message": "自定义图片（未设置）"
+  },
+  "video.wallpaper": {
+    "message": "视频壁纸"
+  },
+  "color.wallpaper": {
+    "message": "纯色背景"
+  },
+  "wallpaper.unset": {
+    "message": "未设置"
+  },
+  "preview.action.clear.busy": {
+    "message": "清空中…"
+  },
+  "preview.action.clear.done": {
+    "message": "已清空"
+  },
+  "preview.action.clear.failed": {
+    "message": "清空失败"
+  },
+  "preview.action.regen.busy": {
+    "message": "生成中…"
+  },
+  "preview.action.regen.done": {
+    "message": "已生成"
+  },
+  "preview.action.regen.failed": {
+    "message": "生成失败"
+  },
+  "preview.action.regen.none": {
+    "message": "无需生成"
+  },
+  "preview.action.regen.noData": {
+    "message": "无数据"
+  },
+  "preview.action.repick.busy": {
+    "message": "拾取中…"
+  },
+  "preview.action.repick.done": {
+    "message": "已拾取"
+  },
+  "preview.action.repick.failed": {
+    "message": "拾取失败"
+  },
+  "preview.action.repick.none": {
+    "message": "无需拾取"
+  },
+  "toast.settingsSaved": {
+    "message": "设置已保存"
+  },
+  "toast.copied": {
+    "message": "已复制到剪贴板"
+  },
+  "toast.copyFailed": {
+    "message": "复制失败"
+  }
+}

@@ -1,0 +1,640 @@
+{
+  "extName": {
+    "message": "UniTab",
+    "description": "Extension name"
+  },
+  "extDescription": {
+    "message": "Minimalist frosted glass new tab page with customizable background and search engine, supports search suggestions.",
+    "description": "Extension description"
+  },
+  "general.cancel": {
+    "message": "Cancel"
+  },
+  "general.confirm": {
+    "message": "Confirm"
+  },
+  "general.ok": {
+    "message": "OK"
+  },
+  "general.close": {
+    "message": "Close"
+  },
+  "general.save": {
+    "message": "Save"
+  },
+  "general.apply": {
+    "message": "Apply"
+  },
+  "general.refresh": {
+    "message": "Refresh"
+  },
+  "general.export": {
+    "message": "Export"
+  },
+  "general.reset": {
+    "message": "Reset"
+  },
+  "general.clear": {
+    "message": "Clear"
+  },
+  "general.delete": {
+    "message": "Delete"
+  },
+  "general.error": {
+    "message": "Error"
+  },
+  "general.success": {
+    "message": "Success"
+  },
+  "general.loading": {
+    "message": "Loading..."
+  },
+  "general.unknown": {
+    "message": "Unknown"
+  },
+  "general.none": {
+    "message": "None"
+  },
+  "general.auto": {
+    "message": "Auto"
+  },
+  "settings.title": {
+    "message": "Settings"
+  },
+  "settings.tabs.label": {
+    "message": "Settings Sections"
+  },
+  "settings.tabs.background": {
+    "message": "Background"
+  },
+  "settings.tabs.search": {
+    "message": "Search"
+  },
+  "settings.tabs.display": {
+    "message": "Display"
+  },
+  "settings.tabs.advanced": {
+    "message": "Advanced"
+  },
+  "settings.lang.select": {
+    "message": "Language"
+  },
+  "settings.lang.auto": {
+    "message": "Follow System"
+  },
+  "settings.lang.zh_CN": {
+    "message": "Simplified Chinese"
+  },
+  "settings.lang.zh_TW": {
+    "message": "Traditional Chinese"
+  },
+  "settings.lang.en": {
+    "message": "English"
+  },
+  "settings.bg.source": {
+    "message": "Background Source"
+  },
+  "settings.bg.source.bing": {
+    "message": "Bing Daily Wallpaper"
+  },
+  "settings.bg.source.image": {
+    "message": "Custom Image"
+  },
+  "settings.bg.source.color": {
+    "message": "Solid Color"
+  },
+  "settings.bg.source.video": {
+    "message": "Video Wallpaper"
+  },
+  "settings.bg.refresh": {
+    "message": "Refresh Wallpaper"
+  },
+  "settings.bg.upload": {
+    "message": "Select Image"
+  },
+  "settings.bg.url.placeholder": {
+    "message": "https://..."
+  },
+  "settings.bg.url.apply": {
+    "message": "Apply"
+  },
+  "settings.bg.url.label": {
+    "message": "Or enter image URL"
+  },
+  "settings.bg.url.error.empty": {
+    "message": "Please enter an image URL"
+  },
+  "settings.bg.url.error.invalid": {
+    "message": "Invalid URL format"
+  },
+  "settings.bg.url.error.scheme": {
+    "message": "Only http/https URLs are supported"
+  },
+  "settings.bg.file.noFile": {
+    "message": "No file selected"
+  },
+  "settings.bg.file.uploaded": {
+    "message": "Image uploaded"
+  },
+  "settings.bg.file.loadFailed": {
+    "message": "Failed to load image"
+  },
+  "settings.bg.file.selectImage": {
+    "message": "Please select an image file"
+  },
+  "settings.bg.color.custom": {
+    "message": "Custom Color"
+  },
+  "settings.bg.color.label": {
+    "message": "Background Color"
+  },
+  "settings.bg.video.select": {
+    "message": "Select Video"
+  },
+  "settings.bg.video.noFile": {
+    "message": "No file selected"
+  },
+  "settings.bg.video.selectVideo": {
+    "message": "Please select a video file"
+  },
+  "settings.bg.video.loadFailed": {
+    "message": "Failed to save video"
+  },
+  "settings.bg.video.sound": {
+    "message": "Enable Sound"
+  },
+  "settings.bg.video.volume": {
+    "message": "Volume"
+  },
+  "settings.bg.video.loop": {
+    "message": "Loop Playback"
+  },
+  "settings.bg.video.onEnded": {
+    "message": "On Playback End"
+  },
+  "settings.bg.video.onEnded.black": {
+    "message": "Black Screen"
+  },
+  "settings.bg.video.onEnded.lastframe": {
+    "message": "Show Last Frame"
+  },
+  "settings.bg.video.onEnded.customimage": {
+    "message": "Show Custom Image Background"
+  },
+  "settings.bg.video.onEnded.bing": {
+    "message": "Show Bing Wallpaper"
+  },
+  "settings.bg.video.sizeWarning": {
+    "message": "File size {1}MB, large videos may cause lag. Continue?"
+  },
+  "settings.bg.blur": {
+    "message": "Background Blur"
+  },
+  "settings.bg.blur.value": {
+    "message": "{1}px"
+  },
+  "settings.bg.overlayOpacity": {
+    "message": "Overlay Opacity"
+  },
+  "settings.bg.overlayOpacity.value": {
+    "message": "{1}%"
+  },
+  "settings.bg.overlayColor": {
+    "message": "Overlay Color"
+  },
+  "settings.search.engine": {
+    "message": "Default Search Engine"
+  },
+  "settings.search.engine.google": {
+    "message": "Google"
+  },
+  "settings.search.engine.bing": {
+    "message": "Bing"
+  },
+  "settings.search.engine.sogou": {
+    "message": "Sogou"
+  },
+  "settings.search.engine.baidu": {
+    "message": "Baidu"
+  },
+  "settings.display.seconds": {
+    "message": "Show Seconds"
+  },
+  "settings.display.bookmarks": {
+    "message": "Bookmarks Dock"
+  },
+  "settings.display.cursorEffect": {
+    "message": "Cursor Effect"
+  },
+  "settings.display.cursorStyle": {
+    "message": "Effect Style"
+  },
+  "settings.display.cursorStyle.confetti": {
+    "message": "Confetti"
+  },
+  "settings.display.cursorStyle.rain": {
+    "message": "Rain"
+  },
+  "settings.display.cursorStyle.bubble": {
+    "message": "Bubble"
+  },
+  "settings.display.cursorStyle.star": {
+    "message": "Star"
+  },
+  "settings.display.cursorStyle.kivotos": {
+    "message": "Kivotos"
+  },
+  "settings.display.glassRadius": {
+    "message": "Component Radius"
+  },
+  "settings.display.glassRadius.value": {
+    "message": "{1}px"
+  },
+  "settings.display.glassStyle": {
+    "message": "Glass Effect"
+  },
+  "settings.display.glassStyle.frosted": {
+    "message": "Frosted Glass"
+  },
+  "settings.display.glassStyle.liquid": {
+    "message": "Liquid Glass"
+  },
+  "settings.display.glassStyle.matte": {
+    "message": "Matte Glass"
+  },
+  "settings.advanced.intro": {
+    "message": "These tools export wallpapers, maintain preview cache, and clear local data. Operations only affect this extension's storage."
+  },
+  "settings.advanced.wallpaper.title": {
+    "message": "Wallpaper Tools"
+  },
+  "settings.advanced.wallpaper.export.title": {
+    "message": "Export Current Wallpaper"
+  },
+  "settings.advanced.wallpaper.export.desc": {
+    "message": "Save the current Bing, custom image, or video wallpaper to your browser's download folder."
+  },
+  "settings.advanced.wallpaper.export.hint": {
+    "message": "Current: {1}"
+  },
+  "settings.advanced.preview.title": {
+    "message": "Preview Maintenance"
+  },
+  "settings.advanced.preview.status.loading": {
+    "message": "Reading preview status..."
+  },
+  "settings.advanced.preview.status.noPreview": {
+    "message": "Solid color backgrounds don't use wallpaper previews."
+  },
+  "settings.advanced.preview.status.cannotRead": {
+    "message": "Current preview: unable to read."
+  },
+  "settings.advanced.preview.status.reading": {
+    "message": "Current preview: reading..."
+  },
+  "settings.advanced.preview.status.cached": {
+    "message": "Current preview: cached ({1}) · Preview color {2}"
+  },
+  "settings.advanced.preview.status.noCache": {
+    "message": "Current preview: not cached, click \"Regenerate Current Preview\"."
+  },
+  "settings.advanced.preview.status.readFailed": {
+    "message": "Current preview: read failed."
+  },
+  "settings.advanced.preview.clear.title": {
+    "message": "Clear Preview Buffer"
+  },
+  "settings.advanced.preview.clear.desc": {
+    "message": "Delete preview cache for Bing, image, and video wallpapers; current wallpaper will not be deleted."
+  },
+  "settings.advanced.preview.clear.btn": {
+    "message": "Clear"
+  },
+  "settings.advanced.preview.clear.busy": {
+    "message": "Clearing..."
+  },
+  "settings.advanced.preview.clear.done": {
+    "message": "Cleared"
+  },
+  "settings.advanced.preview.clear.failed": {
+    "message": "Clear Failed"
+  },
+  "settings.advanced.preview.regen.title": {
+    "message": "Regenerate Current Preview"
+  },
+  "settings.advanced.preview.regen.desc": {
+    "message": "Capture a new low-res preview from current wallpaper and update preview color."
+  },
+  "settings.advanced.preview.regen.btn": {
+    "message": "Regenerate"
+  },
+  "settings.advanced.preview.regen.busy": {
+    "message": "Generating..."
+  },
+  "settings.advanced.preview.regen.done": {
+    "message": "Generated"
+  },
+  "settings.advanced.preview.regen.failed": {
+    "message": "Generation Failed"
+  },
+  "settings.advanced.preview.regen.none": {
+    "message": "Not Needed"
+  },
+  "settings.advanced.preview.regen.noData": {
+    "message": "No Data"
+  },
+  "settings.advanced.preview.repick.title": {
+    "message": "Repick Preview Color"
+  },
+  "settings.advanced.preview.repick.desc": {
+    "message": "Recalculate placeholder color from current preview or wallpaper without regenerating preview image."
+  },
+  "settings.advanced.preview.repick.btn": {
+    "message": "Repick"
+  },
+  "settings.advanced.preview.repick.busy": {
+    "message": "Picking..."
+  },
+  "settings.advanced.preview.repick.done": {
+    "message": "Picked"
+  },
+  "settings.advanced.preview.repick.failed": {
+    "message": "Pick Failed"
+  },
+  "settings.advanced.preview.repick.none": {
+    "message": "Not Needed"
+  },
+  "settings.advanced.storage.title": {
+    "message": "Storage & Cache"
+  },
+  "settings.advanced.storage.status.loading": {
+    "message": "Reading local storage usage..."
+  },
+  "settings.advanced.storage.status.usage": {
+    "message": "Local storage usage: ~{1}{2}"
+  },
+  "settings.advanced.storage.status.cannotRead": {
+    "message": "Local storage usage: unable to read."
+  },
+  "settings.advanced.storage.status.unsupported": {
+    "message": "Current browser doesn't support storage usage query."
+  },
+  "settings.advanced.storage.status.readFailed": {
+    "message": "Local storage usage: read failed."
+  },
+  "settings.advanced.storage.clearBing.title": {
+    "message": "Clear Bing Wallpaper Cache"
+  },
+  "settings.advanced.storage.clearBing.desc": {
+    "message": "Delete cached latest Bing wallpaper; next use will re-download."
+  },
+  "settings.advanced.storage.clearBing.btn": {
+    "message": "Clear Cache"
+  },
+  "settings.advanced.storage.clearBing.busy": {
+    "message": "Clearing..."
+  },
+  "settings.advanced.storage.clearBing.success.title": {
+    "message": "Bing Cache Cleared"
+  },
+  "settings.advanced.storage.clearBing.success.desc": {
+    "message": "Next time using Bing wallpaper will re-download latest wallpaper."
+  },
+  "settings.advanced.storage.clearBing.failed.title": {
+    "message": "Clear Failed"
+  },
+  "settings.advanced.storage.clearBing.failed.desc": {
+    "message": "{1}"
+  },
+  "settings.advanced.danger.title": {
+    "message": "Danger Zone"
+  },
+  "settings.advanced.danger.resetAll.title": {
+    "message": "Clear All Configuration"
+  },
+  "settings.advanced.danger.resetAll.desc": {
+    "message": "Delete all settings, wallpapers, previews and cache, and restore first-install state. This action cannot be undone."
+  },
+  "settings.advanced.danger.resetAll.btn": {
+    "message": "Clear All Configuration"
+  },
+  "settings.advanced.danger.resetAll.confirmTitle": {
+    "message": "Clear All Configuration?"
+  },
+  "settings.advanced.danger.resetAll.confirmMsg": {
+    "message": "This will delete all settings, wallpapers, previews and cache, and cannot be undone. Please type the warning text below to confirm:"
+  },
+  "settings.advanced.danger.resetAll.phrase": {
+    "message": "I confirm to clear all configuration and it cannot be restored"
+  },
+  "settings.advanced.danger.resetAll.inputLabel": {
+    "message": "Warning Text"
+  },
+  "settings.advanced.danger.resetAll.inputPlaceholder": {
+    "message": "Type the warning text above here"
+  },
+  "settings.advanced.danger.resetAll.error.paste": {
+    "message": "Pasting is not allowed in this field, please type the warning text manually."
+  },
+  "settings.advanced.danger.resetAll.error.drop": {
+    "message": "Dropping text is not allowed in this field, please type the warning text manually."
+  },
+  "settings.advanced.danger.resetAll.error.mismatch": {
+    "message": "Input does not match, please retype."
+  },
+  "settings.advanced.danger.resetAll.error.incomplete": {
+    "message": "Please type the full warning text above."
+  },
+  "settings.advanced.danger.resetAll.busy": {
+    "message": "Clearing..."
+  },
+  "settings.advanced.danger.resetAll.done": {
+    "message": "Cleared"
+  },
+  "settings.advanced.danger.resetAll.success.title": {
+    "message": "All Configuration Cleared"
+  },
+  "settings.advanced.danger.resetAll.success.desc": {
+    "message": "Page will reload, restoring first-install state."
+  },
+  "settings.advanced.danger.resetAll.partial.title": {
+    "message": "Configuration Cleared, but Cache Cleanup Incomplete"
+  },
+  "settings.advanced.danger.resetAll.partial.desc": {
+    "message": "Settings cleared, but some local cache may remain. Page will reload."
+  },
+  "settings.advanced.danger.resetAll.reloadBtn": {
+    "message": "Reload"
+  },
+  "settings.footer.reset": {
+    "message": "Restore Default Settings"
+  },
+  "dialog.confirm.title": {
+    "message": "Confirm"
+  },
+  "dialog.confirm.cancel": {
+    "message": "Cancel"
+  },
+  "dialog.confirm.ok": {
+    "message": "OK"
+  },
+  "dialog.export.success.title": {
+    "message": "Export Complete"
+  },
+  "dialog.export.success.desc": {
+    "message": "{1} ({2})"
+  },
+  "dialog.export.browser.title": {
+    "message": "Handed to Browser Download"
+  },
+  "dialog.export.browser.desc": {
+    "message": "{1}\nIf browser opened the image directly, right-click to save."
+  },
+  "dialog.export.failed.title": {
+    "message": "Export Failed"
+  },
+  "dialog.export.failed.desc": {
+    "message": "Download blocked or failed by browser, check download permissions for this site.\n{1}"
+  },
+  "dialog.export.noWallpaper.title": {
+    "message": "No Wallpaper to Export"
+  },
+  "dialog.export.noWallpaper.desc": {
+    "message": "Current background is solid color, please switch to Bing, custom image, or video wallpaper first."
+  },
+  "dialog.export.notReady.desc": {
+    "message": "Wallpaper module not ready, please try again later."
+  },
+  "dialog.export.noData.title": {
+    "message": "No Wallpaper to Export"
+  },
+  "dialog.export.noData.desc": {
+    "message": "Current wallpaper data doesn't exist, or local storage has been cleared."
+  },
+  "dialog.export.ok": {
+    "message": "OK"
+  },
+  "dialog.export.exporting": {
+    "message": "Exporting..."
+  },
+  "search.placeholder": {
+    "message": "Search the web..."
+  },
+  "search.ariaLabel": {
+    "message": "Search the web"
+  },
+  "search.button.ariaLabel": {
+    "message": "Search"
+  },
+  "settings.toggle.ariaLabel": {
+    "message": "Open Settings"
+  },
+  "settings.close.ariaLabel": {
+    "message": "Close Settings"
+  },
+  "settings.panel.ariaLabel": {
+    "message": "Settings Panel"
+  },
+  "clock.ariaLabel": {
+    "message": "Current Time"
+  },
+  "bookmarks.empty": {
+    "message": "No bookmarks"
+  },
+  "export.filename.bing": {
+    "message": "unitab-bing-wallpaper-{1}.{2}"
+  },
+  "export.filename.image": {
+    "message": "unitab-image-wallpaper.{1}"
+  },
+  "export.filename.video": {
+    "message": "unitab-video-wallpaper.{1}"
+  },
+  "unit.bytes": {
+    "message": "{1} B"
+  },
+  "unit.kb": {
+    "message": "{1} KB"
+  },
+  "unit.mb": {
+    "message": "{1} MB"
+  },
+  "unit.gb": {
+    "message": "{1} GB"
+  },
+  "unit.tb": {
+    "message": "{1} TB"
+  },
+  "bing.meta.fetching": {
+    "message": "Fetching..."
+  },
+  "bing.meta.failed": {
+    "message": "Failed to fetch: {1}"
+  },
+  "bing.wallpaper": {
+    "message": "Bing Daily Wallpaper"
+  },
+  "image.wallpaper.uploaded": {
+    "message": "Custom Image · {1}"
+  },
+  "image.wallpaper.url": {
+    "message": "Custom Image (URL)"
+  },
+  "image.wallpaper.unset": {
+    "message": "Custom Image (Not Set)"
+  },
+  "video.wallpaper": {
+    "message": "Video Wallpaper"
+  },
+  "color.wallpaper": {
+    "message": "Solid Color Background"
+  },
+  "wallpaper.unset": {
+    "message": "Not Set"
+  },
+  "preview.action.clear.busy": {
+    "message": "Clearing..."
+  },
+  "preview.action.clear.done": {
+    "message": "Cleared"
+  },
+  "preview.action.clear.failed": {
+    "message": "Clear Failed"
+  },
+  "preview.action.regen.busy": {
+    "message": "Generating..."
+  },
+  "preview.action.regen.done": {
+    "message": "Generated"
+  },
+  "preview.action.regen.failed": {
+    "message": "Generation Failed"
+  },
+  "preview.action.regen.none": {
+    "message": "Not Needed"
+  },
+  "preview.action.regen.noData": {
+    "message": "No Data"
+  },
+  "preview.action.repick.busy": {
+    "message": "Picking..."
+  },
+  "preview.action.repick.done": {
+    "message": "Picked"
+  },
+  "preview.action.repick.failed": {
+    "message": "Pick Failed"
+  },
+  "preview.action.repick.none": {
+    "message": "Not Needed"
+  },
+  "toast.settingsSaved": {
+    "message": "Settings saved"
+  },
+  "toast.copied": {
+    "message": "Copied to clipboard"
+  },
+  "toast.copyFailed": {
+    "message": "Failed to copy"
+  }
+}

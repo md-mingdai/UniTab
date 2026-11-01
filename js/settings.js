@@ -102,6 +102,7 @@ const Settings = (() => {
   function init() {
     cacheDom();
     loadSettings();
+    initLanguageSelector();
     bindEvents();
     applyBackground();
     /* The closed panel is laid out (just invisible), so the tab indicator can be
@@ -191,6 +192,9 @@ const Settings = (() => {
     engineSelectLabel = document.getElementById('engine-select-label');
     engineSelectNative = document.getElementById('engine-select');
 
+    /* Language select */
+    languageSelect = document.getElementById('language-select');
+
     /* Display */
     showSecondsToggle = document.getElementById('show-seconds-toggle');
     showBookmarksToggle = document.getElementById('show-bookmarks-toggle');
@@ -234,6 +238,28 @@ const Settings = (() => {
     resetAllPhrase = document.getElementById('reset-all-phrase');
   }
 
+  /* --- Language Selector --- */
+  function initLanguageSelector() {
+    if (!languageSelect) return;
+    const saved = localStorage.getItem('unitab_locale');
+    languageSelect.value = saved || 'auto';
+
+    languageSelect.addEventListener('change', async (e) => {
+      const val = e.target.value;
+      if (val === 'auto') {
+        localStorage.removeItem('unitab_locale');
+        const detected = I18n.detectBrowserLocale() || 'en';
+        await I18n.loadMessages(detected);
+      } else {
+        localStorage.setItem('unitab_locale', val);
+        await I18n.loadMessages(val);
+      }
+      I18n.applyTranslations();
+      /* Update html lang attribute */
+      document.documentElement.lang = I18n.getCurrentLocale().replace('_', '-');
+    });
+  }
+
   /* --- Confirm Dialog --- */
   function showConfirmDialog(message) {
     return new Promise((resolve) => {
@@ -270,9 +296,9 @@ const Settings = (() => {
       icon.innerHTML = ok
         ? '<circle cx="12" cy="12" r="10"></circle><path d="m8 12 2.5 2.5L16 9"></path>'
         : '<circle cx="12" cy="12" r="10"></circle><path d="M12 8v5"></path><path d="M12 16.5h.01"></path>';
-      titleEl.textContent = title || (ok ? '导出完成' : '导出失败');
+      titleEl.textContent = title || (ok ? t('dialog.export.success.title') : t('dialog.export.failed.title'));
       detailEl.textContent = detail || '';
-      okBtn.textContent = okLabel || '知道了';
+      okBtn.textContent = okLabel || t('dialog.export.ok');
       dialog.hidden = false;
 
       function onOk() {
@@ -325,7 +351,7 @@ const Settings = (() => {
      extension comes from the real blob MIME whenever one is available. */
   function buildExportName(blob, source, url) {
     if (source === 'video') {
-      const raw = sanitizeFileName(state.bgVideoFileName || 'unitab-视频壁纸') || 'unitab-视频壁纸';
+      const raw = sanitizeFileName(state.bgVideoFileName || t('export.filename.video', ['mp4'])) || t('export.filename.video', ['mp4']);
       if (/\.(mp4|webm|mov|mkv|avi|ogv|flv|wmv|m4v|3gp)$/i.test(raw)) return raw;
       return `${raw}.${mimeExtension(blob, 'mp4')}`;
     }
@@ -337,11 +363,11 @@ const Settings = (() => {
         String(now.getMonth() + 1).padStart(2, '0'),
         String(now.getDate()).padStart(2, '0'),
       ].join('-');
-      return `unitab-必应壁纸-${stamp}.${mimeExtension(blob, 'jpg')}`;
+      return t('export.filename.bing', [stamp, mimeExtension(blob, 'jpg')]);
     }
 
-    let raw = sanitizeFileName(state.bgImageFileName || nameFromUrl(url) || 'unitab-图片壁纸');
-    if (!raw) raw = 'unitab-图片壁纸';
+    let raw = sanitizeFileName(state.bgImageFileName || nameFromUrl(url) || t('export.filename.image', ['jpg']));
+    if (!raw) raw = t('export.filename.image', ['jpg']);
 
     const ext = mimeExtension(blob, 'jpg');
     if (/\.(jpe?g|png|webp|gif|avif|svg|bmp|ico|tiff?|heic|heif)$/i.test(raw)) {
@@ -489,7 +515,7 @@ const Settings = (() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (e) {
-      console.warn('UniTab: 无法保存设置:', e.message);
+      console.warn('UniTab: unable to save settings:', e.message);
     }
   }
 
@@ -580,12 +606,12 @@ const Settings = (() => {
     /* Image filename hint — distinguishes between uploaded base64
        and a user-entered URL, both stored independently under 'image'. */
     if (state.bgImageData || state.bgImageStored) {
-      bgFileName.textContent = state.bgImageFileName || '已上传图片';
+      bgFileName.textContent = state.bgImageFileName || t('settings.bg.file.uploaded');
     } else if (state.bgImageUrl) {
       bgFileName.textContent = state.bgImageUrl.length > 40
         ? state.bgImageUrl.substring(0, 40) + '...' : state.bgImageUrl;
     } else {
-      bgFileName.textContent = '未选择文件';
+      bgFileName.textContent = t('settings.bg.file.noFile');
     }
     setBingMeta(state.bgBingCopyright || '');
 
@@ -609,13 +635,13 @@ const Settings = (() => {
     Background.loadVideoBlob().then((blob) => {
       if (blob) {
         const sizeMB = (blob.size / (1024 * 1024)).toFixed(1);
-        const name = state.bgVideoFileName || '已存储视频';
+        const name = state.bgVideoFileName || t('settings.bg.video.noFile');
         bgVideoName.textContent = `${name}（${sizeMB}MB）`;
       } else {
-        bgVideoName.textContent = '未选择文件';
+        bgVideoName.textContent = t('settings.bg.file.noFile');
       }
     }).catch(() => {
-      bgVideoName.textContent = '未选择文件';
+      bgVideoName.textContent = t('settings.bg.file.noFile');
     });
   }
 
@@ -1012,11 +1038,11 @@ const Settings = (() => {
     bgBingRefresh.addEventListener('click', async () => {
       if (typeof Background === 'undefined' || !Background.fetchBingOfTheDay) return;
       bgBingRefresh.disabled = true;
-      setBingMeta('正在获取…');
+      setBingMeta(t('bing.meta.fetching'));
       try {
         const result = await Background.fetchBingOfTheDay();
         if (!result.ok) {
-          setBingMeta('获取失败：' + (result.error || '未知错误'));
+          setBingMeta(t('bing.meta.failed', [result.error || t('general.unknown')]));
           return;
         }
         state.bgBingUrl = result.url;
@@ -1037,7 +1063,7 @@ const Settings = (() => {
       const file = e.target.files[0];
       if (!file) return;
       if (!file.type.startsWith('image/')) {
-        bgFileName.textContent = '请选择图片文件';
+        bgFileName.textContent = t('settings.bg.file.selectImage');
         bgFileInput.value = '';
         return;
       }
@@ -1055,7 +1081,7 @@ const Settings = (() => {
       if (!stored) {
         dataUrl = await readAsDataUrl(file).catch(() => null);
         if (!dataUrl) {
-          bgFileName.textContent = '图片加载失败';
+          bgFileName.textContent = t('settings.bg.file.loadFailed');
           return;
         }
       }
@@ -1076,7 +1102,7 @@ const Settings = (() => {
     bgUrlApply.addEventListener('click', () => {
       const raw = bgUrlInput.value.trim();
       if (!raw) {
-        showUrlError('请输入图片链接');
+        showUrlError(t('settings.bg.url.error.empty'));
         return;
       }
       const check = validateImageUrl(raw);
@@ -1328,14 +1354,14 @@ const Settings = (() => {
       const file = e.target.files[0];
       if (!file) return;
       if (!file.type.startsWith('video/')) {
-        bgVideoName.textContent = '请选择视频文件';
+        bgVideoName.textContent = t('settings.bg.video.selectVideo');
         bgVideoInput.value = '';
         return;
       }
       const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
       if (file.size > 100 * 1024 * 1024) {
         const ok = await showConfirmDialog(
-          `文件大小 ${sizeMB}MB，较大的视频可能导致浏览器卡顿。是否继续使用？`
+          t('settings.bg.video.sizeWarning', [sizeMB])
         );
         if (!ok) {
           bgVideoInput.value = '';
@@ -1350,7 +1376,7 @@ const Settings = (() => {
         pickPreview('video', file, null);
         applyBackground();
       }).catch(() => {
-        bgVideoName.textContent = '视频保存失败';
+        bgVideoName.textContent = t('settings.bg.video.loadFailed');
       });
     });
 
@@ -1545,18 +1571,18 @@ const Settings = (() => {
   }
 
   function sourceLabel(source) {
-    if (source === 'bing') return '必应每日壁纸';
+    if (source === 'bing') return t('bing.wallpaper');
     if (source === 'image') {
       if (state.bgImageStored || state.bgImageData) {
-        return state.bgImageFileName ? `自定义图片 · ${state.bgImageFileName}` : '自定义图片（已上传）';
+        return state.bgImageFileName ? t('image.wallpaper.uploaded', [state.bgImageFileName]) : t('image.wallpaper.uploaded', ['']);
       }
-      return state.bgImageUrl ? '自定义图片（链接）' : '自定义图片（未设置）';
+      return state.bgImageUrl ? t('image.wallpaper.url') : t('image.wallpaper.unset');
     }
     if (source === 'video') {
-      return state.bgVideoFileName ? `视频壁纸 · ${state.bgVideoFileName}` : '视频壁纸';
+      return state.bgVideoFileName ? t('video.wallpaper', [state.bgVideoFileName]) : t('video.wallpaper');
     }
-    if (source === 'color') return '纯色背景';
-    return '未设置';
+    if (source === 'color') return t('color.wallpaper');
+    return t('wallpaper.unset');
   }
 
   /* Resolve the active wallpaper into the shape Background.regeneratePreview()
@@ -1593,15 +1619,15 @@ const Settings = (() => {
   /* Every label these buttons can show. Their sizes are measured once, before
      the first action, so the button box never changes while it is reporting. */
   const PREVIEW_ACTION_TEXT = {
-    clear: { busy: '清空中…', done: '已清空', failed: '清空失败' },
+    clear: { busy: 'preview.action.clear.busy', done: 'preview.action.clear.done', failed: 'preview.action.clear.failed' },
     regen: {
-      busy: '生成中…',
-      done: '已生成',
-      failed: '生成失败',
-      none: '无需生成',
-      noData: '无数据',
+      busy: 'preview.action.regen.busy',
+      done: 'preview.action.regen.done',
+      failed: 'preview.action.regen.failed',
+      none: 'preview.action.regen.none',
+      noData: 'preview.action.regen.noData',
     },
-    repick: { busy: '拾取中…', done: '已拾取', failed: '拾取失败', none: '无需拾取' },
+    repick: { busy: 'preview.action.repick.busy', done: 'preview.action.repick.done', failed: 'preview.action.repick.failed', none: 'preview.action.repick.none' },
   };
 
   /* Largest intrinsic size this button's labels need. */
@@ -1658,21 +1684,21 @@ const Settings = (() => {
     previewButtonWidthsReserved = true;
   }
 
-  function setButtonBusy(button, text) {
+  function setButtonBusy(button, textKey) {
     if (!button) return;
     if (!buttonIdleLabels.has(button)) buttonIdleLabels.set(button, button.textContent);
     clearTimeout(buttonResultTimers.get(button));
     buttonResultTimers.delete(button);
     button.disabled = true;
-    button.textContent = text;
+    button.textContent = t(textKey);
   }
 
-  function setButtonResult(button, text) {
+  function setButtonResult(button, textKey) {
     if (!button) return;
     const idle = buttonIdleLabels.get(button) || button.textContent;
     clearTimeout(buttonResultTimers.get(button));
     button.disabled = false;
-    button.textContent = text;
+    button.textContent = t(textKey);
     const timer = setTimeout(() => {
       buttonResultTimers.delete(button);
       button.textContent = idle;
@@ -1701,37 +1727,37 @@ const Settings = (() => {
     advancedExportBtn.disabled = !hasWallpaper;
     if (advancedExportHint) {
       advancedExportHint.textContent = hasWallpaper
-        ? `当前：${sourceLabel(source)}`
-        : '当前：纯色背景，没有可导出的壁纸。';
+        ? t('settings.advanced.wallpaper.export.hint', [sourceLabel(source)])
+        : t('settings.advanced.wallpaper.export.hint', [t('color.wallpaper')]);
     }
     if (advancedRegenPreview) advancedRegenPreview.disabled = !hasWallpaper;
     if (advancedRepickColor) advancedRepickColor.disabled = !hasWallpaper;
 
     if (advancedPreviewStatus) {
       if (!hasWallpaper) {
-        advancedPreviewStatus.textContent = '纯色背景不使用壁纸预览。';
+        advancedPreviewStatus.textContent = t('settings.advanced.preview.status.noPreview');
       } else if (typeof Background === 'undefined' || !Background.getPreviewInfo) {
-        advancedPreviewStatus.textContent = '当前预览：无法读取。';
+        advancedPreviewStatus.textContent = t('settings.advanced.preview.status.cannotRead');
       } else {
-        advancedPreviewStatus.textContent = '当前预览：正在读取…';
+        advancedPreviewStatus.textContent = t('settings.advanced.preview.status.reading');
         try {
           const info = await Background.getPreviewInfo(source);
           if (seq !== advancedRefreshSeq) return;
           if (info) {
-            const color = info.color ? info.color.toUpperCase() : '未知';
+            const color = info.color ? info.color.toUpperCase() : t('general.unknown');
             advancedPreviewStatus.textContent =
-              `当前预览：已缓存（${formatBytes(info.size)}） · 预览色 ${color}`;
+              t('settings.advanced.preview.status.cached', [formatBytes(info.size), color]);
           } else {
-            advancedPreviewStatus.textContent = '当前预览：未缓存，可点击“重新生成当前预览”。';
+            advancedPreviewStatus.textContent = t('settings.advanced.preview.status.noCache');
           }
         } catch {
-          if (seq === advancedRefreshSeq) advancedPreviewStatus.textContent = '当前预览：读取失败。';
+          if (seq === advancedRefreshSeq) advancedPreviewStatus.textContent = t('settings.advanced.preview.status.readFailed');
         }
       }
     }
 
     if (advancedStorageInfo) {
-      advancedStorageInfo.textContent = '本地存储占用：正在读取…';
+      advancedStorageInfo.textContent = t('settings.advanced.storage.status.loading');
       try {
         if (navigator.storage && navigator.storage.estimate) {
           const estimate = await navigator.storage.estimate();
@@ -1739,15 +1765,15 @@ const Settings = (() => {
           if (estimate && typeof estimate.usage === 'number') {
             const quota = typeof estimate.quota === 'number' && estimate.quota > 0
               ? ` / ${formatBytes(estimate.quota)}` : '';
-            advancedStorageInfo.textContent = `本地存储占用：约 ${formatBytes(estimate.usage)}${quota}`;
+            advancedStorageInfo.textContent = t('settings.advanced.storage.status.usage', [formatBytes(estimate.usage), quota]);
           } else {
-            advancedStorageInfo.textContent = '本地存储占用：无法读取。';
+            advancedStorageInfo.textContent = t('settings.advanced.storage.status.cannotRead');
           }
         } else {
-          advancedStorageInfo.textContent = '当前浏览器不支持存储占用查询。';
+          advancedStorageInfo.textContent = t('settings.advanced.storage.status.unsupported');
         }
       } catch {
-        if (seq === advancedRefreshSeq) advancedStorageInfo.textContent = '本地存储占用：读取失败。';
+        if (seq === advancedRefreshSeq) advancedStorageInfo.textContent = t('settings.advanced.storage.status.readFailed');
       }
     }
   }
@@ -1758,19 +1784,19 @@ const Settings = (() => {
     if (source === 'color' || source === 'none') {
       await showExportDialog({
         ok: false,
-        title: '没有可导出的壁纸',
-        detail: '当前背景是纯色，请先切换到必应、自定义图片或视频壁纸。',
+        title: t('dialog.export.noWallpaper.title'),
+        detail: t('dialog.export.noWallpaper.desc'),
       });
       return;
     }
     if (typeof Background === 'undefined' || !Background.getWallpaperBlob) {
-      await showExportDialog({ ok: false, detail: '壁纸模块尚未准备好，请稍后重试。' });
+      await showExportDialog({ ok: false, detail: t('dialog.export.notReady.desc') });
       return;
     }
 
     const originalLabel = advancedExportBtn.textContent;
     advancedExportBtn.disabled = true;
-    advancedExportBtn.textContent = '导出中…';
+    advancedExportBtn.textContent = t('dialog.export.exporting');
 
     let url = '';
     let opts = {};
@@ -1792,7 +1818,7 @@ const Settings = (() => {
         await downloadBlob(blob, fileName);
         await showExportDialog({
           ok: true,
-          title: '导出完成',
+          title: t('dialog.export.success.title'),
           detail: `${fileName}（${formatBytes(blob.size)}）`,
         });
       } else if (url) {
@@ -1802,22 +1828,21 @@ const Settings = (() => {
         await downloadUrl(url, fileName);
         await showExportDialog({
           ok: true,
-          title: '已交给浏览器下载',
-          detail: `${fileName}\n如果浏览器直接打开了图片，请右键另存为。`,
+          title: t('dialog.export.browser.title'),
+          detail: t('dialog.export.browser.desc', [fileName]),
         });
       } else {
         await showExportDialog({
           ok: false,
-          title: '没有可导出的壁纸',
-          detail: '当前壁纸的数据不存在，或本地存储已被清除。',
+          title: t('dialog.export.noData.title'),
+          detail: t('dialog.export.noData.desc'),
         });
       }
     } catch (err) {
       await showExportDialog({
         ok: false,
-        title: '导出失败',
-        detail: '下载被浏览器拦截或失败了，请检查本站的下载权限设置。'
-          + (err && err.message ? '\n' + err.message : ''),
+        title: t('dialog.export.failed.title'),
+        detail: t('dialog.export.failed.desc', [err && err.message ? '\n' + err.message : '']),
       });
     } finally {
       advancedExportBtn.textContent = originalLabel;
@@ -1918,19 +1943,19 @@ const Settings = (() => {
 
     const originalLabel = advancedClearBingCache.textContent;
     advancedClearBingCache.disabled = true;
-    advancedClearBingCache.textContent = '清理中…';
+    advancedClearBingCache.textContent = t('settings.advanced.storage.clearBing.busy');
     try {
       await Background.clearBingCache();
       await showExportDialog({
         ok: true,
-        title: '必应缓存已清除',
-        detail: '下次使用必应壁纸时会重新下载最新壁纸。',
+        title: t('settings.advanced.storage.clearBing.success.title'),
+        detail: t('settings.advanced.storage.clearBing.success.desc'),
       });
     } catch (err) {
       await showExportDialog({
         ok: false,
-        title: '清除失败',
-        detail: err && err.message ? err.message : '未知错误',
+        title: t('settings.advanced.storage.clearBing.failed.title'),
+        detail: t('settings.advanced.storage.clearBing.failed.desc', [err && err.message ? err.message : t('general.unknown')]),
       });
     } finally {
       advancedClearBingCache.textContent = originalLabel;
@@ -1987,7 +2012,7 @@ const Settings = (() => {
 
       function onPaste(e) {
         e.preventDefault();
-        setError('此输入框禁止粘贴，请手动输入警告文字。');
+        setError(t('settings.advanced.danger.resetAll.error.paste'));
       }
 
       function onBeforeInput(e) {
@@ -1995,13 +2020,13 @@ const Settings = (() => {
         if (type === 'insertFromPaste' || type === 'insertFromPasteAsQuotation'
             || type === 'insertFromDrop' || type === 'insertFromYank') {
           e.preventDefault();
-          setError('此输入框禁止粘贴，请手动输入警告文字。');
+          setError(t('settings.advanced.danger.resetAll.error.paste'));
         }
       }
 
       function onDrop(e) {
         e.preventDefault();
-        setError('此输入框禁止拖放文本，请手动输入警告文字。');
+        setError(t('settings.advanced.danger.resetAll.error.drop'));
       }
 
       function onKeydown(e) {
@@ -2012,7 +2037,7 @@ const Settings = (() => {
         } else if (e.key === 'Enter' && document.activeElement === resetAllInput) {
           if (resetAllConfirm.disabled) {
             e.preventDefault();
-            setError('请完整输入上面的警告文字。');
+            setError(t('settings.advanced.danger.resetAll.error.incomplete'));
           } else {
             e.preventDefault();
             cleanup(true);
@@ -2026,7 +2051,7 @@ const Settings = (() => {
 
       function onConfirm() {
         if (resetAllInput.value.trim() !== RESET_PHRASE) {
-          setError('输入内容不匹配，请重新输入。');
+          setError(t('settings.advanced.danger.resetAll.error.mismatch'));
           syncConfirm();
           return;
         }
@@ -2066,7 +2091,7 @@ const Settings = (() => {
     cancelPendingSave();
 
     advancedResetAll.disabled = true;
-    advancedResetAll.textContent = '正在清空…';
+    advancedResetAll.textContent = t('settings.advanced.danger.resetAll.busy');
 
     let storageCleared = true;
     try {
@@ -2085,14 +2110,14 @@ const Settings = (() => {
       storageCleared = false;
     }
 
-    advancedResetAll.textContent = '已清空';
+    advancedResetAll.textContent = t('settings.advanced.danger.resetAll.done');
     await showExportDialog({
       ok: storageCleared,
-      title: storageCleared ? '已清空全部配置' : '配置已清除，但缓存清理不完整',
+      title: storageCleared ? t('settings.advanced.danger.resetAll.success.title') : t('settings.advanced.danger.resetAll.partial.title'),
       detail: storageCleared
-        ? '页面将重新加载，恢复首次安装状态。'
-        : '设置已清除，但部分本地缓存可能仍在。页面将重新加载。',
-      okLabel: '重新加载',
+        ? t('settings.advanced.danger.resetAll.success.desc')
+        : t('settings.advanced.danger.resetAll.partial.desc'),
+      okLabel: t('settings.advanced.danger.resetAll.reloadBtn'),
     });
     window.location.reload();
   }
@@ -2253,16 +2278,16 @@ const Settings = (() => {
      to prevent XSS via the CSS url() setter. Returns { ok, url, error }. */
   function validateImageUrl(input) {
     if (typeof input !== 'string' || !input.trim()) {
-      return { ok: false, error: '链接不能为空' };
+      return { ok: false, error: t('settings.bg.url.error.empty') };
     }
     let parsed;
     try {
       parsed = new URL(input);
     } catch {
-      return { ok: false, error: '链接格式不合法' };
+      return { ok: false, error: t('settings.bg.url.error.invalid') };
     }
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-      return { ok: false, error: '仅支持 http / https 链接' };
+      return { ok: false, error: t('settings.bg.url.error.scheme') };
     }
     return { ok: true, url: parsed.href };
   }
