@@ -6,6 +6,7 @@ const Settings = (() => {
   /* --- Defaults --- */
   const DEFAULTS = {
     engine: 'bing',
+    useCustomSuggest: false, // 预设引擎使用自定义联想 API（自定义引擎始终启用）
     bgBlur: 0,
     overlayOpacity: 0,
     overlayColor: '#000000',
@@ -21,6 +22,7 @@ const Settings = (() => {
     bgThemeColorBing: '', // 必应壁纸的预览色
     bgThemeColorImage: '',// 自定义图片的预览色
     bgThemeColorVideo: '',// 视频壁纸（首帧）的预览色
+    showClock: true,     // 时钟总控（关闭则整个时钟隐藏，秒数子项随之隐藏）
     showSeconds: true,
     showBookmarks: true,  // 底部常用网址 Dock 栏开关
     showCursorEffect: false,  // 鼠标粒子特效
@@ -118,7 +120,9 @@ const Settings = (() => {
   let engineSelectWrapper, engineSelectTrigger, engineSelectDropdown, engineSelectLabel, engineSelectNative;
   let customEngineConfig, customEngineUrlInput, customEngineSaveBtn, customEngineSaveStatus;
   let customSuggestWrapper, customSuggestTrigger, customSuggestDropdown, customSuggestLabel, customSuggestNative;
+  let customSuggestToggle, customSuggestConfig;
   let languageSelectWrapper, languageSelectTrigger, languageSelectDropdown, languageSelectLabel, languageSelectNative;
+  let showClockToggle, showSecondsGroup;
   let showSecondsToggle;
   let showBookmarksToggle;
   let cursorEffectToggle;
@@ -240,6 +244,8 @@ const Settings = (() => {
     customSuggestDropdown = document.getElementById('custom-engine-suggest-dropdown');
     customSuggestLabel = document.getElementById('custom-engine-suggest-label');
     customSuggestNative = document.getElementById('custom-engine-suggest');
+    customSuggestToggle = document.getElementById('custom-suggest-toggle');
+    customSuggestConfig = document.getElementById('custom-suggest-config');
 
     /* Language select */
     languageSelectWrapper = document.getElementById('language-select-wrapper');
@@ -249,6 +255,8 @@ const Settings = (() => {
     languageSelectNative = document.getElementById('language-select');
 
     /* Display */
+    showClockToggle = document.getElementById('show-clock-toggle');
+    showSecondsGroup = document.getElementById('show-seconds-group');
     showSecondsToggle = document.getElementById('show-seconds-toggle');
     showBookmarksToggle = document.getElementById('show-bookmarks-toggle');
     cursorEffectToggle = document.getElementById('cursor-effect-toggle');
@@ -651,8 +659,11 @@ const Settings = (() => {
     updateEngineDropdown(state.engine);
     setCustomEngineConfigVisible(state.engine === 'custom');
     syncCustomEngineConfig();
+    updateCustomSuggestToggle();
 
     /* Show seconds toggle */
+    updateShowClockToggle(state.showClock);
+    setShowSecondsGroupVisible(state.showClock);
     updateShowSecondsToggle(state.showSeconds);
 
     /* Bookmarks bar toggle */
@@ -702,11 +713,11 @@ const Settings = (() => {
 
     /* Video settings */
     updateVideoSoundToggle(state.bgVideoSoundOn);
-    if (videoVolumeWrapper) videoVolumeWrapper.hidden = !state.bgVideoSoundOn;
+    setGroupHidden(videoVolumeWrapper, !state.bgVideoSoundOn);
     if (videoVolumeSlider) videoVolumeSlider.value = state.bgVideoVolume;
     if (videoVolumeDisplay) videoVolumeDisplay.textContent = state.bgVideoVolume + '%';
     updateVideoLoopToggle(state.bgVideoLoop);
-    if (videoOnEndedWrapper) videoOnEndedWrapper.hidden = state.bgVideoLoop;
+    setGroupHidden(videoOnEndedWrapper, state.bgVideoLoop);
     if (videoOnEndedNative) videoOnEndedNative.value = state.bgVideoOnEnded;
     updateVideoOnEndedLabel(state.bgVideoOnEnded);
     updateVideoOnEndedDropdown(state.bgVideoOnEnded);
@@ -781,6 +792,11 @@ const Settings = (() => {
           Search.setEngine(value, false);
         }
         break;
+      case 'showClock':
+        if (typeof Clock !== 'undefined') {
+          Clock.setShowClock(value);
+        }
+        break;
       case 'showSeconds':
         if (typeof Clock !== 'undefined') {
           Clock.setShowSeconds(value);
@@ -817,6 +833,7 @@ const Settings = (() => {
     applyToDom('bgColor', state.bgColor);
     applyToDom('bgThemeColor', state.bgThemeColor);
     applyToDom('engine', state.engine);
+    applyToDom('showClock', state.showClock);
     applyToDom('showSeconds', state.showSeconds);
     applyToDom('showBookmarks', state.showBookmarks);
     applyToDom('showCursorEffect', state.showCursorEffect);
@@ -886,15 +903,38 @@ const Settings = (() => {
   }
 
   /* --- Sub-panel visibility --- */
+
+  /* Show/hide a settings sub-option with a fade. The [hidden] attribute is
+     instant, so on the way out we hold the element in the layout for the fade
+     (opacity 0) before setting it, and on the way in we reveal from opacity 0.
+     The `hidden` flag is kept in sync so callers can keep reading it. */
+  function setGroupHidden(el, hide) {
+    if (!el) return;
+    if (hide) {
+      if (el.hidden) return;
+      clearTimeout(el.__fadeTimer);
+      el.classList.add('setting-fade-hiding');
+      el.__fadeTimer = setTimeout(() => {
+        el.hidden = true;
+        el.classList.remove('setting-fade-hiding');
+        el.__fadeTimer = null;
+      }, 240);
+    } else {
+      if (!el.hidden) return;
+      clearTimeout(el.__fadeTimer);
+      el.__fadeTimer = null;
+      el.hidden = false;
+      el.classList.add('setting-fade-reveal');
+      void el.offsetWidth; /* force reflow so the fade-in starts from opacity 0 */
+      el.classList.remove('setting-fade-reveal');
+    }
+  }
+
   function setPanelVisible(name, visible) {
     const map = { bing: bgBingPanel, image: bgImagePanel, color: bgColorPanel, video: bgVideoPanel };
     const el = map[name];
     if (!el) return;
-    if (visible) {
-      el.hidden = false;
-    } else {
-      el.hidden = true;
-    }
+    setGroupHidden(el, !visible);
   }
 
   /* --- Background source radios --- */
@@ -937,7 +977,21 @@ const Settings = (() => {
 
   /* --- Custom engine config --- */
   function setCustomEngineConfigVisible(visible) {
-    if (customEngineConfig) customEngineConfig.hidden = !visible;
+    setGroupHidden(customEngineConfig, !visible);
+  }
+
+  /* The custom suggestions API toggle: off by default for preset engines (they
+     keep their native API); for the custom engine it is forced on (disabled),
+     since the custom engine has no native suggestion API of its own. The
+     provider picker shows whenever the toggle is effectively on. */
+  function updateCustomSuggestToggle() {
+    if (!customSuggestToggle) return;
+    const forced = state.engine === 'custom';
+    const effective = !!state.useCustomSuggest || forced;
+    customSuggestToggle.classList.toggle('on', effective);
+    customSuggestToggle.setAttribute('aria-checked', effective ? 'true' : 'false');
+    customSuggestToggle.setAttribute('aria-disabled', forced ? 'true' : 'false');
+    setGroupHidden(customSuggestConfig, !effective);
   }
 
   function customSuggestProvider() {
@@ -1047,6 +1101,16 @@ const Settings = (() => {
     validateCustomEngineUrl();
   }
 
+  function updateShowClockToggle(on) {
+    if (!showClockToggle) return;
+    showClockToggle.classList.toggle('on', !!on);
+    showClockToggle.setAttribute('aria-checked', on ? 'true' : 'false');
+  }
+
+  function setShowSecondsGroupVisible(visible) {
+    setGroupHidden(showSecondsGroup, !visible);
+  }
+
   function updateShowSecondsToggle(on) {
     if (!showSecondsToggle) return;
     showSecondsToggle.classList.toggle('on', !!on);
@@ -1083,8 +1147,7 @@ const Settings = (() => {
   }
 
   function setCursorStyleGroupVisible(visible) {
-    if (!cursorStyleGroup) return;
-    cursorStyleGroup.hidden = !visible;
+    setGroupHidden(cursorStyleGroup, !visible);
   }
 
   function updateGlassStyleLabel(styleKey) {
@@ -1398,6 +1461,7 @@ const Settings = (() => {
       updateEngineLabel(val);
       updateEngineDropdown(val);
       setCustomEngineConfigVisible(val === 'custom');
+      updateCustomSuggestToggle();
       applyToDom('engine', val);
       saveSettings();
     });
@@ -1432,6 +1496,40 @@ const Settings = (() => {
       updateCustomSuggestLabel(val);
       updateCustomSuggestDropdown(val);
     });
+
+    /* --- Custom suggestions API toggle (preset engines) --- */
+    if (customSuggestToggle) {
+      customSuggestToggle.addEventListener('click', () => {
+        /* For the custom engine the toggle is forced on and cannot be changed. */
+        if (state.engine === 'custom') return;
+        state.useCustomSuggest = !state.useCustomSuggest;
+        updateCustomSuggestToggle();
+        saveSettings();
+      });
+      customSuggestToggle.addEventListener('keydown', (e) => {
+        if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          customSuggestToggle.click();
+        }
+      });
+    }
+
+    /* --- Clock master toggle --- */
+    if (showClockToggle) {
+      showClockToggle.addEventListener('click', () => {
+        state.showClock = !state.showClock;
+        updateShowClockToggle(state.showClock);
+        setShowSecondsGroupVisible(state.showClock);
+        applyToDom('showClock', state.showClock);
+        saveSettings();
+      });
+      showClockToggle.addEventListener('keydown', (e) => {
+        if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          showClockToggle.click();
+        }
+      });
+    }
 
     /* --- Show seconds toggle --- */
     showSecondsToggle.addEventListener('click', () => {
@@ -1541,7 +1639,7 @@ const Settings = (() => {
       state.bgVideoSoundOn = !state.bgVideoSoundOn;
       updateVideoSoundToggle(state.bgVideoSoundOn);
       morphPanel(() => {
-        if (videoVolumeWrapper) videoVolumeWrapper.hidden = !state.bgVideoSoundOn;
+        setGroupHidden(videoVolumeWrapper, !state.bgVideoSoundOn);
       });
       Background.setMuted(!state.bgVideoSoundOn);
       saveSettings();
@@ -1568,7 +1666,7 @@ const Settings = (() => {
       state.bgVideoLoop = !state.bgVideoLoop;
       updateVideoLoopToggle(state.bgVideoLoop);
       morphPanel(() => {
-        if (videoOnEndedWrapper) videoOnEndedWrapper.hidden = state.bgVideoLoop;
+        setGroupHidden(videoOnEndedWrapper, state.bgVideoLoop);
       });
       if (state.bgVideoLoop) {
         Background.setLoop(true);

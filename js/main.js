@@ -25,6 +25,19 @@
       }
     }
 
+    /* Master clock switch: when off the whole clock is hidden (and stops
+       ticking). A missing setting means "on", matching the default. */
+    function shouldShowClock() {
+      try {
+        const s = (typeof Settings !== 'undefined' && Settings.getState)
+          ? Settings.getState()
+          : null;
+        return !(s && s.showClock === false);
+      } catch {
+        return true;
+      }
+    }
+
     function update() {
       const now = new Date();
       const hh = now.getHours().toString().padStart(2, '0');
@@ -64,6 +77,12 @@
     }
 
     function start() {
+      if (!shouldShowClock()) {
+        clockEl.classList.add('clock--hidden');
+        clearTimer();
+        return;
+      }
+      clockEl.classList.remove('clock--hidden');
       update();
       schedule();
     }
@@ -83,7 +102,21 @@
       start();
     }
 
-    return { start, setShowSeconds };
+    /* Called by Settings.applyToDom when the master clock switch is toggled:
+       hide (and stop) the whole clock, or bring it back and resume ticking. */
+    function setShowClock() {
+      const on = shouldShowClock();
+      if (on) {
+        start();
+      } else {
+        clearTimer();
+        lastText = '';
+        clockEl.textContent = '';
+        clockEl.classList.add('clock--hidden');
+      }
+    }
+
+    return { start, setShowSeconds, setShowClock };
   })();
 
   /* Settings.applyToDom() looks for a global `Clock` to retune the clock the moment

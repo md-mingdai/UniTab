@@ -216,6 +216,15 @@ body {
      visible width and re-center the clock slightly on every refresh. */
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum' 1;
+  /* Master clock switch fades it in/out. visibility flips after the fade on
+     the way out (so it leaves the a11y tree) and immediately on the way in. */
+  transition: opacity 0.35s ease, visibility 0s 0s;
+}
+
+.clock.clock--hidden {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.35s ease, visibility 0s 0.35s;
 }
 
 /* ============================================
@@ -911,6 +920,34 @@ body {
   margin-bottom: 20px;
 }
 
+/* Fade in/out for settings sub-options that appear or disappear with a setting
+   (custom engine URL, suggestions provider, cursor style, video volume/on-ended,
+   background sub-panels, clock seconds). settings.js drives the two states:
+   .setting-fade-hiding fades out then sets [hidden]; .setting-fade-reveal snaps
+   to opacity 0 (with the transition off) so the element can fade back in. */
+.setting-fade {
+  transition: opacity 0.22s var(--ease-out-expo);
+}
+
+.setting-fade.setting-fade-hiding {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.setting-fade.setting-fade-reveal {
+  opacity: 0;
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .setting-fade {
+    transition: none;
+  }
+  .clock {
+    transition: opacity 0.35s ease, visibility 0s 0s;
+  }
+}
+
 .setting-label {
   display: block;
   font-size: 14px;
@@ -968,6 +1005,16 @@ body {
 
 .switch.on .switch-knob {
   transform: translateX(16px);
+}
+
+/* Forced-on toggle (custom engine): shown on but not clickable */
+.switch[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.switch[aria-disabled="true"]:focus-visible {
+  box-shadow: none;
 }
 
 /* Setting Input */
@@ -1057,8 +1104,13 @@ body {
   color: #e07a7a;
 }
 
-.custom-engine-config .custom-select-wrapper {
+.custom-suggest-group .custom-select-wrapper {
   margin-bottom: 4px;
+}
+
+/* DANGER ZONE "clear all config" button: dashed outline */
+#advanced-reset-all {
+  border: 1px dashed rgba(248, 113, 113, 0.58);
 }
 
 /* Slider */

@@ -552,14 +552,26 @@ const Search = (() => {
      is the static ENGINES entry; for the custom engine the search URL comes from
      the user's template and the suggestion URL/parser from the chosen provider. */
   function getEngineConfig() {
-    if (currentEngine !== 'custom') return ENGINES[currentEngine];
-    const provider = customSuggestProvider();
-    const base = ENGINES[provider];
-    return {
-      ...base,
-      custom: true,
-      searchUrl: localStorage.getItem(CUSTOM_URL_KEY) || ''
-    };
+    if (currentEngine === 'custom') {
+      const provider = customSuggestProvider();
+      const base = ENGINES[provider];
+      return {
+        ...base,
+        custom: true,
+        searchUrl: localStorage.getItem(CUSTOM_URL_KEY) || ''
+      };
+    }
+    /* Preset engine: when the custom suggestions API is enabled, keep this
+       engine's search URL but source suggestions from the chosen provider. */
+    if (useCustomSuggest()) {
+      const base = ENGINES[customSuggestProvider()];
+      return {
+        ...ENGINES[currentEngine],
+        suggestUrl: base.suggestUrl,
+        parser: base.parser
+      };
+    }
+    return ENGINES[currentEngine];
   }
 
   function customSuggestProvider() {
@@ -567,11 +579,23 @@ const Search = (() => {
     return (v === 'google' || v === 'baidu') ? v : 'bing';
   }
 
+  /* Whether the user enabled the custom suggestions API for preset engines.
+     (The custom engine always uses the chosen provider; see getEngineConfig.) */
+  function useCustomSuggest() {
+    try {
+      const s = JSON.parse(localStorage.getItem('unitab_settings') || 'null');
+      return !!(s && s.useCustomSuggest);
+    } catch {
+      return false;
+    }
+  }
+
   /* Cache identity: for the custom engine, changing the suggestion provider must
      not serve suggestions fetched through the previous provider. */
   function engineCacheId() {
-    if (currentEngine !== 'custom') return currentEngine;
-    return 'custom:' + customSuggestProvider();
+    if (currentEngine === 'custom') return 'custom:' + customSuggestProvider();
+    if (useCustomSuggest()) return currentEngine + ':custom:' + customSuggestProvider();
+    return currentEngine;
   }
 
   function setEngine(engineKey, save = true) {

@@ -145,13 +145,13 @@
         </div>
 
         <!-- 必应每日壁纸 子面板 -->
-        <div class="setting-group bg-sub-panel" data-panel="bing" id="bg-bing-panel" hidden>
+        <div class="setting-group bg-sub-panel setting-fade" data-panel="bing" id="bg-bing-panel" hidden>
           <button id="bg-bing-refresh" class="setting-btn-secondary setting-btn-bing" type="button" data-i18n="settings.bg.refresh">刷新壁纸</button>
           <div id="bg-bing-meta" class="setting-meta" aria-live="polite"></div>
         </div>
 
         <!-- 自定义图片 子面板 -->
-        <div class="setting-group bg-sub-panel" data-panel="image" id="bg-image-panel" hidden>
+        <div class="setting-group bg-sub-panel setting-fade" data-panel="image" id="bg-image-panel" hidden>
           <div class="file-upload-wrapper">
             <input type="file" id="bg-file-input" class="file-input" accept="image/*">
             <label for="bg-file-input" class="file-upload-btn" data-i18n="settings.bg.upload">选择图片</label>
@@ -164,7 +164,7 @@
         </div>
 
         <!-- 纯色 子面板 -->
-        <div class="setting-group bg-sub-panel" data-panel="color" id="bg-color-panel" hidden>
+        <div class="setting-group bg-sub-panel setting-fade" data-panel="color" id="bg-color-panel" hidden>
           <div class="color-swatch-grid" id="bg-color-swatch-grid">
             <button class="color-swatch bg-color-swatch" data-color="#1a1d24" style="background:#1a1d24" aria-label="深灰蓝"></button>
             <button class="color-swatch bg-color-swatch" data-color="#0d1117" style="background:#0d1117" aria-label="GitHub 暗"></button>
@@ -183,7 +183,7 @@
         </div>
 
         <!-- 视频壁纸 子面板 -->
-        <div class="setting-group bg-sub-panel" data-panel="video" id="bg-video-panel" hidden>
+        <div class="setting-group bg-sub-panel setting-fade" data-panel="video" id="bg-video-panel" hidden>
           <div class="file-upload-wrapper">
             <input type="file" id="bg-video-input" class="file-input" accept="video/*">
             <label for="bg-video-input" class="file-upload-btn" data-i18n="settings.bg.video.select">选择视频</label>
@@ -195,7 +195,7 @@
               <span class="switch-knob"></span>
             </span>
           </label>
-          <div id="video-volume-wrapper" hidden>
+          <div id="video-volume-wrapper" class="setting-fade" hidden>
             <label class="setting-label setting-label-sub" for="video-volume-slider"><span data-i18n="settings.bg.video.volume">音量</span> <span id="volume-value-display">50%</span></label>
             <input type="range" id="video-volume-slider" class="setting-slider" min="0" max="100" value="50" step="1">
           </div>
@@ -205,7 +205,7 @@
               <span class="switch-knob"></span>
             </span>
           </label>
-          <div id="video-onended-wrapper" hidden>
+          <div id="video-onended-wrapper" class="setting-fade" hidden>
             <label class="setting-label setting-label-sub" for="video-onended-select"><span data-i18n="settings.bg.video.onEnded">播放完成后</span></label>
             <div class="custom-select-wrapper" id="video-onended-select-wrapper">
               <button class="custom-select-trigger" id="video-onended-trigger" type="button">
@@ -286,8 +286,40 @@
           </select>
         </div>
 
+        <!-- Custom suggestions API: available for every engine. Default off for
+             preset engines (they keep their native API); always on for the custom
+             engine, which has no native suggestion API of its own. Sits right after
+             the engine dropdown and never moves when the custom config appears. -->
+        <div class="setting-group custom-suggest-group">
+          <label class="setting-label setting-label-row" for="custom-suggest-toggle">
+            <span data-i18n="settings.search.custom.suggestToggle">自定义联想 API</span>
+            <span class="switch" role="switch" aria-checked="false" tabindex="0" id="custom-suggest-toggle">
+              <span class="switch-knob"></span>
+            </span>
+          </label>
+          <div id="custom-suggest-config" class="setting-fade" hidden>
+            <label class="setting-label" for="custom-engine-suggest" data-i18n="settings.search.custom.suggest">联想 API</label>
+            <div class="custom-select-wrapper" id="custom-engine-suggest-wrapper">
+              <button class="custom-select-trigger" id="custom-engine-suggest-trigger" type="button">
+                <span id="custom-engine-suggest-label">Bing</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+              <div class="custom-select-dropdown" id="custom-engine-suggest-dropdown" hidden>
+                <button class="custom-select-option" data-value="google" data-i18n="settings.search.engine.google">Google</button>
+                <button class="custom-select-option" data-value="bing" data-i18n="settings.search.engine.bing">Bing</button>
+                <button class="custom-select-option" data-value="baidu" data-i18n="settings.search.engine.baidu">百度</button>
+              </div>
+            </div>
+            <select id="custom-engine-suggest" class="setting-select-hidden" hidden>
+              <option value="google">Google</option>
+              <option value="bing">Bing</option>
+              <option value="baidu">百度</option>
+            </select>
+          </div>
+        </div>
+
         <!-- Custom engine configuration: shown only when engine === custom -->
-        <div class="setting-group custom-engine-config" id="custom-engine-config" hidden>
+        <div class="setting-group custom-engine-config setting-fade" id="custom-engine-config" hidden>
           <label class="setting-label" for="custom-engine-url" data-i18n="settings.search.custom.url">搜索 URL</label>
           <div class="custom-engine-url-row">
             <input type="text" id="custom-engine-url" class="setting-input" spellcheck="false">
@@ -296,24 +328,6 @@
           </div>
           <span id="custom-engine-save-status" class="setting-save-status" aria-live="polite"></span>
           <p class="setting-hint" data-i18n="settings.search.custom.urlHint">将 {{query}} 作为搜索关键词占位符，例如 https://example.com/search?q={{query}}。留空则使用默认搜索引擎。</p>
-
-          <label class="setting-label" for="custom-engine-suggest" data-i18n="settings.search.custom.suggest">联想 API</label>
-          <div class="custom-select-wrapper" id="custom-engine-suggest-wrapper">
-            <button class="custom-select-trigger" id="custom-engine-suggest-trigger" type="button">
-              <span id="custom-engine-suggest-label">Bing</span>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
-            </button>
-            <div class="custom-select-dropdown" id="custom-engine-suggest-dropdown" hidden>
-              <button class="custom-select-option" data-value="google" data-i18n="settings.search.engine.google">Google</button>
-              <button class="custom-select-option" data-value="bing" data-i18n="settings.search.engine.bing">Bing</button>
-              <button class="custom-select-option" data-value="baidu" data-i18n="settings.search.engine.baidu">百度</button>
-            </div>
-          </div>
-          <select id="custom-engine-suggest" class="setting-select-hidden" hidden>
-            <option value="google">Google</option>
-            <option value="bing">Bing</option>
-            <option value="baidu">百度</option>
-          </select>
         </div>
       </section>
 
@@ -322,8 +336,17 @@
         <h3 class="settings-section-title" data-i18n="settings.tabs.display">显示</h3>
 
         <div class="setting-group">
+          <label class="setting-label setting-label-row" for="show-clock-toggle">
+            <span data-i18n="settings.display.clock">时钟</span>
+            <span class="switch" role="switch" aria-checked="true" tabindex="0" id="show-clock-toggle">
+              <span class="switch-knob"></span>
+            </span>
+          </label>
+        </div>
+
+        <div class="setting-group setting-fade" id="show-seconds-group">
           <label class="setting-label setting-label-row" for="show-seconds-toggle">
-            <span data-i18n="settings.display.seconds">显示秒</span>
+            <span data-i18n="settings.display.seconds">时钟显示秒</span>
             <span class="switch" role="switch" aria-checked="true" tabindex="0" id="show-seconds-toggle">
               <span class="switch-knob"></span>
             </span>
@@ -370,7 +393,7 @@
           </label>
         </div>
 
-        <div class="setting-group" id="cursor-style-group" hidden>
+        <div class="setting-group setting-fade" id="cursor-style-group" hidden>
           <label class="setting-label" for="cursor-style-select" data-i18n="settings.display.cursorStyle">特效样式</label>
           <div class="custom-select-wrapper" id="cursor-style-wrapper">
             <button class="custom-select-trigger" id="cursor-style-trigger" type="button">
