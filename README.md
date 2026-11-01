@@ -1,10 +1,18 @@
+<div align="center">
+
+<img src="icons/icon-128.png" width="128" alt="UniTab" />
+
 # UniTab
 
-> 一款极简、毛玻璃风格的新标签页扩展，兼容主流浏览器。居中搜索框带实时建议，支持自定义背景、视频壁纸与鼠标特效。
+一款美观，自定义风格的新标签页扩展，兼容主流浏览器。居中搜索框带实时建议，支持自定义背景、视频壁纸与鼠标特效。
 
-- [![Author](https://img.shields.io/badge/Author-mingdai-green)](https://github.com/md-mingdai) [![Repo](https://img.shields.io/badge/github-repo-blue?logo=github)](https://github.com/md-mingdai/UniTab) [![License](https://img.shields.io/badge/License-MIT-red)](./LICENSE) [![Version](https://img.shields.io/github/v/release/md-mingdai/UniTab)](https://github.com/md-mingdai/UniTab/releases)
+[![Author](https://img.shields.io/badge/Author-mingdai-green)](https://github.com/md-mingdai) [![Repo](https://img.shields.io/badge/github-repo-blue?logo=github)](https://github.com/md-mingdai/UniTab) [![License](https://img.shields.io/badge/License-MIT-red)](./LICENSE) [![Version](https://img.shields.io/github/v/release/md-mingdai/UniTab)](https://github.com/md-mingdai/UniTab/releases)
 
 [English](./README_en.md)
+
+[安装](#安装)·[特性](#特性)·[版本](https://github.com/md-mingdai/UniTab/releases/latest)
+
+</div>
 
 ## 特性
 
@@ -24,12 +32,16 @@
 
 ## 安装
 
-### Chrome / Edge / Arc / Brave
+### Edge
+UniTab 已上架 [Microsoft Edge 加载项](https://microsoftedge.microsoft.com/addons/detail/unitab/hhlkomjalcanmdafhghlpacfnndaabnf) ，可直接安装
 
-1. 打开 `chrome://extensions`（Edge 用 `edge://extensions`）
-2. 开启右上角的**开发者模式**
-3. 点击**加载已解压的扩展程序**，选择 `UniTab` 文件夹
-4. 打开新标签页即可看到效果
+### Chrome / Arc / Brave
+
+1. 下载最新版 [UniTab Release](https://github.com/md-mingdai/UniTab/releases/latest) 或下载源码
+2. 打开 `chrome://extensions` 或者进入“管理扩展程序”页面
+3. 找到并开启**开发者模式**
+4. 将 Release 的 `crx` 文件拖动到浏览器窗口，或者点击**加载已解压的扩展程序**，选择 `UniTab` 文件夹
+5. 打开新标签页即可看到效果
 
 ### Firefox
 

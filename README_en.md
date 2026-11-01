@@ -1,10 +1,18 @@
+<div align="center">
+
+<img src="icons/icon-128.png" width="128" alt="UniTab" />
+
 # UniTab
 
-> A minimalist, glassmorphism new tab page for all major browsers. Centered search with live suggestions, customizable backgrounds and video wallpapers, and a clean frosted-glass interface.
+A visually appealing, highly customizable new tab extension compatible with all major browsers. It features a centered search bar with real-time suggestions, and supports custom backgrounds, video wallpapers, and mouse cursor effects.
 
-- [![Author](https://img.shields.io/badge/Author-mingdai-green)](https://github.com/md-mingdai) [![Repo](https://img.shields.io/badge/github-repo-blue?logo=github)](https://github.com/md-mingdai/UniTab) [![License](https://img.shields.io/badge/License-MIT-red)](./LICENSE) [![Version](https://img.shields.io/github/v/release/md-mingdai/UniTab)](https://github.com/md-mingdai/UniTab/releases)
+[![Author](https://img.shields.io/badge/Author-mingdai-green)](https://github.com/md-mingdai) [![Repo](https://img.shields.io/badge/github-repo-blue?logo=github)](https://github.com/md-mingdai/UniTab) [![License](https://img.shields.io/badge/License-MIT-red)](./LICENSE) [![Version](https://img.shields.io/github/v/release/md-mingdai/UniTab)](https://github.com/md-mingdai/UniTab/releases)
 
 [中文](./README.md)
+
+[Installation](#installation)·[Features](#features)·[Releases](https://github.com/md-mingdai/UniTab/releases/latest)
+
+</div>
 
 ## Features
 
@@ -24,12 +32,17 @@
 
 ## Installation
 
-### Chrome / Edge / Arc / Brave
+### Edge
 
-1. Open `chrome://extensions` (or `edge://extensions` on Edge)
-2. Enable **Developer mode** (top-right)
-3. Click **Load unpacked** and select the `UniTab` folder
-4. Open a new tab
+UniTab is available on the [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/unitab/hhlkomjalcanmdafhghlpacfnndaabnf) store and can be installed directly.
+
+### Chrome / Arc / Brave
+
+1. Download the latest [UniTab Release](https://github.com/md-mingdai/UniTab/releases/latest) or the source code
+2. Open `chrome://extensions` or go to the "Manage Extensions" page
+3. Find and enable **Developer mode**
+4. Drag the Release's `crx` file into the browser window, or click **Load unpacked** and select the `UniTab` folder
+5. Open a new tab
 
 ### Firefox
 
