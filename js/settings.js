@@ -296,9 +296,9 @@ const Settings = (() => {
       icon.innerHTML = ok
         ? '<circle cx="12" cy="12" r="10"></circle><path d="m8 12 2.5 2.5L16 9"></path>'
         : '<circle cx="12" cy="12" r="10"></circle><path d="M12 8v5"></path><path d="M12 16.5h.01"></path>';
-      titleEl.textContent = title || (ok ? t('dialog.export.success.title') : t('dialog.export.failed.title'));
+      titleEl.textContent = title || (ok ? I18n.t('dialog.export.success.title') : I18n.t('dialog.export.failed.title'));
       detailEl.textContent = detail || '';
-      okBtn.textContent = okLabel || t('dialog.export.ok');
+      okBtn.textContent = okLabel || I18n.t('dialog.export.ok');
       dialog.hidden = false;
 
       function onOk() {
@@ -351,7 +351,7 @@ const Settings = (() => {
      extension comes from the real blob MIME whenever one is available. */
   function buildExportName(blob, source, url) {
     if (source === 'video') {
-      const raw = sanitizeFileName(state.bgVideoFileName || t('export.filename.video', ['mp4'])) || t('export.filename.video', ['mp4']);
+      const raw = sanitizeFileName(state.bgVideoFileName || I18n.t('export.filename.video', ['mp4'])) || I18n.t('export.filename.video', ['mp4']);
       if (/\.(mp4|webm|mov|mkv|avi|ogv|flv|wmv|m4v|3gp)$/i.test(raw)) return raw;
       return `${raw}.${mimeExtension(blob, 'mp4')}`;
     }
@@ -363,11 +363,11 @@ const Settings = (() => {
         String(now.getMonth() + 1).padStart(2, '0'),
         String(now.getDate()).padStart(2, '0'),
       ].join('-');
-      return t('export.filename.bing', [stamp, mimeExtension(blob, 'jpg')]);
+      return I18n.t('export.filename.bing', [stamp, mimeExtension(blob, 'jpg')]);
     }
 
-    let raw = sanitizeFileName(state.bgImageFileName || nameFromUrl(url) || t('export.filename.image', ['jpg']));
-    if (!raw) raw = t('export.filename.image', ['jpg']);
+    let raw = sanitizeFileName(state.bgImageFileName || nameFromUrl(url) || I18n.t('export.filename.image', ['jpg']));
+    if (!raw) raw = I18n.t('export.filename.image', ['jpg']);
 
     const ext = mimeExtension(blob, 'jpg');
     if (/\.(jpe?g|png|webp|gif|avif|svg|bmp|ico|tiff?|heic|heif)$/i.test(raw)) {
@@ -606,12 +606,12 @@ const Settings = (() => {
     /* Image filename hint — distinguishes between uploaded base64
        and a user-entered URL, both stored independently under 'image'. */
     if (state.bgImageData || state.bgImageStored) {
-      bgFileName.textContent = state.bgImageFileName || t('settings.bg.file.uploaded');
+      bgFileName.textContent = state.bgImageFileName || I18n.t('settings.bg.file.uploaded');
     } else if (state.bgImageUrl) {
       bgFileName.textContent = state.bgImageUrl.length > 40
         ? state.bgImageUrl.substring(0, 40) + '...' : state.bgImageUrl;
     } else {
-      bgFileName.textContent = t('settings.bg.file.noFile');
+      bgFileName.textContent = I18n.t('settings.bg.file.noFile');
     }
     setBingMeta(state.bgBingCopyright || '');
 
@@ -635,13 +635,13 @@ const Settings = (() => {
     Background.loadVideoBlob().then((blob) => {
       if (blob) {
         const sizeMB = (blob.size / (1024 * 1024)).toFixed(1);
-        const name = state.bgVideoFileName || t('settings.bg.video.noFile');
+        const name = state.bgVideoFileName || I18n.t('settings.bg.video.noFile');
         bgVideoName.textContent = `${name}（${sizeMB}MB）`;
       } else {
-        bgVideoName.textContent = t('settings.bg.file.noFile');
+        bgVideoName.textContent = I18n.t('settings.bg.file.noFile');
       }
     }).catch(() => {
-      bgVideoName.textContent = t('settings.bg.file.noFile');
+      bgVideoName.textContent = I18n.t('settings.bg.file.noFile');
     });
   }
 
@@ -1038,11 +1038,11 @@ const Settings = (() => {
     bgBingRefresh.addEventListener('click', async () => {
       if (typeof Background === 'undefined' || !Background.fetchBingOfTheDay) return;
       bgBingRefresh.disabled = true;
-      setBingMeta(t('bing.meta.fetching'));
+      setBingMeta(I18n.t('bing.meta.fetching'));
       try {
         const result = await Background.fetchBingOfTheDay();
         if (!result.ok) {
-          setBingMeta(t('bing.meta.failed', [result.error || t('general.unknown')]));
+          setBingMeta(I18n.t('bing.meta.failed', [result.error || I18n.t('general.unknown')]));
           return;
         }
         state.bgBingUrl = result.url;
@@ -1063,7 +1063,7 @@ const Settings = (() => {
       const file = e.target.files[0];
       if (!file) return;
       if (!file.type.startsWith('image/')) {
-        bgFileName.textContent = t('settings.bg.file.selectImage');
+        bgFileName.textContent = I18n.t('settings.bg.file.selectImage');
         bgFileInput.value = '';
         return;
       }
@@ -1081,7 +1081,7 @@ const Settings = (() => {
       if (!stored) {
         dataUrl = await readAsDataUrl(file).catch(() => null);
         if (!dataUrl) {
-          bgFileName.textContent = t('settings.bg.file.loadFailed');
+          bgFileName.textContent = I18n.t('settings.bg.file.loadFailed');
           return;
         }
       }
@@ -1102,7 +1102,7 @@ const Settings = (() => {
     bgUrlApply.addEventListener('click', () => {
       const raw = bgUrlInput.value.trim();
       if (!raw) {
-        showUrlError(t('settings.bg.url.error.empty'));
+        showUrlError(I18n.t('settings.bg.url.error.empty'));
         return;
       }
       const check = validateImageUrl(raw);
@@ -1354,14 +1354,14 @@ const Settings = (() => {
       const file = e.target.files[0];
       if (!file) return;
       if (!file.type.startsWith('video/')) {
-        bgVideoName.textContent = t('settings.bg.video.selectVideo');
+        bgVideoName.textContent = I18n.t('settings.bg.video.selectVideo');
         bgVideoInput.value = '';
         return;
       }
       const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
       if (file.size > 100 * 1024 * 1024) {
         const ok = await showConfirmDialog(
-          t('settings.bg.video.sizeWarning', [sizeMB])
+          I18n.t('settings.bg.video.sizeWarning', [sizeMB])
         );
         if (!ok) {
           bgVideoInput.value = '';
@@ -1376,7 +1376,7 @@ const Settings = (() => {
         pickPreview('video', file, null);
         applyBackground();
       }).catch(() => {
-        bgVideoName.textContent = t('settings.bg.video.loadFailed');
+        bgVideoName.textContent = I18n.t('settings.bg.video.loadFailed');
       });
     });
 
@@ -1571,18 +1571,18 @@ const Settings = (() => {
   }
 
   function sourceLabel(source) {
-    if (source === 'bing') return t('bing.wallpaper');
+    if (source === 'bing') return I18n.t('bing.wallpaper');
     if (source === 'image') {
       if (state.bgImageStored || state.bgImageData) {
-        return state.bgImageFileName ? t('image.wallpaper.uploaded', [state.bgImageFileName]) : t('image.wallpaper.uploaded', ['']);
+        return state.bgImageFileName ? I18n.t('image.wallpaper.uploaded', [state.bgImageFileName]) : I18n.t('image.wallpaper.uploaded', ['']);
       }
-      return state.bgImageUrl ? t('image.wallpaper.url') : t('image.wallpaper.unset');
+      return state.bgImageUrl ? I18n.t('image.wallpaper.url') : I18n.t('image.wallpaper.unset');
     }
     if (source === 'video') {
-      return state.bgVideoFileName ? t('video.wallpaper', [state.bgVideoFileName]) : t('video.wallpaper');
+      return state.bgVideoFileName ? I18n.t('video.wallpaper', [state.bgVideoFileName]) : I18n.t('video.wallpaper');
     }
-    if (source === 'color') return t('color.wallpaper');
-    return t('wallpaper.unset');
+    if (source === 'color') return I18n.t('color.wallpaper');
+    return I18n.t('wallpaper.unset');
   }
 
   /* Resolve the active wallpaper into the shape Background.regeneratePreview()
@@ -1690,7 +1690,7 @@ const Settings = (() => {
     clearTimeout(buttonResultTimers.get(button));
     buttonResultTimers.delete(button);
     button.disabled = true;
-    button.textContent = t(textKey);
+    button.textContent = I18n.t(textKey);
   }
 
   function setButtonResult(button, textKey) {
@@ -1698,7 +1698,7 @@ const Settings = (() => {
     const idle = buttonIdleLabels.get(button) || button.textContent;
     clearTimeout(buttonResultTimers.get(button));
     button.disabled = false;
-    button.textContent = t(textKey);
+    button.textContent = I18n.t(textKey);
     const timer = setTimeout(() => {
       buttonResultTimers.delete(button);
       button.textContent = idle;
@@ -1727,37 +1727,37 @@ const Settings = (() => {
     advancedExportBtn.disabled = !hasWallpaper;
     if (advancedExportHint) {
       advancedExportHint.textContent = hasWallpaper
-        ? t('settings.advanced.wallpaper.export.hint', [sourceLabel(source)])
-        : t('settings.advanced.wallpaper.export.hint', [t('color.wallpaper')]);
+        ? I18n.t('settings.advanced.wallpaper.export.hint', [sourceLabel(source)])
+        : I18n.t('settings.advanced.wallpaper.export.hint', [I18n.t('color.wallpaper')]);
     }
     if (advancedRegenPreview) advancedRegenPreview.disabled = !hasWallpaper;
     if (advancedRepickColor) advancedRepickColor.disabled = !hasWallpaper;
 
     if (advancedPreviewStatus) {
       if (!hasWallpaper) {
-        advancedPreviewStatus.textContent = t('settings.advanced.preview.status.noPreview');
+        advancedPreviewStatus.textContent = I18n.t('settings.advanced.preview.status.noPreview');
       } else if (typeof Background === 'undefined' || !Background.getPreviewInfo) {
-        advancedPreviewStatus.textContent = t('settings.advanced.preview.status.cannotRead');
+        advancedPreviewStatus.textContent = I18n.t('settings.advanced.preview.status.cannotRead');
       } else {
-        advancedPreviewStatus.textContent = t('settings.advanced.preview.status.reading');
+        advancedPreviewStatus.textContent = I18n.t('settings.advanced.preview.status.reading');
         try {
           const info = await Background.getPreviewInfo(source);
           if (seq !== advancedRefreshSeq) return;
           if (info) {
-            const color = info.color ? info.color.toUpperCase() : t('general.unknown');
+            const color = info.color ? info.color.toUpperCase() : I18n.t('general.unknown');
             advancedPreviewStatus.textContent =
-              t('settings.advanced.preview.status.cached', [formatBytes(info.size), color]);
+              I18n.t('settings.advanced.preview.status.cached', [formatBytes(info.size), color]);
           } else {
-            advancedPreviewStatus.textContent = t('settings.advanced.preview.status.noCache');
+            advancedPreviewStatus.textContent = I18n.t('settings.advanced.preview.status.noCache');
           }
         } catch {
-          if (seq === advancedRefreshSeq) advancedPreviewStatus.textContent = t('settings.advanced.preview.status.readFailed');
+          if (seq === advancedRefreshSeq) advancedPreviewStatus.textContent = I18n.t('settings.advanced.preview.status.readFailed');
         }
       }
     }
 
     if (advancedStorageInfo) {
-      advancedStorageInfo.textContent = t('settings.advanced.storage.status.loading');
+      advancedStorageInfo.textContent = I18n.t('settings.advanced.storage.status.loading');
       try {
         if (navigator.storage && navigator.storage.estimate) {
           const estimate = await navigator.storage.estimate();
@@ -1765,15 +1765,15 @@ const Settings = (() => {
           if (estimate && typeof estimate.usage === 'number') {
             const quota = typeof estimate.quota === 'number' && estimate.quota > 0
               ? ` / ${formatBytes(estimate.quota)}` : '';
-            advancedStorageInfo.textContent = t('settings.advanced.storage.status.usage', [formatBytes(estimate.usage), quota]);
+            advancedStorageInfo.textContent = I18n.t('settings.advanced.storage.status.usage', [formatBytes(estimate.usage), quota]);
           } else {
-            advancedStorageInfo.textContent = t('settings.advanced.storage.status.cannotRead');
+            advancedStorageInfo.textContent = I18n.t('settings.advanced.storage.status.cannotRead');
           }
         } else {
-          advancedStorageInfo.textContent = t('settings.advanced.storage.status.unsupported');
+          advancedStorageInfo.textContent = I18n.t('settings.advanced.storage.status.unsupported');
         }
       } catch {
-        if (seq === advancedRefreshSeq) advancedStorageInfo.textContent = t('settings.advanced.storage.status.readFailed');
+        if (seq === advancedRefreshSeq) advancedStorageInfo.textContent = I18n.t('settings.advanced.storage.status.readFailed');
       }
     }
   }
@@ -1784,19 +1784,19 @@ const Settings = (() => {
     if (source === 'color' || source === 'none') {
       await showExportDialog({
         ok: false,
-        title: t('dialog.export.noWallpaper.title'),
-        detail: t('dialog.export.noWallpaper.desc'),
+        title: I18n.t('dialog.export.noWallpaper.title'),
+        detail: I18n.t('dialog.export.noWallpaper.desc'),
       });
       return;
     }
     if (typeof Background === 'undefined' || !Background.getWallpaperBlob) {
-      await showExportDialog({ ok: false, detail: t('dialog.export.notReady.desc') });
+      await showExportDialog({ ok: false, detail: I18n.t('dialog.export.notReady.desc') });
       return;
     }
 
     const originalLabel = advancedExportBtn.textContent;
     advancedExportBtn.disabled = true;
-    advancedExportBtn.textContent = t('dialog.export.exporting');
+    advancedExportBtn.textContent = I18n.t('dialog.export.exporting');
 
     let url = '';
     let opts = {};
@@ -1818,7 +1818,7 @@ const Settings = (() => {
         await downloadBlob(blob, fileName);
         await showExportDialog({
           ok: true,
-          title: t('dialog.export.success.title'),
+          title: I18n.t('dialog.export.success.title'),
           detail: `${fileName}（${formatBytes(blob.size)}）`,
         });
       } else if (url) {
@@ -1828,21 +1828,21 @@ const Settings = (() => {
         await downloadUrl(url, fileName);
         await showExportDialog({
           ok: true,
-          title: t('dialog.export.browser.title'),
-          detail: t('dialog.export.browser.desc', [fileName]),
+          title: I18n.t('dialog.export.browser.title'),
+          detail: I18n.t('dialog.export.browser.desc', [fileName]),
         });
       } else {
         await showExportDialog({
           ok: false,
-          title: t('dialog.export.noData.title'),
-          detail: t('dialog.export.noData.desc'),
+          title: I18n.t('dialog.export.noData.title'),
+          detail: I18n.t('dialog.export.noData.desc'),
         });
       }
     } catch (err) {
       await showExportDialog({
         ok: false,
-        title: t('dialog.export.failed.title'),
-        detail: t('dialog.export.failed.desc', [err && err.message ? '\n' + err.message : '']),
+        title: I18n.t('dialog.export.failed.title'),
+        detail: I18n.t('dialog.export.failed.desc', [err && err.message ? '\n' + err.message : '']),
       });
     } finally {
       advancedExportBtn.textContent = originalLabel;
@@ -1943,19 +1943,19 @@ const Settings = (() => {
 
     const originalLabel = advancedClearBingCache.textContent;
     advancedClearBingCache.disabled = true;
-    advancedClearBingCache.textContent = t('settings.advanced.storage.clearBing.busy');
+    advancedClearBingCache.textContent = I18n.t('settings.advanced.storage.clearBing.busy');
     try {
       await Background.clearBingCache();
       await showExportDialog({
         ok: true,
-        title: t('settings.advanced.storage.clearBing.success.title'),
-        detail: t('settings.advanced.storage.clearBing.success.desc'),
+        title: I18n.t('settings.advanced.storage.clearBing.success.title'),
+        detail: I18n.t('settings.advanced.storage.clearBing.success.desc'),
       });
     } catch (err) {
       await showExportDialog({
         ok: false,
-        title: t('settings.advanced.storage.clearBing.failed.title'),
-        detail: t('settings.advanced.storage.clearBing.failed.desc', [err && err.message ? err.message : t('general.unknown')]),
+        title: I18n.t('settings.advanced.storage.clearBing.failed.title'),
+        detail: I18n.t('settings.advanced.storage.clearBing.failed.desc', [err && err.message ? err.message : I18n.t('general.unknown')]),
       });
     } finally {
       advancedClearBingCache.textContent = originalLabel;
@@ -2012,7 +2012,7 @@ const Settings = (() => {
 
       function onPaste(e) {
         e.preventDefault();
-        setError(t('settings.advanced.danger.resetAll.error.paste'));
+        setError(I18n.t('settings.advanced.danger.resetAll.error.paste'));
       }
 
       function onBeforeInput(e) {
@@ -2020,13 +2020,13 @@ const Settings = (() => {
         if (type === 'insertFromPaste' || type === 'insertFromPasteAsQuotation'
             || type === 'insertFromDrop' || type === 'insertFromYank') {
           e.preventDefault();
-          setError(t('settings.advanced.danger.resetAll.error.paste'));
+          setError(I18n.t('settings.advanced.danger.resetAll.error.paste'));
         }
       }
 
       function onDrop(e) {
         e.preventDefault();
-        setError(t('settings.advanced.danger.resetAll.error.drop'));
+        setError(I18n.t('settings.advanced.danger.resetAll.error.drop'));
       }
 
       function onKeydown(e) {
@@ -2037,7 +2037,7 @@ const Settings = (() => {
         } else if (e.key === 'Enter' && document.activeElement === resetAllInput) {
           if (resetAllConfirm.disabled) {
             e.preventDefault();
-            setError(t('settings.advanced.danger.resetAll.error.incomplete'));
+            setError(I18n.t('settings.advanced.danger.resetAll.error.incomplete'));
           } else {
             e.preventDefault();
             cleanup(true);
@@ -2051,7 +2051,7 @@ const Settings = (() => {
 
       function onConfirm() {
         if (resetAllInput.value.trim() !== RESET_PHRASE) {
-          setError(t('settings.advanced.danger.resetAll.error.mismatch'));
+          setError(I18n.t('settings.advanced.danger.resetAll.error.mismatch'));
           syncConfirm();
           return;
         }
@@ -2091,7 +2091,7 @@ const Settings = (() => {
     cancelPendingSave();
 
     advancedResetAll.disabled = true;
-    advancedResetAll.textContent = t('settings.advanced.danger.resetAll.busy');
+    advancedResetAll.textContent = I18n.t('settings.advanced.danger.resetAll.busy');
 
     let storageCleared = true;
     try {
@@ -2110,14 +2110,14 @@ const Settings = (() => {
       storageCleared = false;
     }
 
-    advancedResetAll.textContent = t('settings.advanced.danger.resetAll.done');
+    advancedResetAll.textContent = I18n.t('settings.advanced.danger.resetAll.done');
     await showExportDialog({
       ok: storageCleared,
-      title: storageCleared ? t('settings.advanced.danger.resetAll.success.title') : t('settings.advanced.danger.resetAll.partial.title'),
+      title: storageCleared ? I18n.t('settings.advanced.danger.resetAll.success.title') : I18n.t('settings.advanced.danger.resetAll.partial.title'),
       detail: storageCleared
-        ? t('settings.advanced.danger.resetAll.success.desc')
-        : t('settings.advanced.danger.resetAll.partial.desc'),
-      okLabel: t('settings.advanced.danger.resetAll.reloadBtn'),
+        ? I18n.t('settings.advanced.danger.resetAll.success.desc')
+        : I18n.t('settings.advanced.danger.resetAll.partial.desc'),
+      okLabel: I18n.t('settings.advanced.danger.resetAll.reloadBtn'),
     });
     window.location.reload();
   }
@@ -2278,16 +2278,16 @@ const Settings = (() => {
      to prevent XSS via the CSS url() setter. Returns { ok, url, error }. */
   function validateImageUrl(input) {
     if (typeof input !== 'string' || !input.trim()) {
-      return { ok: false, error: t('settings.bg.url.error.empty') };
+      return { ok: false, error: I18n.t('settings.bg.url.error.empty') };
     }
     let parsed;
     try {
       parsed = new URL(input);
     } catch {
-      return { ok: false, error: t('settings.bg.url.error.invalid') };
+      return { ok: false, error: I18n.t('settings.bg.url.error.invalid') };
     }
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-      return { ok: false, error: t('settings.bg.url.error.scheme') };
+      return { ok: false, error: I18n.t('settings.bg.url.error.scheme') };
     }
     return { ok: true, url: parsed.href };
   }
