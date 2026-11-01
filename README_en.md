@@ -8,8 +8,9 @@
 
 ## Features
 
-- **Glassmorphism UI** — Search box, suggestions, bottom dock and settings panel all use `backdrop-filter`, with frosted / liquid glass styles and a 0–32px corner radius
+- **Glassmorphism UI** — Search box, suggestions, bottom dock and settings panel all use `backdrop-filter`, with frosted / liquid / matte glass styles and a 0–32px corner radius
 - **Liquid glass** — Edges refract the wallpaper like the rim of a lens (SVG displacement maps), the middle is frosted and the highlight comes from the top left. Each pane measures what is behind it, picks dark or light glass, and solves for the least tint that keeps its text at the target contrast: as clear as legibility allows
+- **Matte glass** — The earlier smoky-acrylic look, kept as its own option: heavy blur, fine grain and a denser tint. Plain CSS with no refraction engine, so it looks the same in every browser
 - **Multi-engine search** — Google, Bing, Sogou and Baidu; live suggestions for Google / Bing / Baidu (Sogou has no public suggestion API)
 - **Smart suggestions** — 150ms debounce, LRU cache, keyboard navigation (↑ / ↓ / Enter / Esc), Baidu JSONP and GBK support
 - **Custom backgrounds** — Bing wallpaper of the day, uploaded image or image URL, solid color, or video; blur 0–50px, overlay 0–100% with 8 presets plus a custom color
@@ -68,7 +69,7 @@ UniTab/
 ├── background.js           # Service worker: CORS proxy for suggestions and the Bing API
 ├── newtab.html             # New tab page markup
 ├── css/
-│   ├── style.css           # All styles (frosted glass, dark mode, responsive)
+│   ├── style.css           # All styles (frosted and matte glass, dark mode, responsive)
 │   └── liquid-glass.css    # Liquid glass material (only active with data-glass="liquid")
 ├── js/
 │   ├── boot.js             # Applies the saved look before first paint (incl. the last glass tone result); warms the preview
@@ -126,7 +127,8 @@ Preview maintenance only touches the `preview_*` slots and never deletes the act
 
 ## Design
 
-- Frosted and liquid glass are switched via `[data-glass]`. Liquid glass is built by `js/liquid-glass.js`: every pane gets a displacement map (`feDisplacementMap`: refracting rim + frosted middle) and a rim-light image on top of `backdrop-filter`; the wallpaper is sampled into a coarse colour field, each pane picks dark or light glass from the colours actually behind it and solves for the tint that just reaches its target contrast (search 3.8:1, dock 4.5:1, settings 4.2:1). The result is written to `<style id="lg-tokens">` and cached, so the next open has it before first paint
+- Frosted, liquid and matte glass are switched via `[data-glass]`. Liquid glass is built by `js/liquid-glass.js`: every pane gets a displacement map (`feDisplacementMap`: refracting rim + frosted middle) and a rim-light image on top of `backdrop-filter`; the wallpaper is sampled into a coarse colour field, each pane picks dark or light glass from the colours actually behind it and solves for the tint that just reaches its target contrast (search 3.8:1, dock 4.5:1, settings 4.2:1). The result is written to `<style id="lg-tokens">` and cached, so the next open has it before first paint
+- Matte glass (`data-glass="matte"`) keeps the earlier liquid look as plain CSS: a 24–32px blur, 160% saturation, a tint chosen from the wallpaper's brightness (`data-wallpaper-tone`), plus a fine `feTurbulence` grain and a gradient rim light. It runs no engine, so it does not rely on an SVG filter as `backdrop-filter`
 - Glass panes are siblings, never nested (a nested `backdrop-filter` cannot see the wallpaper). "Increase contrast" raises the targets and adds a border; "reduce transparency" and forced-colors fall back to opaque panes
 - The clock uses `font-variant-numeric: tabular-nums` and ticks on second / minute boundaries
 - Restrained 150–300ms motion, gated behind `prefers-reduced-motion`, with an opaque fallback for reduced transparency

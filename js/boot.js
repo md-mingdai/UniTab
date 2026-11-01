@@ -30,7 +30,7 @@
     var root = document.documentElement;
     var style = root.style;
 
-    if (saved.glassStyle === 'liquid' || saved.glassStyle === 'frosted') {
+    if (saved.glassStyle === 'liquid' || saved.glassStyle === 'frosted' || saved.glassStyle === 'matte') {
       root.dataset.glass = saved.glassStyle;
     }
     if (typeof saved.glassRadius === 'number') {
@@ -63,6 +63,22 @@
     }
     if (typeof placeholder === 'string' && placeholder) {
       style.setProperty('--bg-theme-color', placeholder);
+      /* How bright the scene behind the glass is decides how dense the matte tint
+         must be (see [data-wallpaper-tone] in style.css). Kept in sync with
+         wallpaperTone() in settings.js. (The liquid style measures the wallpaper
+         itself, see js/liquid-glass.js.) */
+      var m = /^#([0-9a-f]{6})$/i.exec(placeholder.trim());
+      if (m) {
+        var n = parseInt(m[1], 16);
+        var lin = function (v) {
+          v /= 255;
+          return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+        };
+        var lum = 0.2126 * lin((n >> 16) & 255)
+          + 0.7152 * lin((n >> 8) & 255)
+          + 0.0722 * lin(n & 255);
+        root.dataset.wallpaperTone = lum > 0.16 ? 'light' : 'dark';
+      }
     }
 
     /* Liquid glass: replay what js/liquid-glass.js measured for this wallpaper last

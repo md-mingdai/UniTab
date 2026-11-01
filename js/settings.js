@@ -25,7 +25,7 @@ const Settings = (() => {
     showBookmarks: true,  // 底部常用网址 Dock 栏开关
     showCursorEffect: false,  // 鼠标粒子特效
     cursorEffectStyle: 'confetti',  // 'confetti' | 'rain' | 'bubble' | 'star'
-    glassStyle: 'frosted',    // 'frosted' | 'liquid' — 毛玻璃 / 液态玻璃
+    glassStyle: 'frosted',    // 'frosted' | 'liquid' | 'matte' — 毛玻璃 / 液态玻璃 / 磨砂质感
     glassRadius: 20,          // 组件圆角 0-32px
     bgVideoSoundOn: false,    // 视频壁纸开启声音
     bgVideoVolume: 50,        // 视频壁纸音量 0-100
@@ -621,6 +621,28 @@ const Settings = (() => {
 
   /* --- Apply to DOM --- */
 
+  /* The matte style: bright wallpapers need a denser tint to keep white copy readable;
+     dark scenes can stay clearer. Threshold is relative luminance (0.16 sits between a
+     dim scene and a bright sky). Keep in sync with boot.js, which does the same for the
+     very first frame. (The liquid style measures the wallpaper itself.) */
+  function setWallpaperTone(color) {
+    const root = document.documentElement;
+    const m = typeof color === 'string' && /^#([0-9a-f]{6})$/i.exec(color.trim());
+    if (!m) {
+      delete root.dataset.wallpaperTone;
+      return;
+    }
+    const n = parseInt(m[1], 16);
+    const lin = (v) => {
+      v /= 255;
+      return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    };
+    const lum = 0.2126 * lin((n >> 16) & 255)
+      + 0.7152 * lin((n >> 8) & 255)
+      + 0.0722 * lin(n & 255);
+    root.dataset.wallpaperTone = lum > 0.16 ? 'light' : 'dark';
+  }
+
   function applyToDom(key, value) {
     const root = document.documentElement;
     switch (key) {
@@ -636,9 +658,12 @@ const Settings = (() => {
         break;
       case 'bgColor':
         root.style.setProperty('--bg-solid-color', value);
+        if (state.bgSource === 'color') setWallpaperTone(value);
         break;
       case 'bgThemeColor':
         root.style.setProperty('--bg-theme-color', value || 'transparent');
+        /* The colour source has no extracted colour of its own. */
+        setWallpaperTone(value || (state.bgSource === 'color' ? state.bgColor : ''));
         break;
       case 'engine':
         if (typeof Search !== 'undefined') {
@@ -1262,6 +1287,11 @@ const Settings = (() => {
       const isOpen = !glassStyleDropdown.hidden;
       glassStyleDropdown.hidden = isOpen;
       glassStyleTrigger.classList.toggle('open', !isOpen);
+      /* the last control of a short tab: its list would be cut off by the panel's edge */
+      glassStyleWrapper.classList.remove('drop-up');
+      if (!isOpen && glassStyleDropdown.getBoundingClientRect().bottom > panel.getBoundingClientRect().bottom - 12) {
+        glassStyleWrapper.classList.add('drop-up');
+      }
     });
     glassStyleDropdown.querySelectorAll('.custom-select-option').forEach(opt => {
       opt.addEventListener('click', (e) => {
