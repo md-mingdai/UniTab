@@ -148,6 +148,12 @@
         <div class="setting-group bg-sub-panel setting-fade" data-panel="bing" id="bg-bing-panel" hidden>
           <button id="bg-bing-refresh" class="setting-btn-secondary setting-btn-bing" type="button" data-i18n="settings.bg.refresh">刷新壁纸</button>
           <div id="bg-bing-meta" class="setting-meta" aria-live="polite"></div>
+          <label class="setting-label setting-label-row" for="bg-bing-auto-refresh-toggle" style="margin-top:12px">
+            <span data-i18n="settings.bg.autoRefresh">自动刷新每日壁纸</span>
+            <span class="switch" role="switch" aria-checked="false" tabindex="0" id="bg-bing-auto-refresh-toggle">
+              <span class="switch-knob"></span>
+            </span>
+          </label>
         </div>
 
         <!-- 自定义图片 子面板 -->
@@ -174,11 +180,14 @@
             <button class="color-swatch bg-color-swatch" data-color="#1a2a2e" style="background:#1a2a2e" aria-label="暗青"></button>
             <button class="color-swatch bg-color-swatch" data-color="#2e1a3a" style="background:#2e1a3a" aria-label="靛紫"></button>
             <button class="color-swatch bg-color-swatch" data-color="#1a1a3e" style="background:#1a1a3e" aria-label="午夜蓝"></button>
+            <button class="color-swatch bg-color-swatch" data-color="#9ece6a" style="background:#9ece6a" aria-label="草绿"></button>
+            <button class="color-swatch bg-color-swatch" data-color="#7aa2f7" style="background:#7aa2f7" aria-label="雾蓝"></button>
+            <button class="color-swatch bg-color-swatch" data-color="#bb9af7" style="background:#bb9af7" aria-label="薰衣草"></button>
+            <button class="color-swatch bg-color-swatch" data-color="#7dcfff" style="background:#7dcfff" aria-label="天蓝"></button>
             <button class="color-swatch bg-color-swatch custom-swatch" data-color="custom" id="bg-custom-color-trigger" aria-label="自定义颜色">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
             </button>
           </div>
-          <input type="color" id="bg-color-input" class="setting-color-hidden" value="#1a1d24">
           <span id="bg-color-hex" class="color-hex">#1A1D24</span>
         </div>
 
@@ -249,11 +258,14 @@
             <button class="color-swatch" data-color="#1a1a3e" style="background:#1a1a3e" aria-label="午夜蓝"></button>
             <button class="color-swatch" data-color="#1a2a2e" style="background:#1a2a2e" aria-label="暗青"></button>
             <button class="color-swatch" data-color="#2a3a4a" style="background:#2a3a4a" aria-label="铅灰蓝"></button>
+            <button class="color-swatch" data-color="#9ece6a" style="background:#9ece6a" aria-label="草绿"></button>
+            <button class="color-swatch" data-color="#7aa2f7" style="background:#7aa2f7" aria-label="雾蓝"></button>
+            <button class="color-swatch" data-color="#bb9af7" style="background:#bb9af7" aria-label="薰衣草"></button>
+            <button class="color-swatch" data-color="#7dcfff" style="background:#7dcfff" aria-label="天蓝"></button>
             <button class="color-swatch custom-swatch" data-color="custom" id="custom-color-trigger" aria-label="自定义颜色">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
             </button>
           </div>
-          <input type="color" id="overlay-color-input" class="setting-color-hidden" value="#000000">
           <span id="color-hex-display" class="color-hex">#000000</span>
         </div>
       </section>
@@ -585,6 +597,7 @@
   <script src="js/search.js"></script>
   <script src="js/bookmarks.js"></script>
   <script src="js/i18n.js"></script>
+  <script src="js/color-picker.js"></script>
   <script src="js/settings.js"></script>
   <script src="js/cursor.js"></script>
   <script src="js/main.js"></script>

@@ -17,6 +17,8 @@ const Settings = (() => {
     bgImageUrl: null,     // 自定义图片 URL（仅当 bgSource === 'image' 且用户填了链接时使用）
     bgBingUrl: null,      // 必应壁纸 URL（仅 bgSource === 'bing' 时使用）
     bgBingCopyright: '',  // 必应壁纸标题 + 版权信息（持久化，刷新页面也显示）
+    bgBingAutoRefresh: false, // 必应每日壁纸：每天首次打开时自动刷新（默认关闭）
+    bingLastRefreshDate: null, // 最近一次必应壁纸刷新的日期（YYYY-MM-DD），用于判断是否过期
     bgColor: '#1a1d24',   // 纯色（仅 bgSource === 'color' 时使用）
     bgThemeColor: '',     // 当前生效的预览色（由下面三个按类型的字段派生）
     bgThemeColorBing: '', // 必应壁纸的预览色
@@ -107,16 +109,16 @@ const Settings = (() => {
 
   /* Form elements */
   let bgFileInput, bgFileName, bgUrlInput, bgUrlApply, bgUrlError;
-  let bgBingRefresh, bgBingMeta, bgBingPanel, bgImagePanel, bgColorPanel, bgVideoPanel;
+  let bgBingRefresh, bgBingMeta, bgBingAutoRefreshToggle, bgBingPanel, bgImagePanel, bgColorPanel, bgVideoPanel;
   let bgVideoInput, bgVideoName;
   let videoSoundToggle, videoVolumeWrapper;
   let videoVolumeSlider, videoVolumeDisplay;
   let videoLoopToggle;
   let videoOnEndedWrapper, videoOnEndedTrigger, videoOnEndedDropdown, videoOnEndedLabel, videoOnEndedNative;
-  let bgColorSwatches, bgCustomColorTrigger, bgColorInput, bgColorHex;
+  let bgColorSwatches, bgCustomColorTrigger, bgColorHex;
   let bgSourceOptions;
   let blurSlider, blurDisplay, opacitySlider, opacityDisplay;
-  let overlayColorSwatches, customColorTrigger, overlayColorInput, colorHexDisplay;
+  let overlayColorSwatches, customColorTrigger, colorHexDisplay;
   let engineSelectWrapper, engineSelectTrigger, engineSelectDropdown, engineSelectLabel, engineSelectNative;
   let customEngineConfig, customEngineUrlInput, customEngineSaveBtn, customEngineSaveStatus;
   let customSuggestWrapper, customSuggestTrigger, customSuggestDropdown, customSuggestLabel, customSuggestNative;
@@ -159,9 +161,11 @@ const Settings = (() => {
       if (document.hidden) flushSettings();
     });
 
-    /* Auto-fetch Bing wallpaper if that's the active source but no
-       image has been fetched yet (e.g. first-time install). */
-    if (state.bgSource === 'bing' && !state.bgBingUrl && bgBingRefresh) {
+    /* Auto-fetch Bing wallpaper when the active source has no image yet
+       (first-time install), or when daily auto-refresh is on and today's
+       wallpaper has not been fetched yet (the recorded date is stale). */
+    if (bgBingRefresh && state.bgSource === 'bing' &&
+        (!state.bgBingUrl || (state.bgBingAutoRefresh && state.bingLastRefreshDate !== todayStr()))) {
       bgBingRefresh.click();
     }
   }
@@ -208,11 +212,11 @@ const Settings = (() => {
     /* Bing sub-panel */
     bgBingRefresh = document.getElementById('bg-bing-refresh');
     bgBingMeta = document.getElementById('bg-bing-meta');
+    bgBingAutoRefreshToggle = document.getElementById('bg-bing-auto-refresh-toggle');
 
     /* Color sub-panel */
     bgColorSwatches = document.querySelectorAll('.bg-color-swatch[data-color]:not(.custom-swatch)');
     bgCustomColorTrigger = document.getElementById('bg-custom-color-trigger');
-    bgColorInput = document.getElementById('bg-color-input');
     bgColorHex = document.getElementById('bg-color-hex');
 
     /* Blur / Overlay */
@@ -224,7 +228,6 @@ const Settings = (() => {
     /* Overlay color swatches (for mask) */
     overlayColorSwatches = document.querySelectorAll('.color-swatch[data-color]:not(.custom-swatch):not(.bg-color-swatch)');
     customColorTrigger = document.getElementById('custom-color-trigger');
-    overlayColorInput = document.getElementById('overlay-color-input');
     colorHexDisplay = document.getElementById('color-hex-display');
 
     /* Custom engine select */
@@ -650,8 +653,10 @@ const Settings = (() => {
 
     /* Overlay color swatches (mask) */
     updateOverlayColorSwatches(state.overlayColor);
-    overlayColorInput.value = state.overlayColor;
     colorHexDisplay.textContent = state.overlayColor.toUpperCase();
+
+    /* Bing auto-refresh toggle */
+    updateBgBingAutoRefreshToggle(state.bgBingAutoRefresh);
 
     /* Engine select */
     engineSelectNative.value = state.engine;
@@ -690,7 +695,6 @@ const Settings = (() => {
 
     /* Background color swatches */
     updateBgColorSwatches(state.bgColor);
-    if (bgColorInput) bgColorInput.value = state.bgColor;
     if (bgColorHex) bgColorHex.textContent = state.bgColor.toUpperCase();
 
     /* Sub-panel visibility */
@@ -1135,6 +1139,12 @@ const Settings = (() => {
     videoSoundToggle.setAttribute('aria-checked', on ? 'true' : 'false');
   }
 
+  function updateBgBingAutoRefreshToggle(on) {
+    if (!bgBingAutoRefreshToggle) return;
+    bgBingAutoRefreshToggle.classList.toggle('on', !!on);
+    bgBingAutoRefreshToggle.setAttribute('aria-checked', on ? 'true' : 'false');
+  }
+
   function updateCursorStyleLabel(styleKey) {
     const key = CURSOR_STYLE_LABEL_KEY[styleKey];
     cursorStyleLabel.textContent = key ? I18n.t(key) : styleKey;
@@ -1300,6 +1310,9 @@ const Settings = (() => {
         }
         state.bgBingUrl = result.url;
         state.bgBingCopyright = formatBingMeta(result);
+        /* Record the refresh date on every refresh (manual or auto), so the
+           next page load can tell whether today's wallpaper was already fetched. */
+        state.bingLastRefreshDate = todayStr();
         saveSettings();
         /* 静默生成必应壁纸的 preview（低分辨率 WebP，先清空旧的再用预览色更新占位色），
            生成失败（离线等）则退回原来的整图取色。 */
@@ -1310,6 +1323,21 @@ const Settings = (() => {
         bgBingRefresh.disabled = false;
       }
     });
+
+    /* --- Bing auto-refresh toggle --- */
+    if (bgBingAutoRefreshToggle) {
+      bgBingAutoRefreshToggle.addEventListener('click', () => {
+        state.bgBingAutoRefresh = !state.bgBingAutoRefresh;
+        updateBgBingAutoRefreshToggle(state.bgBingAutoRefresh);
+        saveSettings();
+      });
+      bgBingAutoRefreshToggle.addEventListener('keydown', (e) => {
+        if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          bgBingAutoRefreshToggle.click();
+        }
+      });
+    }
 
     /* --- Image upload --- */
     bgFileInput.addEventListener('change', async (e) => {
@@ -1390,7 +1418,6 @@ const Settings = (() => {
       swatch.addEventListener('click', () => {
         const val = swatch.dataset.color;
         state.bgColor = val;
-        if (bgColorInput) bgColorInput.value = val;
         if (bgColorHex) bgColorHex.textContent = val.toUpperCase();
         updateBgColorSwatches(val);
         applyToDom('bgColor', val);
@@ -1400,18 +1427,18 @@ const Settings = (() => {
     });
     if (bgCustomColorTrigger) {
       bgCustomColorTrigger.addEventListener('click', () => {
-        if (bgColorInput) bgColorInput.click();
-      });
-    }
-    if (bgColorInput) {
-      bgColorInput.addEventListener('input', () => {
-        const val = bgColorInput.value;
-        state.bgColor = val;
-        if (bgColorHex) bgColorHex.textContent = val.toUpperCase();
-        updateBgColorSwatches(val);
-        applyToDom('bgColor', val);
-        saveSettings();
-        applyBackground();
+        if (!window.ColorPicker) return;
+        window.ColorPicker.open(bgCustomColorTrigger, {
+          color: state.bgColor,
+          onApply: (val) => {
+            state.bgColor = val;
+            if (bgColorHex) bgColorHex.textContent = val.toUpperCase();
+            updateBgColorSwatches(val);
+            applyToDom('bgColor', val);
+            saveSettings();
+            applyBackground();
+          }
+        });
       });
     }
 
@@ -1437,7 +1464,6 @@ const Settings = (() => {
     overlayColorSwatches.forEach(swatch => {
       swatch.addEventListener('click', () => {
         const val = swatch.dataset.color;
-        overlayColorInput.value = val;
         colorHexDisplay.textContent = val.toUpperCase();
         state.overlayColor = val;
         updateOverlayColorSwatches(val);
@@ -1445,14 +1471,18 @@ const Settings = (() => {
         saveSettings();
       });
     });
-    customColorTrigger.addEventListener('click', () => { overlayColorInput.click(); });
-    overlayColorInput.addEventListener('input', () => {
-      const val = overlayColorInput.value;
-      colorHexDisplay.textContent = val.toUpperCase();
-      state.overlayColor = val;
-      updateOverlayColorSwatches(val);
-      applyToDom('overlayColor', val);
-      saveSettings();
+    customColorTrigger.addEventListener('click', () => {
+      if (!window.ColorPicker) return;
+      window.ColorPicker.open(customColorTrigger, {
+        color: state.overlayColor,
+        onApply: (val) => {
+          colorHexDisplay.textContent = val.toUpperCase();
+          state.overlayColor = val;
+          updateOverlayColorSwatches(val);
+          applyToDom('overlayColor', val);
+          saveSettings();
+        }
+      });
     });
 
     /* --- Engine select --- */
@@ -2463,6 +2493,13 @@ const Settings = (() => {
   }
 
   /* --- Bing meta helpers --- */
+  /* Today's local date as YYYY-MM-DD, for comparing against bingLastRefreshDate. */
+  function todayStr() {
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+  }
+
   function setBingMeta(text) {
     if (!bgBingMeta) return;
     /* The line wraps when the copyright text arrives: ease the panel to its new height. */
@@ -2614,6 +2651,7 @@ const Settings = (() => {
     toggle.style.opacity = '';
     toggle.style.pointerEvents = '';
     closeAllDropdowns();
+    if (window.ColorPicker) window.ColorPicker.close();
   }
 
   return {

@@ -35,6 +35,7 @@
   "settings.bg.source.color": "纯色",
   "settings.bg.source.video": "视频壁纸",
   "settings.bg.refresh": "刷新壁纸",
+  "settings.bg.autoRefresh": "自动刷新每日壁纸",
   "settings.bg.upload": "选择图片",
   "settings.bg.url.placeholder": "https://...",
   "settings.bg.url.apply": "应用",

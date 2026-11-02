@@ -1334,6 +1334,8 @@ body {
   box-shadow: 0 0 0 2px rgba(139, 157, 195, 0.35);
 }
 
+/* Both custom color pickers (wallpaper + mask) share this class, so one rule
+   unifies their trigger design: a neutral chip with a gear icon. */
 .custom-swatch {
   background: rgb(var(--fg-rgb) / 0.08) !important;
   display: flex;
@@ -1346,12 +1348,116 @@ body {
   color: var(--text-primary);
 }
 
-.setting-color-hidden {
+/* Custom color picker popover (shared by wallpaper + mask custom swatches).
+   Matches the .custom-select-dropdown aesthetic: a solid white card that
+   floats over the glass panel, reusing the dropdown open/close keyframes. */
+.color-picker {
+  position: fixed;
+  z-index: 200;
+  width: 212px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+}
+
+.color-picker[hidden] {
+  display: none;
+}
+
+.color-picker:not([hidden]):not(.dropdown-closing) {
+  animation: dropdown-in 0.18s var(--ease-out-expo);
+}
+
+.color-picker.dropdown-closing {
+  animation: dropdown-out 0.18s var(--ease-out-expo) forwards;
+}
+
+.color-picker.drop-up:not([hidden]):not(.dropdown-closing) {
+  animation-name: dropdown-in-up;
+}
+
+.color-picker.drop-up.dropdown-closing {
+  animation-name: dropdown-out-up;
+}
+
+.cp-sv {
+  position: relative;
+  width: 100%;
+  height: 150px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.cp-sv-cursor {
   position: absolute;
-  opacity: 0;
-  width: 0;
-  height: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.3);
+  transform: translate(-50%, -50%);
   pointer-events: none;
+}
+
+.cp-hue {
+  position: relative;
+  width: 100%;
+  height: 14px;
+  margin-top: 10px;
+  border-radius: 7px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+  cursor: pointer;
+  touch-action: none;
+}
+
+.cp-hue-cursor {
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.3);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.cp-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.cp-hex {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.04);
+  color: rgba(30, 30, 40, 0.9);
+  font-size: 13px;
+  font-family: 'JetBrains Mono', "SF Mono", "Cascadia Code", monospace;
+  text-transform: uppercase;
+  outline: none;
+}
+
+.cp-hex:focus {
+  border-color: rgba(0, 0, 0, 0.3);
+}
+
+.cp-preview {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  flex-shrink: 0;
 }
 
 /* Background Source Radio List */
