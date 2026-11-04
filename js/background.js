@@ -1021,7 +1021,10 @@ const Background = (() => {
               ok: true, url,
               copyright: img.copyright || '',
               headline: img.headline || '',
-              startdate: img.startdate || ''
+              startdate: img.startdate || '',
+              /* 版权/来源词条的链接：指向 Bing 的搜索词条页面，而不是图片本身。
+                 图片 URL 只用来取图，右键"打开来源页面"应打开这个链接。 */
+              copyrightlink: img.copyrightlink || ''
             });
           } catch (e) {
             resolve({ ok: false, error: '解析必应 JSONP 失败: ' + e.message });

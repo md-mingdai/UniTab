@@ -132,11 +132,14 @@ const ContextMenu = (() => {
         labelKey: 'contextmenu.bing.refresh',
         action: () => refreshBing()
       });
-      if (s.bgBingUrl) {
+      /* 打开来源页面 = API 返回的版权词条链接（copyrightlink）；老数据可能
+         还没有这个词条，回退到图片 URL。 */
+      if (s.bgBingUrl || s.bgBingCopyrightLink) {
+        const link = s.bgBingCopyrightLink || s.bgBingUrl;
         items.push({
           icon: 'external',
           labelKey: 'contextmenu.bing.source',
-          action: () => window.open(s.bgBingUrl, '_blank', 'noopener,noreferrer')
+          action: () => window.open(link, '_blank', 'noopener,noreferrer')
         });
       }
       items.push({ type: 'separator' });
@@ -176,20 +179,24 @@ const ContextMenu = (() => {
   /* --- item actions ------------------------------------------------------ */
 
   function refreshBing() {
-    /* Reuse the settings panel's refresh path: it fetches, records the date,
-       regenerates the preview, and re-applies the wallpaper. */
-    const btn = document.getElementById('bg-bing-refresh');
-    if (btn && !btn.disabled) {
-      btn.click();
+    /* Reuse the settings panel's single refresh path: it fetches, records the
+       date, regenerates the preview, re-applies the wallpaper, and shows the
+       "refreshing" / "refreshed" notices. Works whether the panel is open or
+       closed; when the panel is closed the button still exists but the handler
+       needs no visible panel. */
+    if (typeof Settings !== 'undefined' && Settings.refreshBingWallpaper) {
+      Settings.refreshBingWallpaper();
       return;
     }
-    /* Panel closed (or button busy): fall back to a plain re-fetch. */
+    /* Fallback (Settings not loaded): plain re-fetch. */
     if (typeof Background === 'undefined' || !Background.fetchBingOfTheDay) return;
     Background.fetchBingOfTheDay().then((res) => {
       if (!res || !res.ok || !res.url) return;
       const s = (typeof Settings !== 'undefined' && Settings.getState) ? Settings.getState() : null;
       if (s) {
         s.bgBingUrl = res.url;
+        s.bgBingCopyright = res.copyright || '';
+        s.bgBingCopyrightLink = res.copyrightlink || '';
         s.bingLastRefreshDate = new Date().toISOString().slice(0, 10);
         Settings.flush();
       }

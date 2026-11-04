@@ -17,6 +17,7 @@ const Settings = (() => {
     bgImageUrl: null,     // 自定义图片 URL（仅当 bgSource === 'image' 且用户填了链接时使用）
     bgBingUrl: null,      // 必应壁纸 URL（仅 bgSource === 'bing' 时使用）
     bgBingCopyright: '',  // 必应壁纸标题 + 版权信息（持久化，刷新页面也显示）
+    bgBingCopyrightLink: '', // 必应版权词条链接（API 的 copyrightlink，右键"打开来源页面"用）
     bgBingAutoRefresh: false, // 必应每日壁纸：每天首次打开时自动刷新（默认关闭）
     bingLastRefreshDate: null, // 最近一次必应壁纸刷新的日期（YYYY-MM-DD），用于判断是否过期
     bgColor: '#1a1d24',   // 纯色（仅 bgSource === 'color' 时使用）
@@ -929,6 +930,7 @@ const Settings = (() => {
             if (res && res.ok && res.url) {
               state.bgBingUrl = res.url;
               state.bgBingCopyright = res.copyright || '';
+              state.bgBingCopyrightLink = res.copyrightlink || '';
               saveSettings();
               bgLoad({ source: 'bing', imageData: res.url });
             }
@@ -1451,31 +1453,7 @@ const Settings = (() => {
     });
 
     /* --- Bing refresh --- */
-    bgBingRefresh.addEventListener('click', async () => {
-      if (typeof Background === 'undefined' || !Background.fetchBingOfTheDay) return;
-      bgBingRefresh.disabled = true;
-      setBingMeta(I18n.t('bing.meta.fetching'));
-      try {
-        const result = await Background.fetchBingOfTheDay();
-        if (!result.ok) {
-          setBingMeta(I18n.t('bing.meta.failed', [result.error || I18n.t('general.unknown')]));
-          return;
-        }
-        state.bgBingUrl = result.url;
-        state.bgBingCopyright = formatBingMeta(result);
-        /* Record the refresh date on every refresh (manual or auto), so the
-           next page load can tell whether today's wallpaper was already fetched. */
-        state.bingLastRefreshDate = todayStr();
-        saveSettings();
-        /* 静默生成必应壁纸的 preview（低分辨率 WebP，先清空旧的再用预览色更新占位色），
-           生成失败（离线等）则退回原来的整图取色。 */
-        pickPreview('bing', result.url, result.url);
-        applyBackground();
-        setBingMeta(state.bgBingCopyright);
-      } finally {
-        bgBingRefresh.disabled = false;
-      }
-    });
+    bgBingRefresh.addEventListener('click', () => { refreshBingWallpaper(); });
 
     /* --- Bing auto-refresh toggle --- */
     if (bgBingAutoRefreshToggle) {
@@ -2678,8 +2656,11 @@ const Settings = (() => {
     /* 切换到视频时检查 IndexedDB 中是否已有视频 */
     if (val === 'video') refreshVideoInfo();
 
-    /* 切换到必应但还没获取过 ➜ 自动获取一次 */
-    if (val === 'bing' && !state.bgBingUrl) {
+    /* 切换到必应时自动获取：从未获取过，或开启了自动刷新且已过期（当天
+       还没取过）。仅靠 bgBingUrl 判断不够——从图片/视频切回来时 URL 往往
+       还在，但可能已是昨天的壁纸，此时若开了自动刷新应立刻换新。 */
+    if (val === 'bing' && (!state.bgBingUrl ||
+        (state.bgBingAutoRefresh && state.bingLastRefreshDate !== todayStr()))) {
       saveSettings();
       bgBingRefresh.click();
       return;
@@ -2746,6 +2727,45 @@ const Settings = (() => {
       parts.push(result.startdate.replace(/^(\d{4})(\d{2})(\d{2})$/, '$1-$2-$3'));
     }
     return parts.join(' · ');
+  }
+
+  /* Shared Bing wallpaper refresh. Every entry point — the settings button,
+     the context-menu action, the initial auto-fetch, switching the source to
+     bing, and enabling daily auto-refresh — funnels through here, so the
+     "refreshing" / "refreshed" notices appear exactly once per refresh. */
+  async function refreshBingWallpaper() {
+    if (typeof Background === 'undefined' || !Background.fetchBingOfTheDay) return;
+    if (!bgBingRefresh) return;
+    bgBingRefresh.disabled = true;
+    setBingMeta(I18n.t('bing.meta.fetching'));
+    if (typeof Notice !== 'undefined') Notice.show(I18n.t('bing.refresh.start'), 'info');
+    try {
+      const result = await Background.fetchBingOfTheDay();
+      if (!result.ok) {
+        setBingMeta(I18n.t('bing.meta.failed', [result.error || I18n.t('general.unknown')]));
+        if (typeof Notice !== 'undefined') {
+          Notice.show(I18n.t('bing.refresh.failed'), 'error', 2600);
+        }
+        return;
+      }
+      state.bgBingUrl = result.url;
+      state.bgBingCopyright = formatBingMeta(result);
+      /* 每次 fetch 都覆盖保存的词条链接：右键"打开来源页面"始终指向最新一次
+         API 返回的版权词条，而不是图片 URL。 */
+      state.bgBingCopyrightLink = result.copyrightlink || '';
+      /* Record the refresh date on every refresh (manual or auto), so the
+         next page load can tell whether today's wallpaper was already fetched. */
+      state.bingLastRefreshDate = todayStr();
+      saveSettings();
+      /* 静默生成必应壁纸的 preview（低分辨率 WebP，先清空旧的再用预览色更新占位色），
+         生成失败（离线等）则退回原来的整图取色。 */
+      pickPreview('bing', result.url, result.url);
+      applyBackground();
+      setBingMeta(state.bgBingCopyright);
+      if (typeof Notice !== 'undefined') Notice.show(I18n.t('bing.refresh.done'), 'success');
+    } finally {
+      bgBingRefresh.disabled = false;
+    }
   }
 
   /* --- Dropdown open/close animation ---
@@ -2875,6 +2895,7 @@ const Settings = (() => {
     applyAllToDom,
     loadSettings,
     applyBackground,
-    flush: flushSettings
+    flush: flushSettings,
+    refreshBingWallpaper
   };
 })();

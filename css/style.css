@@ -934,6 +934,113 @@ html[data-hide-settings-icon="true"] .settings-toggle:focus-visible {
   transform: translate(-50%, 0);
 }
 
+/* Global notice (bottom-right). Fixed-size translucent rectangle, severity
+   colour-coded, permanent radius (does NOT follow the glass radius setting),
+   high-contrast text. No backdrop-filter / glass here — this is a solid,
+   semi-transparent chip. Slides in from the right edge and back out to the
+   right over ~1s. A deeper-coloured progress bar along the top edge counts
+   down the 5s dwell time. */
+.app-notice {
+  position: fixed;
+  right: 20px;
+  bottom: 80px;
+  width: 340px;
+  height: 64px;
+  z-index: 2147483647;
+  border-radius: 20px; /* fixed, never follows settings */
+  border: 1px solid transparent;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(calc(100% + 24px)); /* off-screen to the right */
+  transition: opacity 0.9s var(--ease-out-expo), transform 0.9s var(--ease-out-expo);
+}
+
+.app-notice[data-open="true"] {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Top progress bar: a deeper shade of the severity colour, shrinks from full
+   width to nothing over the dwell time set on the host (--notice-duration).
+   It spans the full width and sits flush against the very top edge (negative
+   offsets pull it over the 1px border and the parent's overflow:hidden keeps
+   it inside the rounded corners). The track is a subtle dark wash; the fill
+   (remaining time) is the darker overlay. */
+.app-notice-progress {
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  height: 6px;
+  width: calc(100% + 2px);
+  border-radius: 20px 20px 0 0;
+  background: rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+.app-notice-progress::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.55);
+  transform-origin: left center;
+}
+
+.app-notice[data-open="true"] .app-notice-progress::after {
+  animation: app-notice-countdown var(--notice-duration, 5000ms) linear forwards;
+}
+
+@keyframes app-notice-countdown {
+  from { transform: scaleX(1); }
+  to   { transform: scaleX(0); }
+}
+
+/* Text: left-aligned, vertically centred, padded in from the edges. */
+.app-notice-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 18px 8px; /* extra bottom pad clears the 6px progress bar */
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Severity palettes: translucent tinted background + near-white, high-contrast
+   ink. Values are hard-coded so the notice never follows the glass / radius
+   settings and always stays legible over any wallpaper. */
+.app-notice[data-severity="info"] {
+  background: rgba(139, 157, 195, 0.85);
+  border-color: rgba(160, 176, 212, 0.90);
+  color: #f5f8fd;
+}
+
+.app-notice[data-severity="success"] {
+  background: rgba(52, 199, 89, 0.85);
+  border-color: rgba(74, 222, 128, 0.90);
+  color: #f0fdf4;
+}
+
+.app-notice[data-severity="warning"] {
+  background: rgba(251, 191, 36, 0.87);
+  border-color: rgba(253, 224, 71, 0.92);
+  color: #fefcf2;
+}
+
+.app-notice[data-severity="error"] {
+  background: rgba(248, 113, 113, 0.87);
+  border-color: rgba(252, 165, 165, 0.92);
+  color: #fef3f3;
+}
+
 /* Settings Tabs */
 .settings-tabs {
   position: relative;
