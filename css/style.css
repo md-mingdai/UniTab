@@ -680,6 +680,30 @@ body {
   transform: scale(0.92);
 }
 
+/* Auto-hide settings gear (opt-in): settings.js continuously sets the opacity
+   from the pointer's distance to the button's centre, so it fades in as the
+   pointer approaches the corner and fades out as it moves away. */
+html[data-hide-settings-icon="true"] .settings-toggle {
+  opacity: 0;
+  /* Opacity is driven per-frame while the pointer moves; a transition would
+     smear those updates. */
+  transition:
+    background 0.2s var(--ease-out-expo),
+    color 0.2s var(--ease-out-expo),
+    transform 0.15s var(--ease-out-expo);
+}
+
+html[data-hide-settings-icon="true"] .settings-toggle:focus-visible {
+  opacity: 1 !important;
+}
+
+/* Touch screens have no hover: hiding the gear would make it unreachable. */
+@media (hover: none) {
+  html[data-hide-settings-icon="true"] .settings-toggle {
+    opacity: 1;
+  }
+}
+
 /* ============================================
    Settings Panel
    ============================================ */
@@ -788,6 +812,126 @@ body {
 .settings-close:hover {
   background: rgb(var(--fg-rgb) / 0.14);
   color: var(--text-primary);
+}
+
+/* ============================================
+   Custom Right-Click Menu (GNOME style)
+   A floating glassy card that opens at the cursor on the wallpaper layer.
+   It shares the page's glass tokens so it matches the settings panel.
+   ============================================ */
+.context-menu {
+  position: fixed;
+  z-index: 2147483647;
+  min-width: 208px;
+  max-width: min(280px, calc(100vw - 16px));
+  padding: 6px;
+  background: var(--glass-bg-light);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid var(--glass-border-light);
+  border-radius: 12px;
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    0 14px 40px rgba(0, 0, 0, 0.28);
+  color: var(--text-primary);
+  font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  opacity: 0;
+  transform: translateY(6px) scale(0.97);
+  pointer-events: none;
+  transition:
+    opacity 0.16s var(--ease-out-expo),
+    transform 0.16s var(--ease-out-expo);
+}
+
+.context-menu[data-open="true"] {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .context-menu {
+    transition: none;
+  }
+  .context-menu-toast {
+    transition: none;
+  }
+}
+
+.context-menu-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.context-menu-item:hover,
+.context-menu-item.focused,
+.context-menu-item:focus-visible {
+  outline: none;
+  background: rgb(var(--fg-rgb) / 0.12);
+}
+
+.context-menu-icon-svg {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  opacity: 0.85;
+}
+
+.context-menu-label {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+}
+
+.context-menu-separator {
+  height: 1px;
+  margin: 4px 6px;
+  background: rgb(var(--fg-rgb) / 0.12);
+}
+
+.context-menu-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 48px;
+  transform: translate(-50%, 8px);
+  z-index: 2147483647;
+  padding: 9px 16px;
+  background: var(--glass-bg-light);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid var(--glass-border-light);
+  border-radius: 10px;
+  box-shadow: inset 0 1px 0 var(--glass-highlight), 0 12px 32px rgba(0, 0, 0, 0.28);
+  color: var(--text-primary);
+  font-size: 13px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.16s var(--ease-out-expo), transform 0.16s var(--ease-out-expo);
+}
+
+.context-menu-toast[data-open="true"] {
+  opacity: 1;
+  transform: translate(-50%, 0);
 }
 
 /* Settings Tabs */
@@ -913,6 +1057,79 @@ body {
   color: var(--text-secondary);
   margin-bottom: 14px;
   text-transform: uppercase;
+}
+
+/* Collapsible setting categories. Each category is a header button plus a body
+   that folds to `hidden`. The header keeps the type style of the section title
+   it replaces; the chevron rotates closed when the body is folded. */
+.setting-category {
+  margin-bottom: 6px;
+}
+
+.setting-category-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 0;
+  margin: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  transition: color 0.18s var(--ease-out-expo);
+}
+
+.setting-category-header:hover {
+  color: var(--text-primary);
+}
+
+.setting-category-header.advanced-section-title {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+
+.setting-category-chevron {
+  flex-shrink: 0;
+  opacity: 0.7;
+  transition: transform 0.24s var(--ease-out-expo), opacity 0.18s var(--ease-out-expo);
+}
+
+.setting-category-header:hover .setting-category-chevron {
+  opacity: 1;
+}
+
+.setting-category-header[aria-expanded="false"] .setting-category-chevron {
+  transform: rotate(-90deg);
+}
+
+.setting-category-body {
+  transition: opacity 0.22s var(--ease-out-expo);
+}
+
+.setting-category-body.setting-fade-hiding {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.setting-category-body.setting-fade-reveal {
+  opacity: 0;
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .setting-category-header,
+  .setting-category-chevron,
+  .setting-category-body {
+    transition: none;
+  }
 }
 
 /* Setting Groups */

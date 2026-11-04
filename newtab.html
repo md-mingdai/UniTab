@@ -109,9 +109,15 @@
       <section class="settings-tab-panel" id="tab-panel-bg" role="tabpanel" aria-labelledby="tab-bg" data-tab-panel="bg">
         <h3 class="settings-section-title" data-i18n="settings.tabs.background">背景</h3>
 
+        <div class="setting-category" data-group="bg-source">
+          <button type="button" class="setting-category-header" aria-expanded="true">
+            <svg class="setting-category-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            <span data-i18n="settings.bg.source">背景来源</span>
+          </button>
+          <div class="setting-category-body">
+
         <!-- Background source radio list -->
         <div class="setting-group">
-          <label class="setting-label" data-i18n="settings.bg.source">背景来源</label>
           <div class="radio-list" role="radiogroup" data-i18n-aria-label="settings.bg.source">
             <!-- 必应每日 -->
             <button class="radio-option" role="radio" data-bg-source="bing" type="button">
@@ -234,6 +240,16 @@
           </div>
         </div>
 
+          </div>
+        </div>
+
+        <div class="setting-category" data-group="bg-adjust">
+          <button type="button" class="setting-category-header" aria-expanded="true">
+            <svg class="setting-category-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            <span data-i18n="settings.group.bg.adjust">画面调整</span>
+          </button>
+          <div class="setting-category-body">
+
         <div class="setting-group">
           <label class="setting-label" for="bg-blur-slider"><span data-i18n="settings.bg.blur">背景模糊</span> <span id="blur-value-display">0px</span></label>
           <input type="range" id="bg-blur-slider" class="setting-slider" min="0" max="50" value="0" step="1">
@@ -262,11 +278,21 @@
           </div>
           <span id="color-hex-display" class="color-hex">#000000</span>
         </div>
+
+          </div>
+        </div>
       </section>
 
       <!-- Search Section -->
       <section class="settings-tab-panel" id="tab-panel-search" role="tabpanel" aria-labelledby="tab-search" data-tab-panel="search" hidden>
         <h3 class="settings-section-title" data-i18n="settings.tabs.search">搜索</h3>
+
+        <div class="setting-category" data-group="search-engine">
+          <button type="button" class="setting-category-header" aria-expanded="true">
+            <svg class="setting-category-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            <span data-i18n="settings.group.search.engine">搜索引擎</span>
+          </button>
+          <div class="setting-category-body">
 
         <div class="setting-group">
           <label class="setting-label" for="engine-select" data-i18n="settings.search.engine">默认搜索引擎</label>
@@ -292,10 +318,20 @@
           </select>
         </div>
 
+          </div>
+        </div>
+
         <!-- Custom suggestions API: available for every engine. Default off for
              preset engines (they keep their native API); always on for the custom
-             engine, which has no native suggestion API of its own. Sits right after
-             the engine dropdown and never moves when the custom config appears. -->
+             engine, which has no native suggestion API of its own. Sits before the
+             custom engine config so the toggle never moves when that appears. -->
+        <div class="setting-category" data-group="search-suggest">
+          <button type="button" class="setting-category-header" aria-expanded="true">
+            <svg class="setting-category-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            <span data-i18n="settings.group.search.suggest">搜索联想</span>
+          </button>
+          <div class="setting-category-body">
+
         <div class="setting-group custom-suggest-group">
           <label class="setting-label setting-label-row" for="custom-suggest-toggle">
             <span data-i18n="settings.search.custom.suggestToggle">自定义联想 API</span>
@@ -324,8 +360,20 @@
           </div>
         </div>
 
-        <!-- Custom engine configuration: shown only when engine === custom -->
-        <div class="setting-group custom-engine-config setting-fade" id="custom-engine-config" hidden>
+          </div>
+        </div>
+
+        <!-- Custom engine configuration: shown only when engine === custom.
+             Lives after the suggestion settings so the suggest toggle never
+             moves when this group appears. -->
+        <div class="setting-category custom-engine-config setting-fade" id="custom-engine-config" data-group="search-custom" hidden>
+          <button type="button" class="setting-category-header" aria-expanded="true">
+            <svg class="setting-category-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            <span data-i18n="settings.group.search.custom">自定义引擎</span>
+          </button>
+          <div class="setting-category-body">
+
+        <div class="setting-group">
           <label class="setting-label" for="custom-engine-url" data-i18n="settings.search.custom.url">搜索 URL</label>
           <div class="custom-engine-url-row">
             <input type="text" id="custom-engine-url" class="setting-input" spellcheck="false">
@@ -335,11 +383,21 @@
           <span id="custom-engine-save-status" class="setting-save-status" aria-live="polite"></span>
           <p class="setting-hint" data-i18n="settings.search.custom.urlHint">将 {{query}} 作为搜索关键词占位符，例如 https://example.com/search?q={{query}}。留空则使用默认搜索引擎。</p>
         </div>
+
+          </div>
+        </div>
       </section>
 
       <!-- Display Section -->
       <section class="settings-tab-panel" id="tab-panel-display" role="tabpanel" aria-labelledby="tab-display" data-tab-panel="display" hidden>
         <h3 class="settings-section-title" data-i18n="settings.tabs.display">显示</h3>
+
+        <div class="setting-category" data-group="display-clock">
+          <button type="button" class="setting-category-header" aria-expanded="true">
+            <svg class="setting-category-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            <span data-i18n="settings.group.display.clock">时钟</span>
+          </button>
+          <div class="setting-category-body">
 
         <div class="setting-group">
           <label class="setting-label setting-label-row" for="show-clock-toggle">
@@ -359,6 +417,16 @@
           </label>
         </div>
 
+          </div>
+        </div>
+
+        <div class="setting-category" data-group="display-ui">
+          <button type="button" class="setting-category-header" aria-expanded="true">
+            <svg class="setting-category-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            <span data-i18n="settings.group.display.ui">界面元素</span>
+          </button>
+          <div class="setting-category-body">
+
         <div class="setting-group">
           <label class="setting-label setting-label-row" for="show-bookmarks-toggle">
             <span data-i18n="settings.display.bookmarks">常用网址 Dock 栏</span>
@@ -367,6 +435,39 @@
             </span>
           </label>
         </div>
+
+        <div class="setting-group">
+          <label class="setting-label setting-label-row" for="show-context-menu-toggle">
+            <span data-i18n="settings.display.contextMenu">自定义右键菜单</span>
+            <span class="switch on" role="switch" aria-checked="true" tabindex="0" id="show-context-menu-toggle">
+              <span class="switch-knob"></span>
+            </span>
+          </label>
+        </div>
+
+        <div class="setting-group">
+          <label class="setting-label setting-label-row" for="auto-hide-settings-toggle">
+            <span data-i18n="settings.display.autoHideSettings">自动隐藏设置图标</span>
+            <span class="switch" role="switch" aria-checked="false" tabindex="0" id="auto-hide-settings-toggle">
+              <span class="switch-knob"></span>
+            </span>
+          </label>
+        </div>
+
+        <div class="setting-group setting-fade" id="auto-hide-strength-group" hidden>
+          <label class="setting-label" for="auto-hide-strength-slider"><span data-i18n="settings.display.autoHideSettings.strength">隐藏强度</span> <span id="auto-hide-strength-display">50%</span></label>
+          <input type="range" id="auto-hide-strength-slider" class="setting-slider" min="5" max="100" value="50" step="5">
+        </div>
+
+          </div>
+        </div>
+
+        <div class="setting-category" data-group="display-lang">
+          <button type="button" class="setting-category-header" aria-expanded="true">
+            <svg class="setting-category-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            <span data-i18n="settings.group.display.lang">语言</span>
+          </button>
+          <div class="setting-category-body">
 
         <div class="setting-group">
           <label class="setting-label" for="language-select" data-i18n="settings.lang.select">语言</label>
@@ -389,6 +490,16 @@
             <option value="en">English</option>
           </select>
         </div>
+
+          </div>
+        </div>
+
+        <div class="setting-category" data-group="display-cursor">
+          <button type="button" class="setting-category-header" aria-expanded="true">
+            <svg class="setting-category-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            <span data-i18n="settings.group.display.cursor">鼠标特效</span>
+          </button>
+          <div class="setting-category-body">
 
         <div class="setting-group">
           <label class="setting-label setting-label-row" for="cursor-effect-toggle">
@@ -423,6 +534,16 @@
           </select>
         </div>
 
+          </div>
+        </div>
+
+        <div class="setting-category" data-group="display-appearance">
+          <button type="button" class="setting-category-header" aria-expanded="true">
+            <svg class="setting-category-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            <span data-i18n="settings.group.display.appearance">外观质感</span>
+          </button>
+          <div class="setting-category-body">
+
         <div class="setting-group">
           <label class="setting-label" for="glass-radius-slider"><span data-i18n="settings.display.glassRadius">组件圆角</span> <span id="radius-value-display">20px</span></label>
           <input type="range" id="glass-radius-slider" class="setting-slider" min="0" max="32" value="20" step="1">
@@ -447,6 +568,9 @@
             <option value="matte">磨砂质感</option>
           </select>
         </div>
+
+          </div>
+        </div>
       </section>
 
       <!-- Advanced Section -->
@@ -454,8 +578,12 @@
         <h3 class="settings-section-title" data-i18n="settings.tabs.advanced">高级</h3>
         <p class="advanced-intro" data-i18n="settings.advanced.intro">这些工具用于导出壁纸、维护预览缓存和清理本地数据。操作只影响本扩展自己的存储。</p>
 
-        <section class="advanced-section" aria-labelledby="advanced-wallpaper-title">
-          <h4 class="advanced-section-title" id="advanced-wallpaper-title" data-i18n="settings.advanced.wallpaper.title">壁纸工具</h4>
+        <section class="advanced-section setting-category" data-group="adv-wallpaper" aria-labelledby="advanced-wallpaper-title">
+          <button type="button" class="setting-category-header advanced-section-title" id="advanced-wallpaper-title" aria-expanded="true">
+            <svg class="setting-category-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            <span data-i18n="settings.advanced.wallpaper.title">壁纸工具</span>
+          </button>
+          <div class="setting-category-body">
           <div class="advanced-action">
             <div class="advanced-action-copy">
               <div class="advanced-action-title" data-i18n="settings.advanced.wallpaper.export.title">导出当前壁纸</div>
@@ -464,10 +592,15 @@
             </div>
             <button id="advanced-export-wallpaper" class="setting-btn-secondary" type="button" data-i18n="settings.advanced.wallpaper.export.title">导出当前壁纸</button>
           </div>
+          </div>
         </section>
 
-        <section class="advanced-section" aria-labelledby="advanced-preview-title">
-          <h4 class="advanced-section-title" id="advanced-preview-title" data-i18n="settings.advanced.preview.title">预览维护</h4>
+        <section class="advanced-section setting-category" data-group="adv-preview" aria-labelledby="advanced-preview-title">
+          <button type="button" class="setting-category-header advanced-section-title" id="advanced-preview-title" aria-expanded="true">
+            <svg class="setting-category-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            <span data-i18n="settings.advanced.preview.title">预览维护</span>
+          </button>
+          <div class="setting-category-body">
           <p id="advanced-preview-status" class="advanced-status">正在读取预览状态…</p>
 
           <div class="advanced-action">
@@ -493,10 +626,15 @@
             </div>
             <button id="advanced-repick-color" class="setting-btn-secondary" type="button" data-i18n="settings.advanced.preview.repick.btn">重新拾取</button>
           </div>
+          </div>
         </section>
 
-        <section class="advanced-section" aria-labelledby="advanced-storage-title">
-          <h4 class="advanced-section-title" id="advanced-storage-title" data-i18n="settings.advanced.storage.title">存储与缓存</h4>
+        <section class="advanced-section setting-category" data-group="adv-storage" aria-labelledby="advanced-storage-title">
+          <button type="button" class="setting-category-header advanced-section-title" id="advanced-storage-title" aria-expanded="true">
+            <svg class="setting-category-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            <span data-i18n="settings.advanced.storage.title">存储与缓存</span>
+          </button>
+          <div class="setting-category-body">
           <p id="advanced-storage-info" class="advanced-status">正在读取本地存储占用…</p>
 
           <div class="advanced-action">
@@ -506,10 +644,15 @@
             </div>
             <button id="advanced-clear-bing-cache" class="setting-btn-secondary" type="button" data-i18n="settings.advanced.storage.clearBing.btn">清除缓存</button>
           </div>
+          </div>
         </section>
 
-        <section class="advanced-section" aria-labelledby="advanced-danger-title">
-          <h4 class="advanced-section-title advanced-section-title--danger" id="advanced-danger-title" data-i18n="settings.advanced.danger.title">危险区域</h4>
+        <section class="advanced-section setting-category" data-group="adv-danger" aria-labelledby="advanced-danger-title">
+          <button type="button" class="setting-category-header advanced-section-title advanced-section-title--danger" id="advanced-danger-title" aria-expanded="true">
+            <svg class="setting-category-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            <span data-i18n="settings.advanced.danger.title">危险区域</span>
+          </button>
+          <div class="setting-category-body">
           <div class="advanced-danger">
             <div class="advanced-danger-head">
               <svg class="advanced-danger-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -523,6 +666,7 @@
               </div>
             </div>
             <button id="advanced-reset-all" class="setting-btn-danger" type="button" data-i18n="settings.advanced.danger.resetAll.btn">清空全部配置</button>
+          </div>
           </div>
         </section>
       </section>
@@ -592,6 +736,7 @@
   <script src="js/bookmarks.js"></script>
   <script src="js/i18n.js"></script>
   <script src="js/color-picker.js"></script>
+  <script src="js/context-menu.js"></script>
   <script src="js/settings.js"></script>
   <script src="js/cursor.js"></script>
   <script src="js/main.js"></script>

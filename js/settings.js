@@ -27,6 +27,9 @@ const Settings = (() => {
     showClock: true,     // 时钟总控（关闭则整个时钟隐藏，秒数子项随之隐藏）
     showSeconds: true,
     showBookmarks: true,  // 底部常用网址 Dock 栏开关
+    showContextMenu: true, // 主界面自定义右键菜单（按壁纸类型提供操作）
+    autoHideSettingsIcon: false, // 自动隐藏设置图标：开启后仅在悬停其位置时显示
+    settingsIconHideStrength: 50, // 自动隐藏强度 0-100（越低越容易浮现，0=不隐藏）
     showCursorEffect: false,  // 鼠标粒子特效
     cursorEffectStyle: 'confetti',  // 'confetti' | 'rain' | 'bubble' | 'star'
     glassStyle: 'frosted',    // 'frosted' | 'liquid' | 'matte' — 毛玻璃 / 液态玻璃 / 磨砂质感
@@ -35,7 +38,9 @@ const Settings = (() => {
     bgVideoVolume: 50,        // 视频壁纸音量 0-100
     bgVideoLoop: true,        // 视频壁纸循环播放
     bgVideoOnEnded: 'black',   // 'loop' | 'pause' | 'restart'
-    bgVideoFileName: ''       // 视频文件名
+    bgVideoFileName: '',      // 视频文件名
+    bgVideoPaused: false,     // 视频播放暂停（供右键菜单切换播放/暂停）
+    foldedGroups: {}          // 设置分组折叠状态：{ [groupKey]: true }
   };
 
   /* --- State --- */
@@ -104,8 +109,18 @@ const Settings = (() => {
   /* --- DOM refs --- */
   let panel, toggle, closeBtn, overlayEl;
 
+  /* Auto-hide settings gear: the button's opacity follows the pointer's distance
+     to its centre (fully visible inside the near radius, gone past the far one). */
+  const GEAR_FADE_IN_PX = 34;   // the button's own box fits inside this radius
+  const GEAR_FADE_OUT_MAX_PX = 150; // outermost fade radius at 100 % strength
+  let gearRect = null;
+  let gearRafId = 0;
+  let pointerX = -1e4;
+  let pointerY = -1e4;
+
   /* Tabs */
   let tabButtons, tabPanels, tabIndicator;
+  let settingCategories;
 
   /* Form elements */
   let bgFileInput, bgFileName, bgUrlInput, bgUrlApply, bgUrlError;
@@ -127,6 +142,9 @@ const Settings = (() => {
   let showClockToggle, showSecondsGroup;
   let showSecondsToggle;
   let showBookmarksToggle;
+  let showContextMenuToggle;
+  let autoHideSettingsIconToggle;
+  let autoHideSettingsStrengthGroup, autoHideSettingsStrengthSlider, autoHideSettingsStrengthDisplay;
   let cursorEffectToggle;
   let cursorStyleGroup, cursorStyleWrapper, cursorStyleTrigger, cursorStyleDropdown, cursorStyleLabel, cursorStyleNative;
   let glassStyleWrapper, glassStyleTrigger, glassStyleDropdown, glassStyleLabel, glassStyleNative;
@@ -180,6 +198,9 @@ const Settings = (() => {
     tabButtons = panel.querySelectorAll('.settings-tab');
     tabPanels = panel.querySelectorAll('.settings-tab-panel');
     tabIndicator = panel.querySelector('.settings-tab-indicator');
+
+    /* Collapsible setting categories */
+    settingCategories = panel.querySelectorAll('.setting-category[data-group]');
 
     /* Background source radios */
     bgSourceOptions = document.querySelectorAll('.radio-option[data-bg-source]');
@@ -262,6 +283,11 @@ const Settings = (() => {
     showSecondsGroup = document.getElementById('show-seconds-group');
     showSecondsToggle = document.getElementById('show-seconds-toggle');
     showBookmarksToggle = document.getElementById('show-bookmarks-toggle');
+    showContextMenuToggle = document.getElementById('show-context-menu-toggle');
+    autoHideSettingsIconToggle = document.getElementById('auto-hide-settings-toggle');
+    autoHideSettingsStrengthGroup = document.getElementById('auto-hide-strength-group');
+    autoHideSettingsStrengthSlider = document.getElementById('auto-hide-strength-slider');
+    autoHideSettingsStrengthDisplay = document.getElementById('auto-hide-strength-display');
     cursorEffectToggle = document.getElementById('cursor-effect-toggle');
     cursorStyleGroup = document.getElementById('cursor-style-group');
     cursorStyleWrapper = document.getElementById('cursor-style-wrapper');
@@ -536,6 +562,14 @@ const Settings = (() => {
     /* Keys missing from an older save fall back to DEFAULTS through the spread. */
     state = saved && typeof saved === 'object' ? { ...DEFAULTS, ...saved } : { ...DEFAULTS };
 
+    /* The strength slider bottoms out at 5 %; clamp values saved by older builds. */
+    state.settingsIconHideStrength = Math.min(100, Math.max(5, state.settingsIconHideStrength));
+
+    /* Fold state is a plain key -> bool map; ignore anything else from old saves. */
+    if (!state.foldedGroups || typeof state.foldedGroups !== 'object') {
+      state.foldedGroups = {};
+    }
+
     let migrated = false;
 
     /* Migration: pre-bgSource builds stored everything in bgImageData. */
@@ -674,6 +708,15 @@ const Settings = (() => {
     /* Bookmarks bar toggle */
     updateShowBookmarksToggle(state.showBookmarks);
 
+    /* Right-click menu toggle */
+    updateShowContextMenuToggle(state.showContextMenu);
+
+    /* Auto-hide settings icon toggle */
+    updateAutoHideSettingsIconToggle(state.autoHideSettingsIcon);
+    setAutoHideStrengthGroupVisible(state.autoHideSettingsIcon);
+    autoHideSettingsStrengthSlider.value = state.settingsIconHideStrength;
+    autoHideSettingsStrengthDisplay.textContent = state.settingsIconHideStrength + '%';
+
     /* Cursor effect toggle */
     updateCursorEffectToggle(state.showCursorEffect);
     setCursorStyleGroupVisible(state.showCursorEffect);
@@ -725,6 +768,9 @@ const Settings = (() => {
     if (videoOnEndedNative) videoOnEndedNative.value = state.bgVideoOnEnded;
     updateVideoOnEndedLabel(state.bgVideoOnEnded);
     updateVideoOnEndedDropdown(state.bgVideoOnEnded);
+
+    /* Collapsible categories — re-apply on language change too (same DOM). */
+    applyAllCategoryFolds();
   }
 
   /* What is stored in IndexedDB, as far as the video sub-panel shows it (file
@@ -811,6 +857,15 @@ const Settings = (() => {
           Bookmarks.setVisible(value);
         }
         break;
+      case 'autoHideSettingsIcon':
+        root.dataset.hideSettingsIcon = value ? 'true' : 'false';
+        gearRect = null;
+        if (value) {
+          scheduleGearOpacity();
+        } else if (toggle) {
+          toggle.style.opacity = '';
+        }
+        break;
       case 'showCursorEffect':
         if (typeof CursorEffect !== 'undefined' && CursorEffect.setVisible) {
           CursorEffect.setVisible(value);
@@ -840,6 +895,8 @@ const Settings = (() => {
     applyToDom('showClock', state.showClock);
     applyToDom('showSeconds', state.showSeconds);
     applyToDom('showBookmarks', state.showBookmarks);
+    applyToDom('showContextMenu', state.showContextMenu);
+    applyToDom('autoHideSettingsIcon', state.autoHideSettingsIcon);
     applyToDom('showCursorEffect', state.showCursorEffect);
     applyToDom('cursorEffectStyle', state.cursorEffectStyle);
     applyToDom('glassStyle', state.glassStyle);
@@ -932,6 +989,45 @@ const Settings = (() => {
       void el.offsetWidth; /* force reflow so the fade-in starts from opacity 0 */
       el.classList.remove('setting-fade-reveal');
     }
+  }
+
+  /* --- Collapsible setting categories ---
+     Each `.setting-category[data-group]` wraps a header button and a body. Folding
+     is persisted per group key in `state.foldedGroups` so a user's preferred
+     layout survives reloads. The body fades out/in (same fade contract as
+     .setting-fade) while the panel height morphs around it. */
+  function categoryBodyOf(category) {
+    return category.querySelector('.setting-category-body');
+  }
+
+  function applyCategoryFold(category, folded, animate) {
+    const header = category.querySelector('.setting-category-header');
+    const body = categoryBodyOf(category);
+    if (header) header.setAttribute('aria-expanded', folded ? 'false' : 'true');
+    if (!body) return;
+    if (!animate) {
+      clearTimeout(body.__fadeTimer);
+      body.hidden = folded;
+      body.classList.remove('setting-fade-hiding', 'setting-fade-reveal');
+      return;
+    }
+    setGroupHidden(body, folded);
+  }
+
+  function applyAllCategoryFolds() {
+    if (!settingCategories) return;
+    settingCategories.forEach(cat => {
+      applyCategoryFold(cat, !!state.foldedGroups[cat.dataset.group], false);
+    });
+  }
+
+  function toggleCategory(category) {
+    const key = category.dataset.group;
+    if (!key) return;
+    const folded = !state.foldedGroups[key];
+    state.foldedGroups[key] = folded;
+    saveSettings();
+    morphPanel(() => applyCategoryFold(category, folded, true));
   }
 
   function setPanelVisible(name, visible) {
@@ -1127,6 +1223,46 @@ const Settings = (() => {
     showBookmarksToggle.setAttribute('aria-checked', on ? 'true' : 'false');
   }
 
+  /* Right-click menu switch. The menu reads the state on demand, so this only
+     mirrors it onto the switch itself. */
+  function updateShowContextMenuToggle(on) {
+    if (!showContextMenuToggle) return;
+    showContextMenuToggle.classList.toggle('on', !!on);
+    showContextMenuToggle.setAttribute('aria-checked', on ? 'true' : 'false');
+  }
+
+  function updateAutoHideSettingsIconToggle(on) {
+    if (!autoHideSettingsIconToggle) return;
+    autoHideSettingsIconToggle.classList.toggle('on', !!on);
+    autoHideSettingsIconToggle.setAttribute('aria-checked', on ? 'true' : 'false');
+  }
+
+  function updateGearOpacity() {
+    gearRafId = 0;
+    if (!toggle) return;
+    /* Touch screens have no pointer to follow; the CSS keeps the gear visible. */
+    if (!state.autoHideSettingsIcon || window.matchMedia('(hover: none)').matches) {
+      toggle.style.opacity = '1';
+      return;
+    }
+    if (!gearRect) gearRect = toggle.getBoundingClientRect();
+    const cx = gearRect.left + gearRect.width / 2;
+    const cy = gearRect.top + gearRect.height / 2;
+    /* Lower strength = larger reveal zone (the gear pops back in from farther
+       away). The slider bottoms out at 5 %, so the gear always fades a little;
+       100 limits the zone to the button itself. */
+    const strength = Math.min(100, Math.max(5, state.settingsIconHideStrength));
+    const outer = GEAR_FADE_IN_PX + (1 - strength / 100) * (GEAR_FADE_OUT_MAX_PX - GEAR_FADE_IN_PX);
+    const d = Math.hypot(pointerX - cx, pointerY - cy);
+    const t = Math.min(1, Math.max(0, (d - GEAR_FADE_IN_PX) / (outer - GEAR_FADE_IN_PX)));
+    const eased = t * t * (3 - 2 * t);
+    toggle.style.opacity = String(1 - eased);
+  }
+
+  function scheduleGearOpacity() {
+    if (!gearRafId) gearRafId = requestAnimationFrame(updateGearOpacity);
+  }
+
   function updateCursorEffectToggle(on) {
     if (!cursorEffectToggle) return;
     cursorEffectToggle.classList.toggle('on', !!on);
@@ -1158,6 +1294,10 @@ const Settings = (() => {
 
   function setCursorStyleGroupVisible(visible) {
     setGroupHidden(cursorStyleGroup, !visible);
+  }
+
+  function setAutoHideStrengthGroupVisible(visible) {
+    setGroupHidden(autoHideSettingsStrengthGroup, !visible);
   }
 
   function updateGlassStyleLabel(styleKey) {
@@ -1283,6 +1423,19 @@ const Settings = (() => {
     toggle.addEventListener('click', openPanel);
     closeBtn.addEventListener('click', closePanel);
     overlayEl.addEventListener('click', closePanel);
+
+    /* Collapsible setting categories: click the header to fold/unfold. */
+    settingCategories.forEach(cat => {
+      const header = cat.querySelector('.setting-category-header');
+      if (!header) return;
+      header.addEventListener('click', () => toggleCategory(cat));
+      header.addEventListener('keydown', (e) => {
+        if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          toggleCategory(cat);
+        }
+      });
+    });
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && panel.classList.contains('open')) {
         closePanel();
@@ -1327,9 +1480,16 @@ const Settings = (() => {
     /* --- Bing auto-refresh toggle --- */
     if (bgBingAutoRefreshToggle) {
       bgBingAutoRefreshToggle.addEventListener('click', () => {
-        state.bgBingAutoRefresh = !state.bgBingAutoRefresh;
+        const turningOn = !state.bgBingAutoRefresh;
+        state.bgBingAutoRefresh = turningOn;
         updateBgBingAutoRefreshToggle(state.bgBingAutoRefresh);
         saveSettings();
+        /* Turning it on checks the recorded date right away: if today's wallpaper
+           has not been fetched yet, refresh now instead of waiting for next load. */
+        if (turningOn && state.bgSource === 'bing' && bgBingRefresh &&
+            !bgBingRefresh.disabled && state.bingLastRefreshDate !== todayStr()) {
+          bgBingRefresh.click();
+        }
       });
       bgBingAutoRefreshToggle.addEventListener('keydown', (e) => {
         if (e.key === ' ' || e.key === 'Enter') {
@@ -1587,6 +1747,61 @@ const Settings = (() => {
         e.preventDefault();
         showBookmarksToggle.click();
       }
+    });
+
+    /* --- Right-click menu toggle --- */
+    if (showContextMenuToggle) {
+      showContextMenuToggle.addEventListener('click', () => {
+        state.showContextMenu = !state.showContextMenu;
+        updateShowContextMenuToggle(state.showContextMenu);
+        saveSettings();
+      });
+      showContextMenuToggle.addEventListener('keydown', (e) => {
+        if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          showContextMenuToggle.click();
+        }
+      });
+    }
+
+    /* --- Auto-hide settings icon toggle --- */
+    autoHideSettingsIconToggle.addEventListener('click', () => {
+      state.autoHideSettingsIcon = !state.autoHideSettingsIcon;
+      updateAutoHideSettingsIconToggle(state.autoHideSettingsIcon);
+      morphPanel(() => setAutoHideStrengthGroupVisible(state.autoHideSettingsIcon));
+      applyToDom('autoHideSettingsIcon', state.autoHideSettingsIcon);
+      saveSettings();
+    });
+    autoHideSettingsIconToggle.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        autoHideSettingsIconToggle.click();
+      }
+    });
+
+    /* --- Auto-hide strength slider --- */
+    autoHideSettingsStrengthSlider.addEventListener('input', () => {
+      const val = parseInt(autoHideSettingsStrengthSlider.value, 10);
+      state.settingsIconHideStrength = val;
+      autoHideSettingsStrengthDisplay.textContent = val + '%';
+      scheduleGearOpacity();
+      saveSettings();
+    });
+
+    /* --- Gear fade follows the pointer --- */
+    document.addEventListener('pointermove', (e) => {
+      pointerX = e.clientX;
+      pointerY = e.clientY;
+      if (state.autoHideSettingsIcon) scheduleGearOpacity();
+    }, { passive: true });
+    document.addEventListener('pointerleave', () => {
+      pointerX = -1e4;
+      pointerY = -1e4;
+      if (state.autoHideSettingsIcon) scheduleGearOpacity();
+    });
+    window.addEventListener('resize', () => {
+      gearRect = null;
+      if (state.autoHideSettingsIcon) scheduleGearOpacity();
     });
 
     /* --- Cursor effect toggle --- */
@@ -2659,6 +2874,7 @@ const Settings = (() => {
     getState: () => state,
     applyAllToDom,
     loadSettings,
+    applyBackground,
     flush: flushSettings
   };
 })();

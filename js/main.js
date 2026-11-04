@@ -164,6 +164,11 @@
     const s = Settings.getState();
     CursorEffect.init(s.showCursorEffect, s.cursorEffectStyle);
 
+    /* 6b. Init custom right-click menu (switchable from settings). */
+    if (typeof ContextMenu !== 'undefined' && ContextMenu.init) {
+      ContextMenu.init();
+    }
+
     /* 6. Focus search input (desktop only) */
     const searchInput = document.getElementById('search-input');
     if (window.innerWidth > 640) {
