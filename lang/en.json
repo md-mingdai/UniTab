@@ -239,6 +239,8 @@
   "contextmenu.bing.source": "Open Source Page",
   "contextmenu.video.pause": "Pause Video",
   "contextmenu.video.play": "Play Video",
+  "contextmenu.video.soundOn": "Unmute Video",
+  "contextmenu.video.soundOff": "Mute Video",
   "contextmenu.image.open": "Open Original Image",
   "contextmenu.download": "Download Wallpaper",
   "contextmenu.color.copy": "Copy Color",

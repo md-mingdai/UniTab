@@ -239,6 +239,8 @@
   "contextmenu.bing.source": "打开来源页面",
   "contextmenu.video.pause": "暂停视频",
   "contextmenu.video.play": "播放视频",
+  "contextmenu.video.soundOn": "开启声音",
+  "contextmenu.video.soundOff": "关闭声音",
   "contextmenu.image.open": "打开原图",
   "contextmenu.download": "下载壁纸",
   "contextmenu.color.copy": "复制颜色",

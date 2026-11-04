@@ -87,6 +87,54 @@ export async function run() {
     return r.right<=1200 && r.bottom<=900 && r.left>=0 && r.top>=0;
   })()`));
 
+  /* --- Video source: sound toggle mirrors the setting & the video element --- */
+  await evalJs(`(()=>{const s=Settings.getState();s.bgSource='video';s.bgVideoSoundOn=false;Settings.flush();})()`);
+  await sleep(200);
+  await rclick(600, 400);
+  ok('video menu offers a sound toggle (mute icon, "sound on" label when muted)',
+    await evalJs(`(()=>{
+      const m=document.getElementById('context-menu');
+      const btns=[...m.querySelectorAll('.context-menu-item')];
+      const sound=btns.find(b=>/声音|sound|Sound|mute|Mute/i.test(b.textContent));
+      if(!sound) return false;
+      /* Sound is OFF → clicking should say "开启声音 / Unmute". */
+      return /开启|Unmute/i.test(sound.textContent) &&
+             !!sound.querySelector('polygon') && sound.querySelectorAll('line').length===2;
+    })()`));
+  await evalJs(`(()=>{
+    const m=document.getElementById('context-menu');
+    const btns=[...m.querySelectorAll('.context-menu-item')];
+    const sound=btns.find(b=>/声音|sound|Sound|mute|Mute/i.test(b.textContent));
+    sound.click();
+  })()`);
+  await sleep(300);
+  ok('clicking the sound item flips bgVideoSoundOn on', await evalJs(`Settings.getState().bgVideoSoundOn===true`));
+  ok('clicking the sound item unmutes the video element', await evalJs(`(()=>{
+    const v=document.getElementById('background-video');
+    return v && v.muted===false;
+  })()`));
+  await rclick(600, 400);
+  ok('menu now shows the sound-off label ("关闭声音")',
+    await evalJs(`(()=>{
+      const m=document.getElementById('context-menu');
+      const btns=[...m.querySelectorAll('.context-menu-item')];
+      const sound=btns.find(b=>/声音|sound|Sound|mute|Mute/i.test(b.textContent));
+      return sound && /关闭|Mute/i.test(sound.textContent);
+    })()`));
+  await evalJs(`(()=>{
+    const m=document.getElementById('context-menu');
+    const btns=[...m.querySelectorAll('.context-menu-item')];
+    const sound=btns.find(b=>/声音|sound|Sound|mute|Mute/i.test(b.textContent));
+    sound.click();
+  })()`);
+  await sleep(300);
+  ok('clicking again flips bgVideoSoundOn off', await evalJs(`Settings.getState().bgVideoSoundOn===false`));
+  ok('clicking again mutes the video element', await evalJs(`(()=>{
+    const v=document.getElementById('background-video');
+    return v && v.muted===true;
+  })()`));
+  await evalJs(`(()=>{const s=Settings.getState();s.bgSource='bing';Settings.flush();})()`);
+
   const code = finish();
   close();
   return code;

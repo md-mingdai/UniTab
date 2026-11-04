@@ -934,20 +934,29 @@ html[data-hide-settings-icon="true"] .settings-toggle:focus-visible {
   transform: translate(-50%, 0);
 }
 
-/* Global notice (bottom-right). Fixed-size translucent rectangle, severity
-   colour-coded, permanent radius (does NOT follow the glass radius setting),
-   high-contrast text. No backdrop-filter / glass here — this is a solid,
-   semi-transparent chip. Slides in from the right edge and back out to the
-   right over ~1s. A deeper-coloured progress bar along the top edge counts
-   down the 5s dwell time. */
-.app-notice {
+/* Global notice container (bottom-right). Holds every active toast, stacked
+   bottom-to-top; each toast is absolutely positioned within it. */
+.app-notice-container {
   position: fixed;
   right: 20px;
   bottom: 80px;
   width: 340px;
-  height: 64px;
   z-index: 2147483647;
-  border-radius: 20px; /* fixed, never follows settings */
+  pointer-events: none;
+}
+
+/* Global notice. Fixed-size translucent rectangle, severity colour-coded,
+   permanent radius (does NOT follow the glass radius setting), high-contrast
+   text. No backdrop-filter / glass here — this is a solid, semi-transparent
+   chip. Slides in from the right edge and back out to the right over ~1s.
+   A deeper-coloured progress bar along the top edge counts down the dwell. */
+.app-notice {
+  position: absolute;
+  right: 0;
+  bottom: 0; /* set by JS layout() while stacking */
+  width: 340px;
+  height: 64px;
+  border-radius: 15px; /* fixed, never follows settings */
   border: 1px solid transparent;
   overflow: hidden;
   opacity: 0;
@@ -973,7 +982,7 @@ html[data-hide-settings-icon="true"] .settings-toggle:focus-visible {
   left: -1px;
   height: 6px;
   width: calc(100% + 2px);
-  border-radius: 20px 20px 0 0;
+  border-radius: 15px 15px 0 0;
   background: rgba(0, 0, 0, 0.25);
   overflow: hidden;
 }
@@ -998,13 +1007,16 @@ html[data-hide-settings-icon="true"] .settings-toggle:focus-visible {
   to   { transform: scaleX(0); }
 }
 
-/* Text: left-aligned, vertically centred, padded in from the edges. */
+/* Text: left-aligned, vertically centred, padded in from the edges. The
+   progress bar only occupies the top 6px and the 20px text centres at the
+   box's midpoint (32px), well clear of it, so the side padding is symmetric
+   and the text sits dead-centre vertically. */
 .app-notice-text {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
-  padding: 0 18px 8px; /* extra bottom pad clears the 6px progress bar */
+  padding: 0 18px;
   font-size: 20px;
   font-weight: 600;
   line-height: 1.35;

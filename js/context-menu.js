@@ -36,7 +36,9 @@ const ContextMenu = (() => {
     external: '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>',
     settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
     play: '<polygon points="6 4 20 12 6 20"/>',
-    pause: '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>'
+    pause: '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>',
+    volume: '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>',
+    mute: '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>'
   };
 
   /* --- small helpers ----------------------------------------------------- */
@@ -149,6 +151,13 @@ const ContextMenu = (() => {
         labelKey: s.bgVideoPaused ? 'contextmenu.video.play' : 'contextmenu.video.pause',
         action: () => toggleVideoPlayback()
       });
+      /* 声音开关：与设置页"开启声音"同步，直接操作视频元素的静音状态。
+         声音开时点击=关闭(soundOff)，声音关时点击=开启(soundOn)。 */
+      items.push({
+        icon: s.bgVideoSoundOn ? 'volume' : 'mute',
+        labelKey: s.bgVideoSoundOn ? 'contextmenu.video.soundOff' : 'contextmenu.video.soundOn',
+        action: () => toggleVideoSound()
+      });
       items.push({ type: 'separator' });
     } else if (source === 'image') {
       if (s.bgImageUrl) {
@@ -215,6 +224,18 @@ const ContextMenu = (() => {
         if (typeof Settings !== 'undefined' && Settings.getState) Settings.getState().bgVideoPaused = true;
       }
     } catch { /* playback promise can reject; ignore */ }
+  }
+
+  /* 声音开关（右键菜单版）：与设置页"开启声音"共用同一个持久化字段
+     bgVideoSoundOn，翻转后立即应用到视频元素并保存。 */
+  function toggleVideoSound() {
+    if (typeof Settings === 'undefined' || !Settings.getState) return;
+    const s = Settings.getState();
+    s.bgVideoSoundOn = !s.bgVideoSoundOn;
+    if (typeof Background !== 'undefined' && Background.setMuted) {
+      Background.setMuted(!s.bgVideoSoundOn);
+    }
+    Settings.flush();
   }
 
   async function downloadWallpaper() {

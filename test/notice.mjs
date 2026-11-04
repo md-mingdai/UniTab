@@ -16,24 +16,27 @@ export async function run() {
   for (let i = 0; i < 100; i++) { if (await evalJs(`typeof Settings!=='undefined' && typeof Notice!=='undefined'`)) break; await sleep(150); }
   await sleep(600);
 
-  const noticeText = () => evalJs(`(()=>{
-    const n=document.querySelector('.app-notice-text');
-    return n ? n.textContent : null;
+  /* Toasts now STACK, so querySelector('.app-notice') returns the OLDEST one.
+     The helpers below target the NEWEST toast (the container's last child),
+     which is what a just-fired refresh produces. */
+  const installHelpers = () => evalJs(`(()=>{
+    const c=()=>document.querySelector('.app-notice-container');
+    window.__lastNotice=()=>{const b=c();return b?b.lastElementChild:null};
+    window.__clearNotices=()=>{document.querySelectorAll('.app-notice').forEach(n=>n.remove())};
+    window.__lastText=()=>{const n=window.__lastNotice();return n?n.textContent:null};
+    window.__lastOpen=()=>{const n=window.__lastNotice();return !!(n&&n.dataset.open==='true')};
+    window.__lastSeverity=()=>{const n=window.__lastNotice();return n?n.dataset.severity:null};
   })()`);
-  const noticeOpen = () => evalJs(`(()=>{
-    const n=document.querySelector('.app-notice');
-    return n && n.dataset.open==='true';
-  })()`);
-  const noticeSeverity = () => evalJs(`(()=>{
-    const n=document.querySelector('.app-notice');
-    return n ? n.dataset.severity : null;
-  })()`);
+  await installHelpers();
+  const lastText = () => evalJs(`window.__lastText()`);
+  const lastOpen = () => evalJs(`window.__lastOpen()`);
+  const lastSeverity = () => evalJs(`window.__lastSeverity()`);
 
   /* The page's init() auto-fetches the default bing wallpaper on load, which
-     is itself a refresh entry point — so the notice element already exists. */
+     is itself a refresh entry point — so a notice element already exists. */
   ok('notice created by the initial auto-refresh', await evalJs(`!!document.querySelector('.app-notice')`));
   ok('initial auto-refresh notice is success severity',
-    (await noticeSeverity()) === 'success');
+    (await lastSeverity()) === 'success');
 
   /* Style contract: fixed rectangle, no glass (no backdrop-filter), no
      var(--glass-*) references, permanent radius, high-contrast text. */
@@ -47,9 +50,9 @@ export async function run() {
     const s=getComputedStyle(n);
     return s.backdropFilter==='none';
   })()`));
-  ok('notice radius is fixed 20px (not var glass radius)', await evalJs(`(()=>{
+  ok('notice radius is fixed 15px (not var glass radius)', await evalJs(`(()=>{
     const n=document.querySelector('.app-notice');
-    return getComputedStyle(n).borderRadius==='20px';
+    return getComputedStyle(n).borderRadius==='15px';
   })()`));
   ok('notice translucent + colored by severity', await evalJs(`(()=>{
     const n=document.querySelector('.app-notice');
@@ -66,6 +69,15 @@ export async function run() {
   ok('notice text size is 20px', await evalJs(`(()=>{
     const t=document.querySelector('.app-notice-text');
     return t && getComputedStyle(t).fontSize==='20px';
+  })()`));
+  ok('notice text is vertically centred', await evalJs(`(()=>{
+    const n=document.querySelector('.app-notice');
+    const t=document.querySelector('.app-notice-text');
+    const nr=n.getBoundingClientRect();
+    const tr=t.getBoundingClientRect();
+    const nMid=nr.top+nr.height/2;
+    const tMid=tr.top+tr.height/2;
+    return Math.abs(nMid-tMid)<1;
   })()`));
   ok('notice enters from the right (positive X shift, no Y shift)', await evalJs(`(()=>{
     /* Read the authored CSS rule for the closed .app-notice state. */
@@ -85,9 +97,9 @@ export async function run() {
     const t=document.querySelector('.app-notice-text');
     return t && getComputedStyle(t).textAlign==='left';
   })()`));
-  ok('notice raised higher above the bottom', await evalJs(`(()=>{
-    const n=document.querySelector('.app-notice');
-    return getComputedStyle(n).bottom==='80px';
+  ok('the stack container is raised 80px above the bottom', await evalJs(`(()=>{
+    const c=document.querySelector('.app-notice-container');
+    return c && getComputedStyle(c).bottom==='80px';
   })()`));
   ok('notice has a top progress bar', await evalJs(`(()=>{
     const n=document.querySelector('.app-notice');
@@ -127,21 +139,16 @@ export async function run() {
       return new Promise((res)=>{ window.__resolveFetch=res; });
     };
   })()`);
+  await evalJs(`window.__clearNotices()`);
   await evalJs(`document.getElementById('bg-bing-refresh').click()`);
   await sleep(150);
-  ok('refreshing notice shown when refresh starts', await evalJs(`(()=>{
-    const n=document.querySelector('.app-notice');
-    return n && n.dataset.open==='true' && /刷新|Refreshing/.test(n.textContent);
-  })()`));
-  ok('refreshing notice is info severity (while pending)', (await noticeSeverity()) === 'info');
+  ok('refreshing notice shown when refresh starts', await lastOpen() && /刷新|Refreshing/.test(await lastText()));
+  ok('refreshing notice is info severity (while pending)', (await lastSeverity()) === 'info');
   /* Complete the pending fetch and confirm it flips to success. */
   await evalJs(`window.__resolveFetch({ok:true,url:'http://x/ok.jpg',copyright:'c',copyrightlink:'https://cn.bing.com/search?q=ok'})`);
   await sleep(300);
-  ok('refreshed notice shown when refresh completes', await evalJs(`(()=>{
-    const n=document.querySelector('.app-notice');
-    return n && n.dataset.open==='true' && /已刷新|refreshed/i.test(n.textContent);
-  })()`));
-  ok('refreshed notice is success severity', (await noticeSeverity()) === 'success');
+  ok('refreshed notice shown when refresh completes', await lastOpen() && /已刷新|refreshed/i.test(await lastText()));
+  ok('refreshed notice is success severity', (await lastSeverity()) === 'success');
   ok('refresh actually fetched once', await evalJs(`window.__fetchCount===1`));
   await evalJs(`(()=>{Background.fetchBingOfTheDay=window.__origFetch2;})()`);
   await sleep(200);
@@ -152,13 +159,11 @@ export async function run() {
     Background.fetchBingOfTheDay=function(){return Promise.resolve({ok:false,error:'network down'})};
     window.__origFetch=orig;
   })()`);
+  await evalJs(`window.__clearNotices()`);
   await evalJs(`document.getElementById('bg-bing-refresh').click()`);
   await sleep(300);
-  ok('failed refresh shows error notice', await evalJs(`(()=>{
-    const n=document.querySelector('.app-notice');
-    return n && n.dataset.open==='true' && /失败|failed/i.test(n.textContent);
-  })()`));
-  ok('failed refresh notice is error severity', (await noticeSeverity()) === 'error');
+  ok('failed refresh shows error notice', await lastOpen() && /失败|failed/i.test(await lastText()));
+  ok('failed refresh notice is error severity', (await lastSeverity()) === 'error');
   await evalJs(`(()=>{Background.fetchBingOfTheDay=window.__origFetch;})()`);
   await sleep(200);
 
@@ -174,28 +179,70 @@ export async function run() {
     t.click();
   })()`);
   await sleep(150);
-  ok('context-menu refresh shows refreshing notice', await noticeOpen() && /刷新|Refreshing/.test(await noticeText()));
+  ok('context-menu refresh shows refreshing notice', await lastOpen() && /刷新|Refreshing/.test(await lastText()));
   await sleep(1200);
-  ok('context-menu refresh completes with refreshed notice', await noticeOpen() && /已刷新|refreshed/i.test(await noticeText()));
+  ok('context-menu refresh completes with refreshed notice', await lastOpen() && /已刷新|refreshed/i.test(await lastText()));
   ok('context-menu refresh fetched once', await evalJs(`window.__fetchCount===1`));
 
   /* Fallback path (button disabled) also shows notices. */
   await evalJs(`(()=>{const b=document.getElementById('bg-bing-refresh'); if(b) b.disabled=true;})()`);
+  await evalJs(`window.__clearNotices()`);
   await evalJs(`window.__fetchCount=0`);
   await evalJs(`ContextMenu.refreshBing()`);
   await sleep(150);
-  ok('fallback refresh shows refreshing notice', await noticeOpen() && /刷新|Refreshing/.test(await noticeText()));
+  ok('fallback refresh shows refreshing notice', await lastOpen() && /刷新|Refreshing/.test(await lastText()));
   await sleep(1200);
-  ok('fallback refresh completes with refreshed notice', await noticeOpen() && /已刷新|refreshed/i.test(await noticeText()));
+  ok('fallback refresh completes with refreshed notice', await lastOpen() && /已刷新|refreshed/i.test(await lastText()));
   ok('fallback refresh fetched once', await evalJs(`window.__fetchCount===1`));
 
   /* Notice auto-dismisses (slides out) after its 5s dwell time. */
+  await evalJs(`window.__clearNotices()`);
   await evalJs(`window.__fetchCount=0; ContextMenu.refreshBing()`);
   await sleep(5400); /* dwell 5s + slide-out head start */
   ok('notice auto-dismisses after duration', await evalJs(`(()=>{
     const n=document.querySelector('.app-notice');
     return n && n.dataset.open==='false';
   })()`));
+
+  /* --- Stacking: multiple concurrent notices stack bottom-to-top --- */
+  await evalJs(`window.__clearNotices()`);
+  await evalJs(`Notice.show('stack-top','info',2500)`);
+  await sleep(100);
+  await evalJs(`Notice.show('stack-bottom','success',8000)`);
+  await sleep(1100); /* both fully slid in */
+  ok('two concurrent notices both render', await evalJs(`document.querySelectorAll('.app-notice').length===2`));
+  ok('notices are absolutely positioned inside the container', await evalJs(`(()=>{
+    const toasts=[...document.querySelectorAll('.app-notice')];
+    return toasts.every(t=>getComputedStyle(t).position==='absolute');
+  })()`));
+  ok('the later notice sits below the earlier one, 12px apart', await evalJs(`(()=>{
+    const toasts=[...document.querySelectorAll('.app-notice')]
+      .sort((a,b)=>a.getBoundingClientRect().top-b.getBoundingClientRect().top);
+    if(toasts.length!==2) return false;
+    const [upper,lower]=toasts;
+    const gap=lower.getBoundingClientRect().top-upper.getBoundingClientRect().bottom;
+    return Math.abs(gap-12)<=2 && upper.textContent.includes('stack-top') && lower.textContent.includes('stack-bottom');
+  })()`));
+  ok('the stack sits at the fixed bottom-right anchor', await evalJs(`(()=>{
+    const c=document.querySelector('.app-notice-container');
+    if(!c) return false;
+    const s=getComputedStyle(c);
+    return s.position==='fixed' && s.right==='20px' && s.bottom==='80px' && s.pointerEvents==='none';
+  })()`));
+  /* The shorter-lived top toast (2.5s) exits first; the survivor re-stacks to
+     the bottom edge (removal calls layout() itself). */
+  await sleep(2500 + 1000); /* top toast dwell 2.5s + slide-out 0.9s */
+  ok('after the earlier toast leaves, the survivor re-stacks to the bottom',
+    await evalJs(`(()=>{
+      const toasts=[...document.querySelectorAll('.app-notice')];
+      if(toasts.length!==1) return false;
+      const t=toasts[0];
+      const r=t.getBoundingClientRect();
+      const c=document.querySelector('.app-notice-container').getBoundingClientRect();
+      /* The sole survivor sits at the container's bottom edge. */
+      return Math.abs(r.bottom - c.bottom) <= 2;
+    })()`));
+  await evalJs(`window.__clearNotices()`);
 
   const code = finish();
   close();

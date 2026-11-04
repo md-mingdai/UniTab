@@ -239,6 +239,8 @@
   "contextmenu.bing.source": "開啟來源頁面",
   "contextmenu.video.pause": "暫停影片",
   "contextmenu.video.play": "播放影片",
+  "contextmenu.video.soundOn": "開啟聲音",
+  "contextmenu.video.soundOff": "關閉聲音",
   "contextmenu.image.open": "開啟原圖",
   "contextmenu.download": "下載壁紙",
   "contextmenu.color.copy": "複製顏色",
