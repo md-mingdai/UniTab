@@ -1262,11 +1262,14 @@ html[data-hide-settings-icon="true"] .settings-toggle:focus-visible {
    .setting-fade-hiding fades out then sets [hidden]; .setting-fade-reveal snaps
    to opacity 0 (with the transition off) so the element can fade back in. */
 .setting-fade {
-  transition: opacity 0.22s var(--ease-out-expo);
+  transition: opacity 0.22s var(--ease-out-expo),
+              max-height 0.24s var(--ease-out-expo),
+              margin-bottom 0.24s var(--ease-out-expo);
 }
 
 .setting-fade.setting-fade-hiding {
   opacity: 0;
+  overflow: hidden;
   pointer-events: none;
 }
 

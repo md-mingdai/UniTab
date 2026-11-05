@@ -223,6 +223,7 @@ const ContextMenu = (() => {
         video.pause();
         if (typeof Settings !== 'undefined' && Settings.getState) Settings.getState().bgVideoPaused = true;
       }
+      if (typeof Settings !== 'undefined' && Settings.persist) Settings.persist();
     } catch { /* playback promise can reject; ignore */ }
   }
 
@@ -235,7 +236,7 @@ const ContextMenu = (() => {
     if (typeof Background !== 'undefined' && Background.setMuted) {
       Background.setMuted(!s.bgVideoSoundOn);
     }
-    Settings.flush();
+    Settings.persist();
   }
 
   async function downloadWallpaper() {

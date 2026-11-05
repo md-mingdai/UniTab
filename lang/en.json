@@ -242,7 +242,7 @@
   "contextmenu.video.soundOn": "Unmute Video",
   "contextmenu.video.soundOff": "Mute Video",
   "contextmenu.image.open": "Open Original Image",
-  "contextmenu.download": "Download Wallpaper",
+  "contextmenu.download": "Save Wallpaper",
   "contextmenu.color.copy": "Copy Color",
   "contextmenu.color.copied": "Color copied",
   "contextmenu.settings": "Settings",

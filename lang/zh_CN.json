@@ -242,7 +242,7 @@
   "contextmenu.video.soundOn": "开启声音",
   "contextmenu.video.soundOff": "关闭声音",
   "contextmenu.image.open": "打开原图",
-  "contextmenu.download": "下载壁纸",
+  "contextmenu.download": "保存壁纸",
   "contextmenu.color.copy": "复制颜色",
   "contextmenu.color.copied": "颜色已复制",
   "contextmenu.settings": "设置",

@@ -656,6 +656,15 @@ const Settings = (() => {
     saveDirty = false;
   }
 
+  /* Force a write now, even if nothing went through the batched saveSettings()
+     path. External code that mutates the state object directly (the context
+     menu's play/pause and sound toggles, the video playback synced back from
+     Chrome's global media controls) calls this so the change actually lands. */
+  function persist() {
+    saveDirty = true;
+    flushSettings();
+  }
+
   /* Earlier builds kept an uploaded wallpaper as a base64 string inside the settings
      blob (several MB that were parsed on every new tab and re-written on every slider
      tick, and that silently stopped saving once they hit the ~5 MB localStorage
@@ -971,14 +980,39 @@ const Settings = (() => {
      instant, so on the way out we hold the element in the layout for the fade
      (opacity 0) before setting it, and on the way in we reveal from opacity 0.
      The `hidden` flag is kept in sync so callers can keep reading it. */
+  /* Hide / reveal a settings sub-option (.setting-fade) or a collapsible
+     category body. The visible behaviour is the same in both directions: the
+     element fades out / in while the panel height morphs around it.
+     On the way OUT the element must stop occupying layout space at the same
+     time it fades, so the panel height shrinks in parallel instead of
+     snapping closed once the fade finishes (that snap was the jarring
+     "text fades, then the page resizes" the user reported). For .setting-fade
+     elements the collapse is done with a precise inline max-height (and
+     margin-bottom) transitioned to 0, so the panel follows smoothly. The
+     `hidden` flag is still set at the end so callers can keep reading it. */
   function setGroupHidden(el, hide) {
     if (!el) return;
+    const isFade = el.classList.contains('setting-fade');
     if (hide) {
       if (el.hidden) return;
       clearTimeout(el.__fadeTimer);
-      el.classList.add('setting-fade-hiding');
+      if (isFade) {
+        /* Lock the exact current height (and margin) so the collapse starts
+           immediately from a real value, then shrink to nothing. */
+        const cs = getComputedStyle(el);
+        el.style.maxHeight = el.offsetHeight + 'px';
+        el.style.marginBottom = cs.marginBottom;
+        el.classList.add('setting-fade-hiding');
+        void el.offsetHeight; /* commit the start values */
+        el.style.maxHeight = '0px';
+        el.style.marginBottom = '0px';
+      } else {
+        el.classList.add('setting-fade-hiding');
+      }
       el.__fadeTimer = setTimeout(() => {
         el.hidden = true;
+        el.style.maxHeight = '';
+        el.style.marginBottom = '';
         el.classList.remove('setting-fade-hiding');
         el.__fadeTimer = null;
       }, 240);
@@ -987,6 +1021,9 @@ const Settings = (() => {
       clearTimeout(el.__fadeTimer);
       el.__fadeTimer = null;
       el.hidden = false;
+      /* Release any inline collapse values so the element can grow again. */
+      el.style.maxHeight = '';
+      el.style.marginBottom = '';
       el.classList.add('setting-fade-reveal');
       void el.offsetWidth; /* force reflow so the fade-in starts from opacity 0 */
       el.classList.remove('setting-fade-reveal');
@@ -2896,6 +2933,7 @@ const Settings = (() => {
     loadSettings,
     applyBackground,
     flush: flushSettings,
+    persist,
     refreshBingWallpaper
   };
 })();

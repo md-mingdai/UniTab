@@ -636,6 +636,22 @@ const Background = (() => {
     videoEl.muted = !!muted;
   }
 
+  /* --- Playback state sync (Chrome / system media controls) ----------------
+     Chrome's global media controls and the OS media hub drive the <video>
+     element directly, which fires these DOM events. Listen and write the
+     pause state back to Settings so the context menu (and any other UI) stays
+     in step. Skip while the tab is hidden: the visibilitychange handler also
+     pauses/plays the video, and that must not flip the user's setting. */
+  function syncVideoPlayback() {
+    if (document.hidden) return;
+    if (typeof Settings === 'undefined' || !Settings.getState) return;
+    const s = Settings.getState();
+    s.bgVideoPaused = videoEl.paused;
+    if (Settings.persist) Settings.persist();
+  }
+  videoEl.addEventListener('play', syncVideoPlayback);
+  videoEl.addEventListener('pause', syncVideoPlayback);
+
   function setLoop(loop) {
     videoEl.loop = loop;
     if (loop) videoEl.onended = null;
