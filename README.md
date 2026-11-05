@@ -93,6 +93,11 @@ UniTab/
 │   ├── background.js       # 壁纸 / 视频 / 模糊 / 蒙版管理（IndexedDB）
 │   ├── cursor.js           # 鼠标特效（画布与监听器按需创建）
 │   └── effect-kivotos.js   # 基沃托斯特效（选中该样式时才加载）
+├── lang/
+│   ├── languages.json      # 支持的语言列表（唯一一份，勿与扩展 manifest 混淆）
+│   ├── zh_CN.json          # 简体中文翻译
+│   ├── zh_TW.json          # 繁体中文翻译
+│   └── en.json             # 英文翻译
 ├── lib/
 │   └── anime.min.js        # 仅基沃托斯特效使用，按需加载
 ├── fonts/

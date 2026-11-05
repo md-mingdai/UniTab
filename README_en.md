@@ -94,6 +94,11 @@ UniTab/
 │   ├── background.js       # Wallpaper / video / blur / overlay (IndexedDB)
 │   ├── cursor.js           # Cursor effects (canvas and listeners created on demand)
 │   └── effect-kivotos.js   # Kivotos effect (loaded only when selected)
+├── lang/
+│   ├── languages.json      # Supported-language list (the only one; not the extension manifest)
+│   ├── zh_CN.json          # Simplified Chinese translations
+│   ├── zh_TW.json          # Traditional Chinese translations
+│   └── en.json             # English translations
 ├── lib/
 │   └── anime.min.js        # Used only by the Kivotos effect, loaded on demand
 ├── fonts/
