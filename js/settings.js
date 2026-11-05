@@ -1419,7 +1419,18 @@ const Settings = (() => {
     const from = panel.offsetHeight;      /* may be mid-morph: continue from there */
     if (morphCleanup) morphCleanup();     /* drop the previous inline height */
     mutate();
+    /* Measure the settled height. A sub-option that is collapsing right now
+       (`.setting-fade-hiding`) still occupies layout while its max-height
+       transition runs, which would inflate `to` and make the panel grow past
+       its final size before snapping back ("switching the wallpaper source
+       makes the panel jump long then recover"). Temporarily drop those
+       elements out of layout so `to` is the true settled height, then restore
+       them so their fade-out animation still plays. All in one synchronous
+       tick, so the browser never paints the intermediate state. */
+    const collapsing = [...panel.querySelectorAll('.setting-fade-hiding')];
+    const wasHidden = collapsing.map((el) => { const h = el.hidden; el.hidden = true; return h; });
     const to = panel.offsetHeight;        /* natural height after the change */
+    collapsing.forEach((el, i) => { el.hidden = wasHidden[i]; });
     if (Math.abs(from - to) < 2) return;
 
     panel.style.height = from + 'px';
