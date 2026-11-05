@@ -848,6 +848,34 @@ const LiquidGlass = (() => {
     refresh() { queueAll(); scheduleSolve(0); },
     optics: OPTICS,
     tones: TONES,
+    /* Sample the wallpaper under a viewport rect and decide which ink (white on a
+       dark pane, deep navy on a light one) contrasts better once the glass has sat
+       over it. Returns 'dark' (=> use white ink) or 'light' (=> use dark ink).
+       Used by components that are not part of the persistent pane layout (the
+       right-click menu follows the cursor) and cannot be solved on the usual cycle.
+       Falls back to the global wallpaper tone when nothing can be sampled. */
+    async sampleTone(rect) {
+      if (!rect || rect.w <= 0 || rect.h <= 0) {
+        return root.dataset.wallpaperTone === 'light' ? 'light' : 'dark';
+      }
+      try {
+        const field = await readField();
+        const R = { x: rect.x, y: rect.y, w: Math.min(rect.w, innerWidth - rect.x), h: Math.min(rect.h, innerHeight - rect.y) };
+        if (R.w <= 0 || R.h <= 0) return root.dataset.wallpaperTone === 'light' ? 'light' : 'dark';
+        /* The menu carries a light tint and a blur; sample with a moderate sigma so
+           local bright / dark patches of the wallpaper still tip the decision. */
+        const sigma = 24;
+        const pick = (tone) => {
+          const T = effective(TONES[tone], mqContrast.matches);
+          const S = paneSamples(field, R, sigma, T, 0);
+          return worstContrast(S, T, 0.12, 0.92, 0.06, new Float32Array(S.n));
+        };
+        const wd = pick('dark'), wl = pick('light');
+        return wl > wd ? 'light' : 'dark';
+      } catch (e) {
+        return root.dataset.wallpaperTone === 'light' ? 'light' : 'dark';
+      }
+    },
     debug() { return { active, lens: lensOn(), state, panes: Array.from(panes.values()).map((S) => ({ key: S.def.key, id: S.id, lensKey: S.lensKey })) }; },
   };
 })();

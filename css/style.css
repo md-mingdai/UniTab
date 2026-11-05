@@ -849,6 +849,13 @@ html[data-hide-settings-icon="true"] .settings-toggle:focus-visible {
   pointer-events: auto;
 }
 
+/* The menu sits over whichever part of the wallpaper it was opened on. When the
+   glass model reads that patch as light, the ink flips to dark so it stays legible
+   (the icons inherit currentColor). */
+.context-menu[data-tone="light"] {
+  color: rgb(12 20 42 / 0.92);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .context-menu {
     transition: none;

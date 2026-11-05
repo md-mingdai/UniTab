@@ -338,6 +338,28 @@ const ContextMenu = (() => {
     root.style.left = left + 'px';
     root.style.top = top + 'px';
     root.style.transformOrigin = (clientX > left) ? 'right top' : 'left top';
+
+    /* The menu follows the cursor, so it can sit over any part of the wallpaper.
+       Ask the glass model how dark/light the wallpaper reads under it now and flip
+       the ink to match (white on a dark pane, deep navy on a light one). The menu
+       shows first with the last known tone so it never flashes; sampling resolves
+       within a frame and the ink follows. */
+    applyTone(left, top, rect.width, rect.height);
+  }
+
+  /* Pick the ink colour for the menu from what's behind it. `LiquidGlass.sampleTone`
+     samples the wallpaper under the given rect (frosted + liquid both have a glass
+     model; matte and the bare frosted fallback read the global wallpaper tone). */
+  function applyTone(left, top, w, h) {
+    let lg = null;
+    try { lg = (typeof LiquidGlass !== 'undefined') ? LiquidGlass : null; } catch { lg = null; }
+    if (!lg || !lg.sampleTone) return;
+    const rect = { x: left, y: top, w: w, h: h };
+    lg.sampleTone(rect).then((tone) => {
+      /* The menu may have moved or closed before the sample resolves. */
+      if (!open) return;
+      root.dataset.tone = tone === 'light' ? 'light' : 'dark';
+    }).catch(() => {});
   }
 
   function closeMenu() {
