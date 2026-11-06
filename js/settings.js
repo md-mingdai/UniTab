@@ -1138,7 +1138,11 @@ const Settings = (() => {
      `hidden` flag is still set at the end so callers can keep reading it. */
   function setGroupHidden(el, hide) {
     if (!el) return;
-    const isFade = el.classList.contains('setting-fade');
+    /* Category bodies collapse the same way as .setting-fade elements: opacity
+       fades while an inline max-height shrinks in parallel, so the content never
+       sits as a blank block before the fold closes. */
+    const isFade = el.classList.contains('setting-fade') ||
+      el.classList.contains('setting-category-body');
     if (hide) {
       if (el.hidden) return;
       clearTimeout(el.__fadeTimer);
@@ -1161,7 +1165,7 @@ const Settings = (() => {
         el.style.marginBottom = '';
         el.classList.remove('setting-fade-hiding');
         el.__fadeTimer = null;
-      }, 240);
+      }, 300);
     } else {
       if (!el.hidden) return;
       clearTimeout(el.__fadeTimer);

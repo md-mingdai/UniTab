@@ -1237,16 +1237,22 @@ html[data-hide-settings-icon="true"] .settings-toggle:focus-visible {
 }
 
 .setting-category-body {
-  transition: opacity 0.22s var(--ease-out-expo);
+  transition: opacity 0.28s var(--ease-out-expo),
+              transform 0.3s var(--ease-out-expo),
+              max-height 0.3s var(--ease-out-expo),
+              margin-bottom 0.3s var(--ease-out-expo);
 }
 
 .setting-category-body.setting-fade-hiding {
   opacity: 0;
+  transform: translateY(-8px);
+  overflow: hidden;
   pointer-events: none;
 }
 
 .setting-category-body.setting-fade-reveal {
   opacity: 0;
+  transform: translateY(-8px);
   transition: none;
 }
 
@@ -1269,19 +1275,22 @@ html[data-hide-settings-icon="true"] .settings-toggle:focus-visible {
    .setting-fade-hiding fades out then sets [hidden]; .setting-fade-reveal snaps
    to opacity 0 (with the transition off) so the element can fade back in. */
 .setting-fade {
-  transition: opacity 0.22s var(--ease-out-expo),
-              max-height 0.24s var(--ease-out-expo),
-              margin-bottom 0.24s var(--ease-out-expo);
+  transition: opacity 0.28s var(--ease-out-expo),
+              transform 0.3s var(--ease-out-expo),
+              max-height 0.3s var(--ease-out-expo),
+              margin-bottom 0.3s var(--ease-out-expo);
 }
 
 .setting-fade.setting-fade-hiding {
   opacity: 0;
+  transform: translateY(-8px);
   overflow: hidden;
   pointer-events: none;
 }
 
 .setting-fade.setting-fade-reveal {
   opacity: 0;
+  transform: translateY(-8px);
   transition: none;
 }
 
@@ -2066,9 +2075,9 @@ html[data-hide-settings-icon="true"] .settings-toggle:focus-visible {
 }
 
 .advanced-section {
-  margin-top: 26px;
-  padding-top: 22px;
-  border-top: 1px solid rgb(var(--fg-rgb) / 0.08);
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
 }
 
 .advanced-section-title {
