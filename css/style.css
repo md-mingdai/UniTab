@@ -1952,6 +1952,31 @@ html[data-hide-settings-icon="true"] .settings-toggle:focus-visible {
   margin-top: 10px;
 }
 
+/* Slideshow list dialog — a wider confirm-dialog layered above the settings
+   panel, holding the thumbnail grid plus add/folder/clear actions. */
+.slide-list-dialog-body {
+  max-width: min(600px, calc(100vw - 48px));
+  width: 90%;
+  padding: 24px 28px 22px;
+  max-height: min(640px, calc(100vh - 96px));
+  overflow-y: auto;
+}
+
+.slide-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.slide-list-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
 .bg-slide-thumbs {
   display: flex;
   flex-wrap: wrap;
@@ -2036,6 +2061,21 @@ html[data-hide-settings-icon="true"] .settings-toggle:focus-visible {
   cursor: pointer;
   transition:
     background 0.2s var(--ease-out-expo);
+}
+
+/* Make the slideshow list entry stand out from the other ghost buttons: a solid
+   accent fill sized as the block's primary action. */
+.bg-slide-list-btn {
+  margin-top: 10px;
+  padding: 9px 18px;
+  background: rgb(var(--fg-rgb) / 0.18);
+  border-color: rgb(var(--fg-rgb) / 0.26);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.bg-slide-list-btn:hover {
+  background: rgb(var(--fg-rgb) / 0.28);
 }
 
 .setting-btn-secondary:hover {

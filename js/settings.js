@@ -128,11 +128,12 @@ const Settings = (() => {
 
   /* Form elements */
   let bgFileInput, bgFileName, bgUrlInput, bgUrlApply, bgUrlError;
-  let bgSlideModeInput, bgSlideMultiInput, bgSlideDirInput, bgSlideThumbs;
+  let bgSlideModeInput, bgSlideAddInput, bgSlideDirInput, bgSlideThumbs;
   let bgSlideIntervalInput, bgSlideRandomToggle, bgSlideCount, bgSlideOptions;
   let bgSlideIntervalWrapper, bgSlideIntervalLabel;
   let bgSlideIntervalTrigger, bgSlideIntervalDropdown;
-  let bgSlideClear, bgSlidePrev, bgSlideNext;
+  let bgSlideClear, bgSlideListBtn, slideListDialog, slideListClose;
+  let bgSlideIntervalCustom, bgSlideIntervalCustomInput, bgSlideIntervalCustomApply;
   let bgSingleImage;
   let bgBingRefresh, bgBingMeta, bgBingAutoRefreshToggle, bgBingPanel, bgImagePanel, bgColorPanel, bgVideoPanel;
   let bgVideoInput, bgVideoName;
@@ -177,13 +178,10 @@ const Settings = (() => {
     loadSettings();
     initLanguageSelector();
     bindEvents();
-    /* "Every new tab" slideshow rotation: advance the persisted index BEFORE the
-       first paint so each new tab opens on the next slide, not a repeat of the
-       previous tab's. Interval mode stays on the saved index here and rotates
-       via restartSlideTimer() inside applyBackground(). */
-    maybeAdvanceOnLoad().finally(() => {
-      applyBackground();
-    });
+    /* "Every new tab" rotation already advanced the index in boot.js (before the
+       first paint), so applyBackground() here paints the new slide directly.
+       Interval mode rotates via restartSlideTimer() inside applyBackground(). */
+    applyBackground();
     /* The closed panel is laid out (just invisible), so the tab indicator can be
        placed now, while the page is still in `preload` and nothing transitions. */
     moveIndicator(getActiveTab());
@@ -248,7 +246,7 @@ const Settings = (() => {
 
     /* Slideshow controls (inside the image sub-panel) */
     bgSlideModeInput = document.getElementById('bg-slide-mode');
-    bgSlideMultiInput = document.getElementById('bg-slide-multi-input');
+    bgSlideAddInput = document.getElementById('bg-slide-add-input');
     bgSlideDirInput = document.getElementById('bg-slide-dir-input');
     bgSlideThumbs = document.getElementById('bg-slide-thumbs');
     bgSlideIntervalInput = document.getElementById('bg-slide-interval-select');
@@ -256,12 +254,16 @@ const Settings = (() => {
     bgSlideIntervalLabel = document.getElementById('bg-slide-interval-label');
     bgSlideIntervalTrigger = document.getElementById('bg-slide-interval-trigger');
     bgSlideIntervalDropdown = document.getElementById('bg-slide-interval-dropdown');
+    bgSlideIntervalCustom = document.getElementById('bg-slide-interval-custom');
+    bgSlideIntervalCustomInput = document.getElementById('bg-slide-interval-custom-input');
+    bgSlideIntervalCustomApply = document.getElementById('bg-slide-interval-custom-apply');
     bgSlideRandomToggle = document.getElementById('bg-slide-random-toggle');
     bgSlideCount = document.getElementById('bg-slide-count');
     bgSlideOptions = document.getElementById('bg-slide-options');
     bgSlideClear = document.getElementById('bg-slide-clear');
-    bgSlidePrev = document.getElementById('bg-slide-prev');
-    bgSlideNext = document.getElementById('bg-slide-next');
+    bgSlideListBtn = document.getElementById('bg-slide-list-btn');
+    slideListDialog = document.getElementById('slide-list-dialog');
+    slideListClose = document.getElementById('slide-list-close');
     bgSingleImage = document.getElementById('bg-single-image');
 
     /* Bing sub-panel */
@@ -1075,14 +1077,14 @@ const Settings = (() => {
 
   /* --- Slideshow timer ---
      Rotates the slideshow while its tab stays open. The "every new tab" mode
-     (interval 0) advances once at page load instead — see maybeAdvanceOnLoad().
+     (interval 0) advances once per page load in boot.js, before first paint.
      Not a chrome.alarms job: the rotation must be visible in the open tab. */
   let slideTimer = null;
 
   function restartSlideTimer() {
     if (slideTimer) { clearInterval(slideTimer); slideTimer = null; }
     if (state.bgSource !== 'image' || !state.bgSlideMode) return;
-    const minutes = parseInt(state.bgSlideInterval, 10);
+    const minutes = parseFloat(state.bgSlideInterval);
     if (!Number.isFinite(minutes) || minutes <= 0) return;
     slideTimer = setInterval(async () => {
       if (!state.bgSlideMode || state.bgSource !== 'image') return;
@@ -1101,23 +1103,6 @@ const Settings = (() => {
       if (slide && slide.blob) pickPreview('image', slide.blob, slide.blob);
       applyBackground();
     }, minutes * 60 * 1000);
-  }
-
-  /* "Every new tab" rotation: advance once per page load when interval is 0. */
-  async function maybeAdvanceOnLoad() {
-    if (state.bgSource !== 'image' || !state.bgSlideMode) return;
-    if (parseInt(state.bgSlideInterval, 10) > 0) return;
-    const slides = await Background.loadSlides();
-    if (slides.items.length < 2) return;
-    if (state.bgSlideRandom) {
-      let next;
-      do {
-        next = Math.floor(Math.random() * slides.items.length);
-      } while (next === slides.index);
-      await Background.gotoSlide(next);
-    } else {
-      await Background.advanceSlide(1);
-    }
   }
 
   /* --- Sub-panel visibility --- */
@@ -1533,22 +1518,34 @@ const Settings = (() => {
      video on-ended control: a key per value plus a "selected" highlight. */
   const SLIDE_INTERVAL_KEY = {
     0: 'settings.bg.slide.interval.newtab',
+    0.1: 'settings.bg.slide.interval.6s',
+    0.25: 'settings.bg.slide.interval.15s',
+    0.5: 'settings.bg.slide.interval.30s',
     1: 'settings.bg.slide.interval.1min',
-    5: 'settings.bg.slide.interval.5min',
-    15: 'settings.bg.slide.interval.15min',
-    30: 'settings.bg.slide.interval.30min',
-    60: 'settings.bg.slide.interval.60min'
+    5: 'settings.bg.slide.interval.5min'
   };
 
   function updateSlideIntervalLabel(val) {
     if (!bgSlideIntervalLabel) return;
     const key = SLIDE_INTERVAL_KEY[val];
-    bgSlideIntervalLabel.textContent = key ? I18n.t(key) : String(val);
+    bgSlideIntervalLabel.textContent = key ? I18n.t(key) : formatSlideMinutes(val);
     if (bgSlideIntervalWrapper) {
       bgSlideIntervalWrapper.querySelectorAll('.custom-select-option').forEach(opt => {
         opt.classList.toggle('selected', String(opt.dataset.value) === String(val));
       });
     }
+  }
+
+  /* Human label for an arbitrary custom interval (minutes). Sub-minute shows
+     seconds; otherwise minutes with a unit suffix. */
+  function formatSlideMinutes(val) {
+    const n = parseFloat(val);
+    if (!Number.isFinite(n)) return '';
+    if (n < 1) {
+      const secs = Math.round(n * 60);
+      return secs + ' ' + I18n.t('settings.bg.slide.interval.secondsUnit');
+    }
+    return n + ' ' + I18n.t('settings.bg.slide.interval.minutesUnit');
   }
 
   /* --- Tab switching --- */
@@ -1786,18 +1783,28 @@ const Settings = (() => {
     /* --- Slideshow (custom image source) ---
        The slideshow and the single image are two sub-modes of the same source;
        entering one clears the other so they never fight for the paint. */
+
+    /* Slideshow list opens as an independent dialog layered above the settings
+       panel (same .confirm-dialog pattern as the confirm/export dialogs), so the
+       grid and its add/folder/clear actions float over everything else. */
+    function setSlideView(view) {
+      if (!slideListDialog) return;
+      const open = view === 'list';
+      slideListDialog.hidden = !open;
+      if (open) refreshSlideInfo();
+    }
+
+    function openSlideList() { setSlideView('list'); }
+    function closeSlideList() { setSlideView('main'); }
+
     async function toggleSlideMode() {
       const on = !state.bgSlideMode;
       state.bgSlideMode = on;
       updateSlideModeToggle(on);
       if (on) {
-        /* Switching to slideshow clears the single-image slot. */
-        state.bgImageStored = false;
-        state.bgImageData = null;
-        state.bgImageUrl = null;
-        state.bgImageFileName = '';
-        if (bgFileInput) bgFileInput.value = '';
-        Background.clearImageBlob();
+        /* Seed the list with the current single image (if any). The single-image
+           slot is kept intact — turning slide mode off falls back to it. */
+        await Background.migrateSingleImageToSlides();
       } else {
         /* Leaving slideshow clears the slide list. */
         Background.clearSlides();
@@ -1830,21 +1837,21 @@ const Settings = (() => {
         return;
       }
       if (bgSlideCount) bgSlideCount.textContent = I18n.t('settings.bg.slide.importing', [String(files.length)]);
+      /* Append to the existing list (don't replace) — the list view is the place
+         to grow the slideshow one file or one folder at a time. */
+      let slides;
       try {
-        await Background.saveSlides(files);
+        slides = await Background.addSlides(files);
       } catch (e) {
         if (bgSlideCount) bgSlideCount.textContent = I18n.t('settings.bg.file.loadFailed');
         return;
       }
       state.bgSlideMode = true;
       updateSlideModeToggle(true);
-      /* Point at the first slide and show it now. */
-      state.bgImageStored = false;
-      state.bgImageData = null;
-      state.bgImageUrl = null;
-      state.bgImageFileName = '';
-      if (bgFileInput) bgFileInput.value = '';
-      Background.clearImageBlob();
+      /* Point at the first newly added slide and show it now. */
+      if (slides.items.length) {
+        await Background.gotoSlide(slides.items.length - files.length);
+      }
       saveSettings();
       syncFormToState();
       pickPreview('image', files[0], files[0]);
@@ -1852,7 +1859,7 @@ const Settings = (() => {
       await refreshSlideInfo();
     }
 
-    if (bgSlideMultiInput) bgSlideMultiInput.addEventListener('change', async (e) => {
+    if (bgSlideAddInput) bgSlideAddInput.addEventListener('change', async (e) => {
       await ingestSlideFiles(e.target.files);
       e.target.value = '';
     });
@@ -1863,10 +1870,49 @@ const Settings = (() => {
 
     /* Slideshow interval dropdown (custom select mirrors the other settings). */
     initCustomSelect(bgSlideIntervalWrapper, (val) => {
-      const n = parseInt(val, 10);
+      if (val === 'custom') {
+        /* Show the custom input; prefill with the current interval if it's not a preset. */
+        if (bgSlideIntervalCustom) {
+          bgSlideIntervalCustom.hidden = false;
+          if (bgSlideIntervalCustomInput) {
+            const cur = parseFloat(state.bgSlideInterval);
+            bgSlideIntervalCustomInput.value = Number.isFinite(cur) && cur > 0 && !SLIDE_INTERVAL_KEY[cur] ? cur : '';
+          }
+        }
+        if (bgSlideIntervalCustomInput) bgSlideIntervalCustomInput.focus();
+        return; /* don't apply until user confirms via input */
+      }
+      if (bgSlideIntervalCustom) bgSlideIntervalCustom.hidden = true;
+      const n = parseFloat(val);
       state.bgSlideInterval = Number.isFinite(n) ? n : 0;
       saveSettings();
+      updateSlideIntervalLabel(state.bgSlideInterval);
       restartSlideTimer();
+    });
+
+    /* Custom interval input: apply on button click or Enter. */
+    function applyCustomInterval() {
+      if (!bgSlideIntervalCustomInput) return;
+      const n = parseFloat(bgSlideIntervalCustomInput.value);
+      if (!Number.isFinite(n) || n <= 0) return;
+      const minutes = Math.max(0.05, Math.min(1440, n));
+      state.bgSlideInterval = minutes;
+      if (bgSlideIntervalCustom) bgSlideIntervalCustom.hidden = true;
+      saveSettings();
+      updateSlideIntervalLabel(minutes);
+      restartSlideTimer();
+    }
+    if (bgSlideIntervalCustomApply) bgSlideIntervalCustomApply.addEventListener('click', applyCustomInterval);
+    if (bgSlideIntervalCustomInput) bgSlideIntervalCustomInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); applyCustomInterval(); }
+    });
+
+    /* Slideshow list dialog: open from the entry button, close via the back
+       button or by clicking the backdrop (like the other confirm dialogs). */
+    if (bgSlideListBtn) bgSlideListBtn.addEventListener('click', openSlideList);
+    if (slideListClose) slideListClose.addEventListener('click', closeSlideList);
+    if (slideListDialog) slideListDialog.addEventListener('click', (e) => {
+      if (e.target === slideListDialog) closeSlideList();
     });
 
     bgSlideRandomToggle.addEventListener('click', () => {
@@ -1885,9 +1931,10 @@ const Settings = (() => {
       await Background.clearSlides();
       revokeSlideThumbs();
       /* An emptied slideshow has nothing to paint; fall back to the single-image
-         slot (which may itself be empty) rather than leaving a blank tab. */
+         slot and close the dialog — there's no list to look at any more. */
       state.bgSlideMode = false;
       updateSlideModeToggle(false);
+      closeSlideList();
       saveSettings();
       syncFormToState();
       applyBackground();
@@ -1902,10 +1949,11 @@ const Settings = (() => {
       if (!Number.isFinite(index)) return;
       const slides = await Background.removeSlide(index);
       /* Removing the last slide leaves nothing to paint; fall back to the
-         single-image slot rather than a blank tab. */
+         single-image slot and close the dialog. */
       if (!slides.items.length) {
         state.bgSlideMode = false;
         updateSlideModeToggle(false);
+        closeSlideList();
       }
       saveSettings();
       syncFormToState();
@@ -1913,7 +1961,7 @@ const Settings = (() => {
       await refreshSlideInfo();
     });
 
-    /* Reveal the next (or previous) slide now. Used by the panel arrows. */
+    /* Reveal the next (or previous) slide now. Used by the right-click menu. */
     async function nudgeSlide(delta) {
       if (!state.bgSlideMode) return;
       const slide = await Background.advanceSlide(delta);
@@ -1921,8 +1969,6 @@ const Settings = (() => {
       applyBackground();
       await refreshSlideInfo();
     }
-    if (bgSlidePrev) bgSlidePrev.addEventListener('click', () => nudgeSlide(-1));
-    if (bgSlideNext) bgSlideNext.addEventListener('click', () => nudgeSlide(1));
 
     /* --- Background color swatches --- */
     bgColorSwatches.forEach(swatch => {

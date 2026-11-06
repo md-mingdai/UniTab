@@ -38,7 +38,9 @@ const ContextMenu = (() => {
     play: '<polygon points="6 4 20 12 6 20"/>',
     pause: '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>',
     volume: '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>',
-    mute: '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>'
+    mute: '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>',
+    prev: '<polyline points="15 18 9 12 15 6"/>',
+    next: '<polyline points="9 18 15 12 9 6"/>'
   };
 
   /* --- small helpers ----------------------------------------------------- */
@@ -160,7 +162,20 @@ const ContextMenu = (() => {
       });
       items.push({ type: 'separator' });
     } else if (source === 'image') {
-      if (s.bgImageUrl) {
+      if (s.bgSlideMode) {
+        /* Slideshow: step through the list without opening the settings panel. */
+        items.push({
+          icon: 'prev',
+          labelKey: 'contextmenu.slide.prev',
+          action: () => nudgeSlide(-1)
+        });
+        items.push({
+          icon: 'next',
+          labelKey: 'contextmenu.slide.next',
+          action: () => nudgeSlide(1)
+        });
+        items.push({ type: 'separator' });
+      } else if (s.bgImageUrl) {
         items.push({
           icon: 'external',
           labelKey: 'contextmenu.image.open',
@@ -237,6 +252,16 @@ const ContextMenu = (() => {
       Background.setMuted(!s.bgVideoSoundOn);
     }
     Settings.persist();
+  }
+
+  /* Step the slideshow forwards/backwards and repaint. Mirrors the settings
+     panel's own arrows, now that those live in the second-level list view. */
+  async function nudgeSlide(delta) {
+    if (typeof Background === 'undefined' || !Background.advanceSlide) return;
+    await Background.advanceSlide(delta);
+    if (typeof Settings !== 'undefined' && Settings.applyBackground) {
+      Settings.applyBackground();
+    }
   }
 
   async function downloadWallpaper() {

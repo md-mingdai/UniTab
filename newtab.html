@@ -187,19 +187,7 @@
 
           <!-- 幻灯片控件：幻灯片开启时显示 -->
           <div id="bg-slide-options" class="setting-fade" hidden>
-            <div class="file-upload-wrapper bg-slide-pickers">
-              <input type="file" id="bg-slide-multi-input" class="file-input" accept="image/*" multiple>
-              <label for="bg-slide-multi-input" class="file-upload-btn" data-i18n="settings.bg.slide.multi">选择多张</label>
-              <input type="file" id="bg-slide-dir-input" class="file-input" accept="image/*" webkitdirectory>
-              <label for="bg-slide-dir-input" class="file-upload-btn" data-i18n="settings.bg.slide.folder">选择文件夹</label>
-            </div>
-            <span id="bg-slide-count" class="file-name" data-i18n="settings.bg.slide.none">未选择图片</span>
-            <div id="bg-slide-thumbs" class="bg-slide-thumbs" hidden></div>
-            <div class="bg-slide-nav">
-              <button id="bg-slide-prev" class="setting-btn-secondary" data-i18n="settings.bg.slide.prev" aria-label="上一张">上一张</button>
-              <button id="bg-slide-next" class="setting-btn-secondary" data-i18n="settings.bg.slide.next" aria-label="下一张">下一张</button>
-              <button id="bg-slide-clear" class="setting-btn-danger" data-i18n="settings.bg.slide.clear">清空</button>
-            </div>
+            <button id="bg-slide-list-btn" class="setting-btn-secondary bg-slide-list-btn" data-i18n="settings.bg.slide.list">幻灯片列表</button>
             <label class="setting-label setting-label-sub" for="bg-slide-interval-select"><span data-i18n="settings.bg.slide.interval.label">轮播间隔</span></label>
             <div class="custom-select-wrapper" id="bg-slide-interval-wrapper">
               <button class="custom-select-trigger" id="bg-slide-interval-trigger" type="button">
@@ -208,27 +196,27 @@
               </button>
               <div class="custom-select-dropdown" id="bg-slide-interval-dropdown" hidden>
                 <button class="custom-select-option" data-value="0" data-i18n="settings.bg.slide.interval.newtab">每次新标签页</button>
+                <button class="custom-select-option" data-value="0.1" data-i18n="settings.bg.slide.interval.6s">6 秒</button>
+                <button class="custom-select-option" data-value="0.25" data-i18n="settings.bg.slide.interval.15s">15 秒</button>
+                <button class="custom-select-option" data-value="0.5" data-i18n="settings.bg.slide.interval.30s">30 秒</button>
                 <button class="custom-select-option" data-value="1" data-i18n="settings.bg.slide.interval.1min">1 分钟</button>
                 <button class="custom-select-option" data-value="5" data-i18n="settings.bg.slide.interval.5min">5 分钟</button>
-                <button class="custom-select-option" data-value="15" data-i18n="settings.bg.slide.interval.15min">15 分钟</button>
-                <button class="custom-select-option" data-value="30" data-i18n="settings.bg.slide.interval.30min">30 分钟</button>
-                <button class="custom-select-option" data-value="60" data-i18n="settings.bg.slide.interval.60min">1 小时</button>
+                <button class="custom-select-option" data-value="custom" data-i18n="settings.bg.slide.interval.custom">自定义…</button>
               </div>
+            </div>
+            <div id="bg-slide-interval-custom" class="custom-engine-url-row" hidden>
+              <input type="number" id="bg-slide-interval-custom-input" class="setting-input" min="0.05" step="1" autocomplete="off" data-i18n-placeholder="settings.bg.slide.interval.customPlaceholder" placeholder="分钟">
+              <button type="button" id="bg-slide-interval-custom-apply" class="setting-btn-secondary" data-i18n="settings.bg.slide.interval.customApply">应用</button>
             </div>
             <select id="bg-slide-interval-select" class="setting-select-hidden" hidden>
               <option value="0">每次新标签页</option>
+              <option value="0.1">6 秒</option>
+              <option value="0.25">15 秒</option>
+              <option value="0.5">30 秒</option>
               <option value="1">1 分钟</option>
               <option value="5">5 分钟</option>
-              <option value="15">15 分钟</option>
-              <option value="30">30 分钟</option>
-              <option value="60">1 小时</option>
+              <option value="custom">自定义</option>
             </select>
-            <label class="setting-label setting-label-row" for="bg-slide-random-toggle" style="margin-top:12px">
-              <span data-i18n="settings.bg.slide.random">随机顺序</span>
-              <span class="switch" role="switch" aria-checked="false" tabindex="0" id="bg-slide-random-toggle">
-                <span class="switch-knob"></span>
-              </span>
-            </label>
           </div>
         </div>
 
@@ -782,6 +770,33 @@
       <p id="export-dialog-detail" class="confirm-dialog-msg"></p>
       <div class="confirm-dialog-actions">
         <button id="export-dialog-ok" class="confirm-dialog-btn confirm-dialog-btn--solid" data-i18n="dialog.export.ok">知道了</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slideshow List Dialog (independent layer above the settings panel) -->
+  <div id="slide-list-dialog" class="confirm-dialog slide-list-dialog" hidden>
+    <div class="confirm-dialog-body slide-list-dialog-body">
+      <div class="slide-list-head">
+        <p class="slide-list-title" data-i18n="settings.bg.slide.list">幻灯片列表</p>
+        <button id="slide-list-close" class="confirm-dialog-btn confirm-dialog-btn--ghost" data-i18n="settings.bg.slide.back">返回</button>
+      </div>
+      <span id="bg-slide-count" class="file-name" data-i18n="settings.bg.slide.none">未选择图片</span>
+      <div id="bg-slide-thumbs" class="bg-slide-thumbs" hidden></div>
+      <div class="file-upload-wrapper bg-slide-pickers">
+        <input type="file" id="bg-slide-add-input" class="file-input" accept="image/*" multiple>
+        <label for="bg-slide-add-input" class="file-upload-btn" data-i18n="settings.bg.slide.add">添加图片</label>
+        <input type="file" id="bg-slide-dir-input" class="file-input" accept="image/*" webkitdirectory>
+        <label for="bg-slide-dir-input" class="file-upload-btn" data-i18n="settings.bg.slide.folder">选择文件夹</label>
+      </div>
+      <label class="setting-label setting-label-row" for="bg-slide-random-toggle">
+        <span data-i18n="settings.bg.slide.random">随机顺序</span>
+        <span class="switch" role="switch" aria-checked="false" tabindex="0" id="bg-slide-random-toggle">
+          <span class="switch-knob"></span>
+        </span>
+      </label>
+      <div class="bg-slide-nav">
+        <button id="bg-slide-clear" class="setting-btn-danger" data-i18n="settings.bg.slide.clear">清空</button>
       </div>
     </div>
   </div>

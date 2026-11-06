@@ -112,37 +112,97 @@
      so it can paint before background.js has even loaded. Background.load()
      consumes __UNITAB_PREVIEW_PROMISE__ exactly once. The database name, store
      name and key format are duplicated here on purpose — keep them in sync with
-     DB_NAME / DB_STORE / PREVIEW_KEYS in background.js. */
+     DB_NAME / DB_STORE / PREVIEW_KEYS in background.js.
+
+     Slideshow ("every new tab" interval=0) is special: the index is advanced HERE
+     (before first paint), and the current slide's own preview is used directly —
+     giving each slide its own placeholder colour and preview image. */
   try {
     var source = saved.bgSource;
+    var isSlide = source === 'image' && saved.bgSlideMode;
     var previewKey = source === 'bing' ? 'preview_bing'
       : source === 'image' ? 'preview_image'
       : source === 'video' ? 'preview_video'
       : null;
     if (previewKey && window.indexedDB) {
-      var warm = new Promise(function (resolve) {
-        var req = indexedDB.open('unitab_bg', 1);
-        req.onupgradeneeded = function () {
-          if (!req.result.objectStoreNames.contains('media')) {
-            req.result.createObjectStore('media');
-          }
-        };
-        req.onerror = function () { resolve(null); };
-        req.onsuccess = function () {
-          var db = req.result;
-          try {
-            var tx = db.transaction('media', 'readonly');
-            var get = tx.objectStore('media').get(previewKey);
-            get.onsuccess = function () { resolve(get.result || null); };
-            get.onerror = function () { resolve(null); };
-            tx.oncomplete = function () { db.close(); };
-            tx.onerror = tx.onabort = function () { db.close(); };
-          } catch (err) {
-            db.close();
-            resolve(null);
-          }
-        };
-      });
+      var warm;
+      if (isSlide) {
+        /* Slideshow: read the slide list, advance for interval=0, then use the
+           current slide's own preview (pv) directly as the warm record. */
+        warm = new Promise(function (resolve) {
+          var req = indexedDB.open('unitab_bg', 1);
+          req.onupgradeneeded = function () {
+            if (!req.result.objectStoreNames.contains('media')) {
+              req.result.createObjectStore('media');
+            }
+          };
+          req.onerror = function () { resolve(null); };
+          req.onsuccess = function () {
+            var db = req.result;
+            var done = function (rec) { try { db.close(); } catch (_) {} resolve(rec || null); };
+            var settled = false;
+            var finish = function (rec) { if (!settled) { settled = true; done(rec); } };
+            try {
+              var tx = db.transaction('media', 'readwrite');
+              var store = tx.objectStore('media');
+              var slidesReq = store.get('image_slides');
+              var pvRecord = null; /* captured current slide's pv, resolved on commit */
+              slidesReq.onsuccess = function () {
+                var rec2 = slidesReq.result;
+                if (!rec2 || !Array.isArray(rec2.items) || rec2.items.length === 0) { finish(null); return; }
+                var idx = rec2.index || 0;
+                var interval = typeof saved.bgSlideInterval === 'number' ? saved.bgSlideInterval : 0;
+                var random = !!saved.bgSlideRandom;
+                if (interval === 0 && rec2.items.length > 1) {
+                  if (random) {
+                    var next;
+                    do { next = Math.floor(Math.random() * rec2.items.length); } while (next === idx);
+                    idx = next;
+                  } else {
+                    idx = (idx + 1) % rec2.items.length;
+                  }
+                  rec2.index = idx;
+                  store.put(rec2, 'image_slides');
+                }
+                var slide = rec2.items[idx];
+                if (slide && slide.pv && slide.pv.blob) {
+                  pvRecord = { blob: slide.pv.blob, color: slide.pv.color, time: Date.now() };
+                }
+              };
+              slidesReq.onerror = function () { finish(null); };
+              /* Resolve on tx.oncomplete: the advanced index write is committed
+                 before background.js reads KEY_SLIDES, and pvRecord is already
+                 captured from the get above. */
+              tx.oncomplete = function () { finish(pvRecord); };
+              tx.onerror = tx.onabort = function () { finish(null); };
+            } catch (err) { try { db.close(); } catch (_) {} resolve(null); }
+          };
+        });
+      } else {
+        warm = new Promise(function (resolve) {
+          var req = indexedDB.open('unitab_bg', 1);
+          req.onupgradeneeded = function () {
+            if (!req.result.objectStoreNames.contains('media')) {
+              req.result.createObjectStore('media');
+            }
+          };
+          req.onerror = function () { resolve(null); };
+          req.onsuccess = function () {
+            var db = req.result;
+            try {
+              var tx = db.transaction('media', 'readonly');
+              var get = tx.objectStore('media').get(previewKey);
+              get.onsuccess = function () { resolve(get.result || null); };
+              get.onerror = function () { resolve(null); };
+              tx.oncomplete = function () { db.close(); };
+              tx.onerror = tx.onabort = function () { db.close(); };
+            } catch (err) {
+              db.close();
+              resolve(null);
+            }
+          };
+        });
+      }
       window.__UNITAB_PREVIEW_PROMISE__ = { source: source, promise: warm };
     }
   } catch (e2) {

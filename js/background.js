@@ -115,7 +115,13 @@ const Background = (() => {
     if (!rec || !Array.isArray(rec.items)) return { items: [], index: 0 };
     const items = rec.items
       .filter((it) => it && typeof it === 'object' && it.blob instanceof Blob)
-      .map((it, i) => ({ name: typeof it.name === 'string' ? it.name : `slide-${i + 1}`, blob: it.blob }));
+      .map((it, i) => ({
+        name: typeof it.name === 'string' ? it.name : `slide-${i + 1}`,
+        blob: it.blob,
+        /* Independent per-slide preview: small blob + average color, generated
+           on first add / on demand. null = not yet computed. */
+        pv: it.pv && it.pv.blob instanceof Blob && it.pv.color ? { blob: it.pv.blob, color: it.pv.color } : null,
+      }));
     const index = Number.isInteger(rec.index) ? rec.index : 0;
     return { items, index: items.length ? Math.min(Math.max(index, 0), items.length - 1) : 0 };
   }
@@ -176,7 +182,8 @@ const Background = (() => {
   const clearSlides = () => deleteItem(KEY_SLIDES).catch(() => {});
 
   /* Move the index by `delta` and return the image to show at the new position.
-     With a single slide this is a no-op that still resolves to that slide. */
+     With a single slide this is a no-op that still resolves to that slide. After
+     the move, promote the new slide's own preview + colour so the swap is seamless. */
   const advanceSlide = async (delta) => {
     const cur = await loadSlides();
     if (!cur.items.length) return null;
@@ -185,6 +192,7 @@ const Background = (() => {
     if (index >= cur.items.length) index -= cur.items.length;
     index = Math.min(Math.max(index, 0), cur.items.length - 1);
     await putItem(KEY_SLIDES, { items: cur.items, index });
+    await applySlidePreview(cur.items[index]);
     return cur.items[index];
   };
 
@@ -194,6 +202,7 @@ const Background = (() => {
     if (!cur.items.length) return null;
     index = Math.min(Math.max(index, 0), cur.items.length - 1);
     await putItem(KEY_SLIDES, { items: cur.items, index });
+    await applySlidePreview(cur.items[index]);
     return cur.items[index];
   };
 
@@ -201,6 +210,70 @@ const Background = (() => {
   const currentSlide = async () => {
     const cur = await loadSlides();
     return cur.items.length ? cur.items[cur.index] : null;
+  };
+
+  /* Promote a slide's independent preview into the shared 'image' slot and hand
+     its colour to the page early — so advancing (new tab / prev / next / random)
+     swaps the placeholder + preview to the new slide before the full blob decodes.
+     A no-op when the slide has no preview yet (backfillPreview covers it). */
+  const applySlidePreview = async (slide) => {
+    if (!slide || !slide.pv || !slide.pv.blob) return false;
+    const record = { blob: slide.pv.blob, color: slide.pv.color, time: Date.now() };
+    await putItem(PREVIEW_KEYS.image, record);
+    previewCache.image = record;
+    previewReadSeq.image++;
+    notifyPreviewColor('image', slide.pv.color);
+    return true;
+  };
+
+  /* Generate a per-slide preview for every slide that lacks one, writing each
+     result back incrementally so a large slideshow doesn't block or lose work.
+     Fired after slides are added/imported; existing previews are reused.
+     Each write re-reads the latest record and only attaches a pv at a given
+     index — a concurrent addSlides / advanceSlide that appended or moved the
+     index must not be clobbered by a stale snapshot. */
+  let previewGenInflight = null;
+  const ensureSlidePreviews = async () => {
+    if (previewGenInflight) return previewGenInflight;
+    previewGenInflight = (async () => {
+      for (;;) {
+        const cur = await loadSlides();
+        const missingIdx = cur.items.findIndex((it) => !it.pv);
+        if (missingIdx === -1) break;
+        let pv = null;
+        try {
+          const p = await imagePreview(cur.items[missingIdx].blob);
+          if (p && p.blob && p.blob.size) pv = { blob: p.blob, color: p.color };
+        } catch { /* leave pv null: one bad image must not abort the rest */ }
+        /* Re-read the latest list and attach pv at that index only when the item
+           at that index is the very blob we generated for. A concurrent
+           addSlides / removeSlide that changed the list means our snapshot is
+           stale — skip the write rather than clobber the newer list (the next
+           loop pass re-scans whatever is current). */
+        const latest = await loadSlides();
+        const target = latest.items[missingIdx];
+        if (!target || target.pv) continue;
+        if (target.blob !== cur.items[missingIdx].blob) continue; /* list changed */
+        target.pv = pv || { blob: new Blob([]), color: '#808080' };
+        await putItem(KEY_SLIDES, { items: latest.items, index: latest.index });
+      }
+    })().finally(() => { previewGenInflight = null; });
+    return previewGenInflight;
+  };
+
+  /* Seed the slideshow with the single uploaded image (if any) when slide mode is
+     switched on, so the existing wallpaper becomes the first slide instead of the
+     list starting empty. The single-image slot is left intact — turning slide mode
+     off still has the original wallpaper to fall back on. Resolves the new length. */
+  const migrateSingleImageToSlides = async () => {
+    const cur = await loadSlides();
+    if (cur.items.length) return cur.items.length; /* already have slides: nothing to seed */
+    let blob = null;
+    try { blob = await getItem(KEY_IMAGE); } catch { blob = null; }
+    if (!blob || !(blob instanceof Blob) || !blob.size) return 0;
+    /* addSlides takes a Blob/File array (the blob itself carries the name). */
+    const seeded = await addSlides([blob]);
+    return seeded.items.length;
   };
 
   /* Bumped whenever cached wallpaper bytes are cleared: an in-flight Bing
@@ -427,6 +500,23 @@ const Background = (() => {
     try { listener(source, color); } catch { /* cosmetic only */ }
   }
 
+  /* Paint a preview straight from a known {blob, color} record (a per-slide pv)
+     without going through the shared slot. Resolves the same statuses. */
+  async function paintPreviewBlob(source, pv, token) {
+    if (previewSource && previewSource !== source) clearPreviewLayer();
+    notifyPreviewColor(source, pv.color);
+    const url = URL.createObjectURL(pv.blob);
+    const ok = await decode(url);
+    if (token !== loadToken) { URL.revokeObjectURL(url); return 'stale'; }
+    if (!ok) { URL.revokeObjectURL(url); return 'failed'; }
+    previewEl.style.backgroundImage = 'url("' + cssUrl(url) + '")';
+    previewEl.classList.add('is-ready');
+    releasePreviewUrl();
+    previewObjectUrl = url;
+    previewSource = source;
+    return 'shown';
+  }
+
   /* Resolves 'shown' | 'missing' | 'failed' | 'stale'. */
   async function paintPreviewFromStore(source, token) {
     const rec = await readPreviewRecord(source);
@@ -582,7 +672,16 @@ const Background = (() => {
       const slide = await currentSlide();
       if (token !== loadToken) return;
       if (slide && slide.blob) {
-        backfillPreview('image', preview, slide.blob);
+        if (slide.pv) {
+          /* Per-slide preview already exists: its colour was handed over by
+             applySlidePreview; paint it directly so the placeholder never shows. */
+          paintPreviewBlob('image', slide.pv, token);
+        } else {
+          backfillPreview('image', preview, slide.blob);
+          /* Older lists have no per-slide previews yet: generate them in the
+             background so the next slide change is seamless. */
+          ensureSlidePreviews();
+        }
         const objectUrl = URL.createObjectURL(slide.blob);
         if (await displayPhoto(objectUrl, objectUrl, token) === 'failed') clearPhoto();
         return;
@@ -1246,6 +1345,7 @@ const Background = (() => {
     regeneratePreview, readPreviewColor, clearPreview, clearAllPreviews,
     setVolume, setMuted, setLoop, setOnEnded,
     saveSlides, addSlides, removeSlide, clearSlides,
-    loadSlides, currentSlide, advanceSlide, gotoSlide
+    loadSlides, currentSlide, advanceSlide, gotoSlide, migrateSingleImageToSlides,
+    ensureSlidePreviews
   };
 })();
