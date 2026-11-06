@@ -245,7 +245,11 @@ const ContextMenu = (() => {
       let blob = null;
       const s = (typeof Settings !== 'undefined' && Settings.getState) ? Settings.getState() : {};
       if (typeof Background !== 'undefined' && Background.getWallpaperBlob) {
-        blob = await Background.getWallpaperBlob(source, { url: s.bgBingUrl || s.bgImageUrl || '' });
+        blob = await Background.getWallpaperBlob(source, {
+          url: s.bgBingUrl || s.bgImageUrl || '',
+          slideMode: !!s.bgSlideMode,
+          imageStored: !!s.bgImageStored,
+        });
       }
       if (!blob) return;
       const url = URL.createObjectURL(blob);

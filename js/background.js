@@ -27,6 +27,9 @@ const Background = (() => {
   const KEY_VIDEO = 'video_blob';
   const KEY_IMAGE = 'image_blob';
   const KEY_BING = 'bing_wallpaper';
+  /* Slideshow record: { items: [{ name, blob }], index } — written atomically so a
+     slide change never leaves the count and the position out of sync. */
+  const KEY_SLIDES = 'image_slides';
   /* Preview slots — one small image per source, stored separately so a switch
      between sources can always find the matching preview. */
   const PREVIEW_KEYS = {
@@ -101,6 +104,105 @@ const Background = (() => {
   };
   const clearImageBlob = () => deleteItem(KEY_IMAGE).catch(() => {});
 
+  /* --- Slideshow (custom image source with bgSlideMode on) ---
+     The record is { items: [{ name, blob }], index } stored under KEY_SLIDES.
+     All reads/writes go through this record so the count and the position can
+     never disagree. `index` advances on the settings page (and on a new tab when
+     the interval is "every new tab"); the settings panel just asks which image
+     to paint next. */
+
+  function normalizeSlides(rec) {
+    if (!rec || !Array.isArray(rec.items)) return { items: [], index: 0 };
+    const items = rec.items
+      .filter((it) => it && typeof it === 'object' && it.blob instanceof Blob)
+      .map((it, i) => ({ name: typeof it.name === 'string' ? it.name : `slide-${i + 1}`, blob: it.blob }));
+    const index = Number.isInteger(rec.index) ? rec.index : 0;
+    return { items, index: items.length ? Math.min(Math.max(index, 0), items.length - 1) : 0 };
+  }
+
+  const loadSlides = async () => normalizeSlides(await getItem(KEY_SLIDES));
+
+  /* Replace the whole slideshow with `files` (File[] / Blob[]). Each File keeps
+     its name for the thumbnail label; a bare Blob gets a generic one. */
+  const saveSlides = async (files) => {
+    const items = [];
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      if (!f) continue;
+      items.push({ name: typeof f.name === 'string' && f.name ? f.name : `slide-${items.length + 1}`, blob: f });
+    }
+    const epoch = mediaEpoch;
+    const rec = { items, index: 0 };
+    await putItem(KEY_SLIDES, rec);
+    if (epoch !== mediaEpoch) {
+      await deleteItem(KEY_SLIDES);
+      return normalizeSlides(null);
+    }
+    return normalizeSlides(rec);
+  };
+
+  /* Append to the existing slideshow. Duplicate names are fine. */
+  const addSlides = async (files) => {
+    const cur = await loadSlides();
+    const items = cur.items.slice();
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      if (!f) continue;
+      items.push({ name: typeof f.name === 'string' && f.name ? f.name : `slide-${items.length + 1}`, blob: f });
+    }
+    const epoch = mediaEpoch;
+    const rec = { items, index: cur.index };
+    await putItem(KEY_SLIDES, rec);
+    if (epoch !== mediaEpoch) {
+      await deleteItem(KEY_SLIDES);
+      return normalizeSlides(null);
+    }
+    return normalizeSlides(rec);
+  };
+
+  const removeSlide = async (index) => {
+    const cur = await loadSlides();
+    if (index < 0 || index >= cur.items.length) return cur;
+    const items = cur.items.slice();
+    items.splice(index, 1);
+    let next = index;
+    if (next >= items.length) next = items.length - 1;
+    if (next < 0) next = 0;
+    const rec = { items, index: next };
+    await putItem(KEY_SLIDES, rec);
+    return normalizeSlides(rec);
+  };
+
+  const clearSlides = () => deleteItem(KEY_SLIDES).catch(() => {});
+
+  /* Move the index by `delta` and return the image to show at the new position.
+     With a single slide this is a no-op that still resolves to that slide. */
+  const advanceSlide = async (delta) => {
+    const cur = await loadSlides();
+    if (!cur.items.length) return null;
+    let index = cur.index + delta;
+    if (index < 0) index += cur.items.length;
+    if (index >= cur.items.length) index -= cur.items.length;
+    index = Math.min(Math.max(index, 0), cur.items.length - 1);
+    await putItem(KEY_SLIDES, { items: cur.items, index });
+    return cur.items[index];
+  };
+
+  /* Jump to a specific position (random mode). Returns the image now current. */
+  const gotoSlide = async (index) => {
+    const cur = await loadSlides();
+    if (!cur.items.length) return null;
+    index = Math.min(Math.max(index, 0), cur.items.length - 1);
+    await putItem(KEY_SLIDES, { items: cur.items, index });
+    return cur.items[index];
+  };
+
+  /* The current slide, without advancing. */
+  const currentSlide = async () => {
+    const cur = await loadSlides();
+    return cur.items.length ? cur.items[cur.index] : null;
+  };
+
   /* Bumped whenever cached wallpaper bytes are cleared: an in-flight Bing
      download that started before the clear must not write the cache back. */
   let cacheEpoch = 0;
@@ -124,6 +226,11 @@ const Background = (() => {
       }
 
       if (source === 'image') {
+        if (opts.slideMode) {
+          const slide = await currentSlide();
+          if (slide && slide.blob && slide.blob.size) return slide.blob;
+          return null;
+        }
         if (opts.imageStored) {
           const stored = await getItem(KEY_IMAGE);
           if (stored && stored.size) return stored;
@@ -460,10 +567,27 @@ const Background = (() => {
     if (await displayPhoto(url, null, token) === 'failed') clearPhoto();
   }
 
-  /* --- Custom image --- */
+  /* --- Custom image ---
+     In slideMode the wallpaper is the slideshow's current slide (KEY_SLIDES);
+     otherwise it is the single uploaded Blob or an image URL, as before. The
+     preview slot is shared ('image'), so whichever blob paints also feeds the
+     preview and its colour. */
   async function showImage(opts, token) {
     /* The stored image preview first (a few ms), then the wallpaper below it. */
     const preview = paintPreviewFromStore('image', token);
+
+    /* 0. Slideshow: paint the current slide. Falls through to the single-image
+          paths if the slideshow is empty, so a cleared list never blanks the tab. */
+    if (opts.slideMode) {
+      const slide = await currentSlide();
+      if (token !== loadToken) return;
+      if (slide && slide.blob) {
+        backfillPreview('image', preview, slide.blob);
+        const objectUrl = URL.createObjectURL(slide.blob);
+        if (await displayPhoto(objectUrl, objectUrl, token) === 'failed') clearPhoto();
+        return;
+      }
+    }
 
     /* 1. Uploaded wallpaper: a Blob in IndexedDB. */
     if (opts.imageStored) {
@@ -1120,6 +1244,8 @@ const Background = (() => {
     saveImageBlob, clearImageBlob, migrateLegacyImage, clearBingCache,
     getWallpaperBlob, getPreviewInfo, recomputePreviewColor, clearAllStorage,
     regeneratePreview, readPreviewColor, clearPreview, clearAllPreviews,
-    setVolume, setMuted, setLoop, setOnEnded
+    setVolume, setMuted, setLoop, setOnEnded,
+    saveSlides, addSlides, removeSlide, clearSlides,
+    loadSlides, currentSlide, advanceSlide, gotoSlide
   };
 })();

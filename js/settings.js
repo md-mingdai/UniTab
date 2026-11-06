@@ -15,6 +15,9 @@ const Settings = (() => {
     bgImageStored: false, // 上传的自定义图片已保存在 IndexedDB（image_blob）
     bgImageFileName: '',  // 上传图片的原始文件名（仅用于显示和导出命名）
     bgImageUrl: null,     // 自定义图片 URL（仅当 bgSource === 'image' 且用户填了链接时使用）
+    bgSlideMode: false,   // 自定义图片：幻灯片轮播（多图/文件夹），关闭则用单图
+    bgSlideInterval: 0,   // 轮播间隔分钟数（0 = 每次打开新标签页换一张）
+    bgSlideRandom: false, // 幻灯片随机顺序
     bgBingUrl: null,      // 必应壁纸 URL（仅 bgSource === 'bing' 时使用）
     bgBingCopyright: '',  // 必应壁纸标题 + 版权信息（持久化，刷新页面也显示）
     bgBingCopyrightLink: '', // 必应版权词条链接（API 的 copyrightlink，右键"打开来源页面"用）
@@ -125,6 +128,12 @@ const Settings = (() => {
 
   /* Form elements */
   let bgFileInput, bgFileName, bgUrlInput, bgUrlApply, bgUrlError;
+  let bgSlideModeInput, bgSlideMultiInput, bgSlideDirInput, bgSlideThumbs;
+  let bgSlideIntervalInput, bgSlideRandomToggle, bgSlideCount, bgSlideOptions;
+  let bgSlideIntervalWrapper, bgSlideIntervalLabel;
+  let bgSlideIntervalTrigger, bgSlideIntervalDropdown;
+  let bgSlideClear, bgSlidePrev, bgSlideNext;
+  let bgSingleImage;
   let bgBingRefresh, bgBingMeta, bgBingAutoRefreshToggle, bgBingPanel, bgImagePanel, bgColorPanel, bgVideoPanel;
   let bgVideoInput, bgVideoName;
   let videoSoundToggle, videoVolumeWrapper;
@@ -168,7 +177,13 @@ const Settings = (() => {
     loadSettings();
     initLanguageSelector();
     bindEvents();
-    applyBackground();
+    /* "Every new tab" slideshow rotation: advance the persisted index BEFORE the
+       first paint so each new tab opens on the next slide, not a repeat of the
+       previous tab's. Interval mode stays on the saved index here and rotates
+       via restartSlideTimer() inside applyBackground(). */
+    maybeAdvanceOnLoad().finally(() => {
+      applyBackground();
+    });
     /* The closed panel is laid out (just invisible), so the tab indicator can be
        placed now, while the page is still in `preload` and nothing transitions. */
     moveIndicator(getActiveTab());
@@ -230,6 +245,24 @@ const Settings = (() => {
     bgUrlInput = document.getElementById('bg-url-input');
     bgUrlApply = document.getElementById('bg-url-apply');
     bgUrlError = document.getElementById('bg-url-error');
+
+    /* Slideshow controls (inside the image sub-panel) */
+    bgSlideModeInput = document.getElementById('bg-slide-mode');
+    bgSlideMultiInput = document.getElementById('bg-slide-multi-input');
+    bgSlideDirInput = document.getElementById('bg-slide-dir-input');
+    bgSlideThumbs = document.getElementById('bg-slide-thumbs');
+    bgSlideIntervalInput = document.getElementById('bg-slide-interval-select');
+    bgSlideIntervalWrapper = document.getElementById('bg-slide-interval-wrapper');
+    bgSlideIntervalLabel = document.getElementById('bg-slide-interval-label');
+    bgSlideIntervalTrigger = document.getElementById('bg-slide-interval-trigger');
+    bgSlideIntervalDropdown = document.getElementById('bg-slide-interval-dropdown');
+    bgSlideRandomToggle = document.getElementById('bg-slide-random-toggle');
+    bgSlideCount = document.getElementById('bg-slide-count');
+    bgSlideOptions = document.getElementById('bg-slide-options');
+    bgSlideClear = document.getElementById('bg-slide-clear');
+    bgSlidePrev = document.getElementById('bg-slide-prev');
+    bgSlideNext = document.getElementById('bg-slide-next');
+    bgSingleImage = document.getElementById('bg-single-image');
 
     /* Bing sub-panel */
     bgBingRefresh = document.getElementById('bg-bing-refresh');
@@ -768,6 +801,17 @@ const Settings = (() => {
     }
     setBingMeta(state.bgBingCopyright || '');
 
+    /* Slideshow controls (image sub-panel). The single-image controls are
+       hidden while slideshow mode is on, and the slideshow block is hidden
+       while it's off. Thumbnails are (re)rendered separately on demand. */
+    updateSlideModeToggle(state.bgSlideMode);
+    updateSlideRandomToggle(state.bgSlideRandom);
+    updateSlideIntervalLabel(state.bgSlideInterval || 0);
+    /* The single-image slot and the slideshow block are mutually exclusive;
+       the thumbnails are (re)rendered separately on demand. */
+    if (bgSingleImage) setGroupHidden(bgSingleImage, !!state.bgSlideMode);
+    if (bgSlideOptions) setGroupHidden(bgSlideOptions, !state.bgSlideMode);
+
     /* Video settings */
     updateVideoSoundToggle(state.bgVideoSoundOn);
     setGroupHidden(videoVolumeWrapper, !state.bgVideoSoundOn);
@@ -798,6 +842,55 @@ const Settings = (() => {
       }
     }).catch(() => {
       bgVideoName.textContent = I18n.t('settings.bg.file.noFile');
+    });
+  }
+
+  /* --- Slideshow info ---
+     Blob URLs created for thumbnails; revoked before re-render so scrolling a
+     large slideshow does not leak object URLs. */
+  let slideThumbUrls = [];
+
+  function revokeSlideThumbs() {
+    slideThumbUrls.forEach((u) => { try { URL.revokeObjectURL(u); } catch { /* gone */ } });
+    slideThumbUrls = [];
+  }
+
+  async function refreshSlideInfo() {
+    if (!bgSlideThumbs) return;
+    const slides = await Background.loadSlides();
+    const n = slides.items.length;
+    revokeSlideThumbs();
+    bgSlideThumbs.textContent = '';
+    if (!n) {
+      if (bgSlideCount) bgSlideCount.textContent = I18n.t('settings.bg.slide.none');
+      return;
+    }
+    if (bgSlideCount) {
+      const label = I18n.t('settings.bg.slide.count', [String(n)]);
+      const pos = I18n.t('settings.bg.slide.position', [String(slides.index + 1), String(n)]);
+      bgSlideCount.textContent = `${label} · ${pos}`;
+    }
+    /* The current slide's blob is already on screen — reusing the same object
+       URL for its thumbnail would work, but decoding a full wallpaper twice is
+       wasteful, so each thumb is a tiny canvas copy of the decoded slide. */
+    slides.items.forEach((slide, i) => {
+      const cell = document.createElement('div');
+      cell.className = 'bg-slide-thumb' + (i === slides.index ? ' is-current' : '');
+      const img = document.createElement('img');
+      img.alt = slide.name || `slide-${i + 1}`;
+      const url = URL.createObjectURL(slide.blob);
+      slideThumbUrls.push(url);
+      img.src = url;
+      img.loading = 'lazy';
+      cell.appendChild(img);
+      const rm = document.createElement('button');
+      rm.className = 'bg-slide-thumb-remove';
+      rm.type = 'button';
+      rm.setAttribute('aria-label', I18n.t('settings.bg.slide.remove', [String(i + 1)]));
+      rm.dataset.slideRemove = String(i);
+      rm.textContent = '×';
+      cell.appendChild(rm);
+      bgSlideThumbs.appendChild(cell);
     });
   }
 
@@ -913,8 +1006,11 @@ const Settings = (() => {
     applyToDom('glassRadius', state.glassRadius);
   }
 
-  /* The saved custom image, in the shape Background.load() expects. */
+  /* The saved custom image, in the shape Background.load() expects. In slide
+     mode the wallpaper is the current slide (background.js reads KEY_SLIDES);
+     otherwise it is the single uploaded Blob or an image URL. */
   function customImageOpts() {
+    if (state.bgSlideMode) return { slideMode: true };
     return {
       imageStored: !!state.bgImageStored,
       imageData: state.bgImageData || state.bgImageUrl
@@ -925,7 +1021,7 @@ const Settings = (() => {
     const behavior = state.bgVideoOnEnded;
     if (behavior === 'customimage') {
       return () => {
-        if (state.bgImageStored || state.bgImageData || state.bgImageUrl) {
+        if (state.bgSlideMode || state.bgImageStored || state.bgImageData || state.bgImageUrl) {
           bgLoad({ source: 'image', ...customImageOpts(), color: state.bgColor });
         }
       };
@@ -961,10 +1057,12 @@ const Settings = (() => {
         soundOn: state.bgVideoSoundOn,
         onEndCallback: getVideoEndCallback()
       });
+      restartSlideTimer();
       return;
     }
     if (state.bgSource === 'image') {
       bgLoad({ source: 'image', ...customImageOpts(), color: state.bgColor });
+      restartSlideTimer();
       return;
     }
     bgLoad({
@@ -972,6 +1070,54 @@ const Settings = (() => {
       imageData: state.bgBingUrl,
       color: state.bgColor
     });
+    restartSlideTimer();
+  }
+
+  /* --- Slideshow timer ---
+     Rotates the slideshow while its tab stays open. The "every new tab" mode
+     (interval 0) advances once at page load instead — see maybeAdvanceOnLoad().
+     Not a chrome.alarms job: the rotation must be visible in the open tab. */
+  let slideTimer = null;
+
+  function restartSlideTimer() {
+    if (slideTimer) { clearInterval(slideTimer); slideTimer = null; }
+    if (state.bgSource !== 'image' || !state.bgSlideMode) return;
+    const minutes = parseInt(state.bgSlideInterval, 10);
+    if (!Number.isFinite(minutes) || minutes <= 0) return;
+    slideTimer = setInterval(async () => {
+      if (!state.bgSlideMode || state.bgSource !== 'image') return;
+      if (state.bgSlideRandom) {
+        const slides = await Background.loadSlides();
+        if (slides.items.length < 2) return;
+        let next;
+        do {
+          next = Math.floor(Math.random() * slides.items.length);
+        } while (next === slides.index);
+        await Background.gotoSlide(next);
+      } else {
+        await Background.advanceSlide(1);
+      }
+      const slide = await Background.currentSlide();
+      if (slide && slide.blob) pickPreview('image', slide.blob, slide.blob);
+      applyBackground();
+    }, minutes * 60 * 1000);
+  }
+
+  /* "Every new tab" rotation: advance once per page load when interval is 0. */
+  async function maybeAdvanceOnLoad() {
+    if (state.bgSource !== 'image' || !state.bgSlideMode) return;
+    if (parseInt(state.bgSlideInterval, 10) > 0) return;
+    const slides = await Background.loadSlides();
+    if (slides.items.length < 2) return;
+    if (state.bgSlideRandom) {
+      let next;
+      do {
+        next = Math.floor(Math.random() * slides.items.length);
+      } while (next === slides.index);
+      await Background.gotoSlide(next);
+    } else {
+      await Background.advanceSlide(1);
+    }
   }
 
   /* --- Sub-panel visibility --- */
@@ -1320,6 +1466,18 @@ const Settings = (() => {
     bgBingAutoRefreshToggle.setAttribute('aria-checked', on ? 'true' : 'false');
   }
 
+  function updateSlideModeToggle(on) {
+    if (!bgSlideModeInput) return;
+    bgSlideModeInput.classList.toggle('on', !!on);
+    bgSlideModeInput.setAttribute('aria-checked', on ? 'true' : 'false');
+  }
+
+  function updateSlideRandomToggle(on) {
+    if (!bgSlideRandomToggle) return;
+    bgSlideRandomToggle.classList.toggle('on', !!on);
+    bgSlideRandomToggle.setAttribute('aria-checked', on ? 'true' : 'false');
+  }
+
   function updateCursorStyleLabel(styleKey) {
     const key = CURSOR_STYLE_LABEL_KEY[styleKey];
     cursorStyleLabel.textContent = key ? I18n.t(key) : styleKey;
@@ -1365,6 +1523,28 @@ const Settings = (() => {
     videoOnEndedDropdown.querySelectorAll('.custom-select-option').forEach(opt => {
       opt.classList.toggle('selected', opt.dataset.value === val);
     });
+  }
+
+  /* Slideshow interval label mirrors the custom-select pattern used by the
+     video on-ended control: a key per value plus a "selected" highlight. */
+  const SLIDE_INTERVAL_KEY = {
+    0: 'settings.bg.slide.interval.newtab',
+    1: 'settings.bg.slide.interval.1min',
+    5: 'settings.bg.slide.interval.5min',
+    15: 'settings.bg.slide.interval.15min',
+    30: 'settings.bg.slide.interval.30min',
+    60: 'settings.bg.slide.interval.60min'
+  };
+
+  function updateSlideIntervalLabel(val) {
+    if (!bgSlideIntervalLabel) return;
+    const key = SLIDE_INTERVAL_KEY[val];
+    bgSlideIntervalLabel.textContent = key ? I18n.t(key) : String(val);
+    if (bgSlideIntervalWrapper) {
+      bgSlideIntervalWrapper.querySelectorAll('.custom-select-option').forEach(opt => {
+        opt.classList.toggle('selected', String(opt.dataset.value) === String(val));
+      });
+    }
   }
 
   /* --- Tab switching --- */
@@ -1598,6 +1778,147 @@ const Settings = (() => {
     bgUrlInput.addEventListener('input', () => {
       if (bgUrlError && !bgUrlError.hidden) showUrlError('');
     });
+
+    /* --- Slideshow (custom image source) ---
+       The slideshow and the single image are two sub-modes of the same source;
+       entering one clears the other so they never fight for the paint. */
+    async function toggleSlideMode() {
+      const on = !state.bgSlideMode;
+      state.bgSlideMode = on;
+      updateSlideModeToggle(on);
+      if (on) {
+        /* Switching to slideshow clears the single-image slot. */
+        state.bgImageStored = false;
+        state.bgImageData = null;
+        state.bgImageUrl = null;
+        state.bgImageFileName = '';
+        if (bgFileInput) bgFileInput.value = '';
+        Background.clearImageBlob();
+      } else {
+        /* Leaving slideshow clears the slide list. */
+        Background.clearSlides();
+        revokeSlideThumbs();
+      }
+      saveSettings();
+      syncFormToState();
+      morphPanel(() => {
+        if (bgSingleImage) setGroupHidden(bgSingleImage, on);
+        if (bgSlideOptions) setGroupHidden(bgSlideOptions, !on);
+      });
+      applyBackground();
+      await refreshSlideInfo();
+    }
+    bgSlideModeInput.addEventListener('click', toggleSlideMode);
+    bgSlideModeInput.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        toggleSlideMode();
+      }
+    });
+
+    /* Both multi-file and folder pickers funnel through one handler. The file
+       list lives for the duration of the await only; it is drained into
+       IndexedDB (blobs) before anything is displayed. */
+    async function ingestSlideFiles(fileList) {
+      const files = Array.from(fileList || []).filter((f) => f && f.type && f.type.startsWith('image/'));
+      if (!files.length) {
+        if (bgSlideCount) bgSlideCount.textContent = I18n.t('settings.bg.slide.selectImages');
+        return;
+      }
+      if (bgSlideCount) bgSlideCount.textContent = I18n.t('settings.bg.slide.importing', [String(files.length)]);
+      try {
+        await Background.saveSlides(files);
+      } catch (e) {
+        if (bgSlideCount) bgSlideCount.textContent = I18n.t('settings.bg.file.loadFailed');
+        return;
+      }
+      state.bgSlideMode = true;
+      updateSlideModeToggle(true);
+      /* Point at the first slide and show it now. */
+      state.bgImageStored = false;
+      state.bgImageData = null;
+      state.bgImageUrl = null;
+      state.bgImageFileName = '';
+      if (bgFileInput) bgFileInput.value = '';
+      Background.clearImageBlob();
+      saveSettings();
+      syncFormToState();
+      pickPreview('image', files[0], files[0]);
+      applyBackground();
+      await refreshSlideInfo();
+    }
+
+    if (bgSlideMultiInput) bgSlideMultiInput.addEventListener('change', async (e) => {
+      await ingestSlideFiles(e.target.files);
+      e.target.value = '';
+    });
+    if (bgSlideDirInput) bgSlideDirInput.addEventListener('change', async (e) => {
+      await ingestSlideFiles(e.target.files);
+      e.target.value = '';
+    });
+
+    /* Slideshow interval dropdown (custom select mirrors the other settings). */
+    initCustomSelect(bgSlideIntervalWrapper, (val) => {
+      const n = parseInt(val, 10);
+      state.bgSlideInterval = Number.isFinite(n) ? n : 0;
+      saveSettings();
+      restartSlideTimer();
+    });
+
+    bgSlideRandomToggle.addEventListener('click', () => {
+      state.bgSlideRandom = !state.bgSlideRandom;
+      updateSlideRandomToggle(state.bgSlideRandom);
+      saveSettings();
+    });
+    bgSlideRandomToggle.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        bgSlideRandomToggle.click();
+      }
+    });
+
+    if (bgSlideClear) bgSlideClear.addEventListener('click', async () => {
+      await Background.clearSlides();
+      revokeSlideThumbs();
+      /* An emptied slideshow has nothing to paint; fall back to the single-image
+         slot (which may itself be empty) rather than leaving a blank tab. */
+      state.bgSlideMode = false;
+      updateSlideModeToggle(false);
+      saveSettings();
+      syncFormToState();
+      applyBackground();
+      await refreshSlideInfo();
+    });
+
+    /* Delegate a click on a thumbnail's remove button to drop that slide. */
+    if (bgSlideThumbs) bgSlideThumbs.addEventListener('click', async (e) => {
+      const btn = e.target && e.target.closest ? e.target.closest('[data-slide-remove]') : null;
+      if (!btn) return;
+      const index = parseInt(btn.dataset.slideRemove, 10);
+      if (!Number.isFinite(index)) return;
+      const slides = await Background.removeSlide(index);
+      /* Removing the last slide leaves nothing to paint; fall back to the
+         single-image slot rather than a blank tab. */
+      if (!slides.items.length) {
+        state.bgSlideMode = false;
+        updateSlideModeToggle(false);
+      }
+      saveSettings();
+      syncFormToState();
+      applyBackground();
+      await refreshSlideInfo();
+    });
+
+    /* Reveal the next (or previous) slide now. Used by the panel arrows. */
+    async function nudgeSlide(delta) {
+      if (!state.bgSlideMode) return;
+      const slide = await Background.advanceSlide(delta);
+      if (slide && slide.blob) pickPreview('image', slide.blob, slide.blob);
+      applyBackground();
+      await refreshSlideInfo();
+    }
+    if (bgSlidePrev) bgSlidePrev.addEventListener('click', () => nudgeSlide(-1));
+    if (bgSlideNext) bgSlideNext.addEventListener('click', () => nudgeSlide(1));
 
     /* --- Background color swatches --- */
     bgColorSwatches.forEach(swatch => {
@@ -2908,6 +3229,7 @@ const Settings = (() => {
     hideDropdown(glassStyleDropdown, glassStyleTrigger);
     hideDropdown(videoOnEndedDropdown, videoOnEndedTrigger);
     hideDropdown(languageSelectDropdown, languageSelectTrigger);
+    hideDropdown(bgSlideIntervalDropdown, bgSlideIntervalTrigger);
   }
 
   /* --- Panel state --- */
