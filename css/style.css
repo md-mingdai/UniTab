@@ -2013,6 +2013,14 @@ html[data-hide-settings-icon="true"] .settings-toggle:focus-visible {
   margin-top: 10px;
 }
 
+/* Keep the nav labels on one line without letting the buttons overflow the
+   panel: they keep their natural width and only shrink if space is tight. */
+.bg-slide-nav .setting-btn-secondary,
+.bg-slide-nav .setting-btn-danger {
+  flex: 0 1 auto;
+  white-space: nowrap;
+}
+
 /* Secondary Button */
 .setting-btn-secondary {
   display: inline-flex;
