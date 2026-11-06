@@ -8,6 +8,7 @@
     },
     {
       "code": "zh_TW",
+      "regions": ["TW", "HK", "MO"],
       "name": "繁體中文",
       "file": "zh_TW.json"
     },

@@ -341,7 +341,7 @@ const Settings = (() => {
   async function setLocale(val) {
     if (val === 'auto') {
       localStorage.removeItem('unitab_locale');
-      const detected = I18n.detectBrowserLocale() || I18n.DEFAULT_LOCALE;
+      const detected = I18n.detectBrowserLocale() || I18n.getDefaultLocale();
       await I18n.loadMessages(detected);
     } else {
       localStorage.setItem('unitab_locale', val);
@@ -374,7 +374,7 @@ const Settings = (() => {
   function initLanguageSelector() {
     if (!languageSelectWrapper || !languageSelectTrigger) return;
     const saved = localStorage.getItem('unitab_locale');
-    const val = saved && I18n.SUPPORTED_LOCALES.includes(saved) ? saved : 'auto';
+    const val = saved && I18n.getSupportedLocales().includes(saved) ? saved : 'auto';
     languageSelectNative.value = val;
     updateLanguageLabel(val);
     updateLanguageDropdown(val);
