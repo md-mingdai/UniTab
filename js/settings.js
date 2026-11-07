@@ -861,9 +861,9 @@ const Settings = (() => {
     if (!bgSlideThumbs) return;
     const slides = await Background.loadSlides();
     const n = slides.items.length;
-    revokeSlideThumbs();
-    bgSlideThumbs.textContent = '';
     if (!n) {
+      revokeSlideThumbs();
+      bgSlideThumbs.textContent = '';
       if (bgSlideCount) bgSlideCount.textContent = I18n.t('settings.bg.slide.none');
       return;
     }
@@ -872,27 +872,51 @@ const Settings = (() => {
       const pos = I18n.t('settings.bg.slide.position', [String(slides.index + 1), String(n)]);
       bgSlideCount.textContent = `${label} · ${pos}`;
     }
-    /* The current slide's blob is already on screen — reusing the same object
-       URL for its thumbnail would work, but decoding a full wallpaper twice is
-       wasteful, so each thumb is a tiny canvas copy of the decoded slide. */
+
+    /* Selection-only change: the rows already exist and their blobs are decoded,
+       so just move the highlight instead of rebuilding (rebuilding re-creates the
+       object URLs, which re-decodes every thumb and makes the grid flicker). */
+    const existingRows = bgSlideThumbs.querySelectorAll('[data-slide-index]');
+    const sameList = existingRows.length === n && slides.items.every((s, i) => {
+      const row = existingRows[i];
+      return row && row.dataset.slideIndex === String(i);
+    });
+    if (sameList) {
+      existingRows.forEach((row, i) => {
+        row.classList.toggle('is-current', i === slides.index);
+      });
+      return;
+    }
+
+    revokeSlideThumbs();
+    bgSlideThumbs.textContent = '';
+    /* List rows: thumbnail + file name + remove button. Each thumb is a small
+       canvas copy — decoding a full wallpaper twice per row would be wasteful. */
     slides.items.forEach((slide, i) => {
-      const cell = document.createElement('div');
-      cell.className = 'bg-slide-thumb' + (i === slides.index ? ' is-current' : '');
+      const row = document.createElement('div');
+      row.className = 'bg-slide-item' + (i === slides.index ? ' is-current' : '');
+      row.dataset.slideIndex = String(i);
       const img = document.createElement('img');
+      img.className = 'bg-slide-item-thumb';
       img.alt = slide.name || `slide-${i + 1}`;
       const url = URL.createObjectURL(slide.blob);
       slideThumbUrls.push(url);
       img.src = url;
       img.loading = 'lazy';
-      cell.appendChild(img);
+      row.appendChild(img);
+      const name = document.createElement('span');
+      name.className = 'bg-slide-item-name';
+      name.textContent = slide.name || `slide-${i + 1}`;
+      name.title = slide.name || `slide-${i + 1}`;
+      row.appendChild(name);
       const rm = document.createElement('button');
-      rm.className = 'bg-slide-thumb-remove';
+      rm.className = 'bg-slide-item-remove';
       rm.type = 'button';
       rm.setAttribute('aria-label', I18n.t('settings.bg.slide.remove', [String(i + 1)]));
       rm.dataset.slideRemove = String(i);
       rm.textContent = '×';
-      cell.appendChild(rm);
-      bgSlideThumbs.appendChild(cell);
+      row.appendChild(rm);
+      bgSlideThumbs.appendChild(row);
     });
   }
 
@@ -1941,19 +1965,29 @@ const Settings = (() => {
       await refreshSlideInfo();
     });
 
-    /* Delegate a click on a thumbnail's remove button to drop that slide. */
+    /* Delegate clicks in the list: the remove badge drops that slide, clicking
+       anywhere else on the row switches the wallpaper to that slide. */
     if (bgSlideThumbs) bgSlideThumbs.addEventListener('click', async (e) => {
-      const btn = e.target && e.target.closest ? e.target.closest('[data-slide-remove]') : null;
-      if (!btn) return;
-      const index = parseInt(btn.dataset.slideRemove, 10);
+      const row = e.target && e.target.closest ? e.target.closest('[data-slide-index]') : null;
+      if (!row) return;
+      const index = parseInt(row.dataset.slideIndex, 10);
       if (!Number.isFinite(index)) return;
-      const slides = await Background.removeSlide(index);
-      /* Removing the last slide leaves nothing to paint; fall back to the
-         single-image slot and close the dialog. */
-      if (!slides.items.length) {
-        state.bgSlideMode = false;
-        updateSlideModeToggle(false);
-        closeSlideList();
+
+      const rmBtn = e.target && e.target.closest ? e.target.closest('[data-slide-remove]') : null;
+      if (rmBtn) {
+        const slides = await Background.removeSlide(index);
+        /* Removing the last slide leaves nothing to paint; fall back to the
+           single-image slot and close the dialog. */
+        if (!slides.items.length) {
+          state.bgSlideMode = false;
+          updateSlideModeToggle(false);
+          closeSlideList();
+        }
+      } else {
+        /* Select this slide as the current one. */
+        await Background.gotoSlide(index);
+        const slide = await Background.currentSlide();
+        if (slide && slide.blob) pickPreview('image', slide.blob, slide.blob);
       }
       saveSettings();
       syncFormToState();

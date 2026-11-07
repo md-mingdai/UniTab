@@ -1429,6 +1429,30 @@ html[data-hide-settings-icon="true"] .settings-toggle:focus-visible {
   margin-bottom: 6px;
 }
 
+/* The slideshow custom-interval input reuses the engine-url row, but must start
+   hidden and gain spacing below the interval dropdown when revealed. */
+#bg-slide-interval-custom {
+  display: flex;
+  margin-top: 10px;
+  margin-bottom: 0;
+}
+
+#bg-slide-interval-custom[hidden] {
+  display: none;
+}
+
+/* Strip the native number spinners — they clash with the glass style. */
+#bg-slide-interval-custom-input {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+#bg-slide-interval-custom-input::-webkit-outer-spin-button,
+#bg-slide-interval-custom-input::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
 .custom-engine-url-row .setting-input {
   flex: 1;
   min-width: 0;
@@ -1946,79 +1970,71 @@ html[data-hide-settings-icon="true"] .settings-toggle:focus-visible {
   text-overflow: ellipsis;
 }
 
-/* Slideshow (custom image source): two pickers in a row, then a wrapping grid
-   of thumbnails with a small remove badge. The current slide is ringed. */
+/* Slideshow list dialog: rows of thumbnail + file name + remove button. */
 .bg-slide-pickers {
   margin-top: 10px;
 }
 
-/* Slideshow list dialog — a wider confirm-dialog layered above the settings
-   panel, holding the thumbnail grid plus add/folder/clear actions. */
-.slide-list-dialog-body {
-  max-width: min(600px, calc(100vw - 48px));
-  width: 90%;
-  padding: 24px 28px 22px;
-  max-height: min(640px, calc(100vh - 96px));
-  overflow-y: auto;
-}
-
-.slide-list-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 4px;
-}
-
-.slide-list-title {
-  margin: 0;
-  font-size: 17px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
 .bg-slide-thumbs {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 8px;
-  margin-top: 10px;
-  max-height: 168px;
+  margin-top: 14px;
+  flex: 1;
+  min-height: 320px;
   overflow-y: auto;
 }
 
-.bg-slide-thumb {
-  position: relative;
-  width: 72px;
-  height: 44px;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 2px solid rgb(var(--fg-rgb) / 0.12);
+.bg-slide-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgb(var(--fg-rgb) / 0.12);
   background: rgb(var(--fg-rgb) / 0.08);
+  cursor: pointer;
+  transition: background 0.2s var(--ease-out-expo);
 }
 
-.bg-slide-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
+.bg-slide-item:hover {
+  background: rgb(var(--fg-rgb) / 0.14);
 }
 
-.bg-slide-thumb.is-current {
+.bg-slide-item.is-current {
   border-color: rgb(var(--fg-rgb) / 0.7);
   box-shadow: 0 0 0 2px rgba(139, 157, 195, 0.35);
 }
 
-.bg-slide-thumb-remove {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 18px;
-  height: 18px;
+.bg-slide-item-thumb {
+  flex-shrink: 0;
+  width: 96px;
+  height: 58px;
+  border-radius: 8px;
+  overflow: hidden;
+  object-fit: cover;
+  display: block;
+}
+
+.bg-slide-item-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.bg-slide-item-remove {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   border: none;
-  background: rgba(0, 0, 0, 0.55);
-  color: #fff;
-  font-size: 13px;
+  background: rgb(var(--fg-rgb) / 0.2);
+  color: var(--text-primary);
+  font-size: 15px;
   line-height: 1;
   cursor: pointer;
   display: flex;
@@ -2027,8 +2043,8 @@ html[data-hide-settings-icon="true"] .settings-toggle:focus-visible {
   padding: 0;
 }
 
-.bg-slide-thumb-remove:hover {
-  background: rgba(0, 0, 0, 0.75);
+.bg-slide-item-remove:hover {
+  background: rgb(var(--fg-rgb) / 0.32);
 }
 
 .bg-slide-nav {
@@ -2994,6 +3010,38 @@ html[data-wallpaper-tone="dark"][data-glass="matte"] {
 @keyframes confirm-fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+/* ============================================
+   Slideshow List Dialog — wider than the base
+   confirm-dialog, layered above the settings panel
+   ============================================ */
+
+.slide-list-dialog-body {
+  min-width: 480px;
+  max-width: min(680px, calc(100vw - 48px));
+  width: 92%;
+  min-height: 560px;
+  padding: 26px 32px 24px;
+  max-height: min(860px, calc(100vh - 80px));
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.slide-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.slide-list-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 /* ============================================

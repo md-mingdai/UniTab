@@ -583,8 +583,20 @@ const Background = (() => {
     return src.replace(/["\\\n\r]/g, (c) => '\\' + c.charCodeAt(0).toString(16) + ' ');
   }
 
-  /* Resolves 'shown' | 'stale' (superseded while decoding) | 'failed' (undecodable). */
+  /* Resolves 'shown' | 'stale' (superseded while decoding) | 'failed' (undecodable).
+     When a wallpaper is already on screen (same-source switch, e.g. a slideshow
+     step), fade the old photo out first, then fade the new one in — an instant
+     swap between two full images reads as a jarring cut. */
   async function displayPhoto(src, objectUrl, token) {
+    const hadPhoto = photoEl.classList.contains('is-ready');
+    if (hadPhoto) {
+      photoEl.classList.remove('is-ready'); /* fade the old image out */
+      await new Promise((r) => setTimeout(r, 120)); /* let the fade-out start */
+      if (token !== loadToken) {
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+        return 'stale';
+      }
+    }
     const ok = await decode(src);
     if (token !== loadToken || !ok) {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
