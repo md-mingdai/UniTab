@@ -1831,11 +1831,9 @@ const Settings = (() => {
         /* Seed the list with the current single image (if any). The single-image
            slot is kept intact — turning slide mode off falls back to it. */
         await Background.migrateSingleImageToSlides();
-      } else {
-        /* Leaving slideshow clears the slide list. */
-        Background.clearSlides();
-        revokeSlideThumbs();
       }
+      /* Leaving slide mode keeps the list intact — toggling back on restores it
+         (and re-seeds the single image only if the list is still empty). */
       saveSettings();
       syncFormToState();
       morphPanel(() => {
@@ -1856,6 +1854,13 @@ const Settings = (() => {
     /* Both multi-file and folder pickers funnel through one handler. The file
        list lives for the duration of the await only; it is drained into
        IndexedDB (blobs) before anything is displayed. */
+    /* Duplicate-image guard: some of the incoming files already exist in the
+       slideshow (matched by content hash). Ask before importing them again. */
+    function showSlideDuplicateConfirm(dupes, total) {
+      const msg = I18n.t('settings.bg.slide.duplicate.confirm', [String(dupes.length), String(total)]);
+      return showConfirmDialog(msg);
+    }
+
     async function ingestSlideFiles(fileList) {
       const files = Array.from(fileList || []).filter((f) => f && f.type && f.type.startsWith('image/'));
       if (!files.length) {
@@ -1863,11 +1868,30 @@ const Settings = (() => {
         return;
       }
       if (bgSlideCount) bgSlideCount.textContent = I18n.t('settings.bg.slide.importing', [String(files.length)]);
+
+      /* Fingerprint the incoming files and check them against the existing
+         slideshow. When any are already present, ask once whether to import
+         them anyway (duplicates) or cancel the whole batch. */
+      let dupes = [];
+      let hashes = null;
+      try {
+        const found = await Background.findDuplicateSlides(files);
+        dupes = found.dupes;
+        hashes = found.hashes;
+      } catch { /* dedupe is best-effort; import proceeds without it */ }
+      if (dupes.length) {
+        const proceed = await showSlideDuplicateConfirm(dupes, files.length);
+        if (!proceed) {
+          if (bgSlideCount) bgSlideCount.textContent = I18n.t('settings.bg.slide.count', [String((await Background.loadSlides()).items.length)]);
+          return;
+        }
+      }
+
       /* Append to the existing list (don't replace) — the list view is the place
          to grow the slideshow one file or one folder at a time. */
       let slides;
       try {
-        slides = await Background.addSlides(files);
+        slides = await Background.addSlides(files, hashes);
       } catch (e) {
         if (bgSlideCount) bgSlideCount.textContent = I18n.t('settings.bg.file.loadFailed');
         return;

@@ -70,6 +70,7 @@
   "settings.bg.slide.prev": "Previous",
   "settings.bg.slide.next": "Next",
   "settings.bg.slide.clear": "Clear",
+  "settings.bg.slide.duplicate.confirm": "{1} of these images already exist in the slideshow (selected {2} in total). Import them all anyway?",
   "settings.bg.slide.random": "Random order",
   "settings.bg.slide.interval.label": "Rotation interval",
   "settings.bg.slide.interval.newtab": "Every new tab",

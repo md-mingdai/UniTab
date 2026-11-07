@@ -118,6 +118,8 @@ const Background = (() => {
       .map((it, i) => ({
         name: typeof it.name === 'string' ? it.name : `slide-${i + 1}`,
         blob: it.blob,
+        /* SHA-256 hex of the blob's bytes — identifies duplicates across imports. */
+        hash: typeof it.hash === 'string' ? it.hash : null,
         /* Independent per-slide preview: small blob + average color, generated
            on first add / on demand. null = not yet computed. */
         pv: it.pv && it.pv.blob instanceof Blob && it.pv.color ? { blob: it.pv.blob, color: it.pv.color } : null,
@@ -127,6 +129,22 @@ const Background = (() => {
   }
 
   const loadSlides = async () => normalizeSlides(await getItem(KEY_SLIDES));
+
+  /* SHA-256 hex of a blob's bytes — the fingerprint used to spot duplicate
+     images across imports. Returns null when SubtleCrypto is unavailable
+     (non-secure context), in which case dedupe silently degrades to off. */
+  const hashBlob = async (blob) => {
+    try {
+      if (!blob || !(blob instanceof Blob) || !crypto || !crypto.subtle) return null;
+      const buf = await blob.arrayBuffer();
+      const digest = await crypto.subtle.digest('SHA-256', buf);
+      return Array.from(new Uint8Array(digest))
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
+    } catch {
+      return null;
+    }
+  };
 
   /* Replace the whole slideshow with `files` (File[] / Blob[]). Each File keeps
      its name for the thumbnail label; a bare Blob gets a generic one. */
@@ -147,14 +165,21 @@ const Background = (() => {
     return normalizeSlides(rec);
   };
 
-  /* Append to the existing slideshow. Duplicate names are fine. */
-  const addSlides = async (files) => {
+  /* Append to the existing slideshow. `hashes` (aligned with files, from
+     findDuplicateSlides) tags each slide with its content fingerprint so later
+     imports can spot duplicates; a bare Blob just gets hash null. */
+  const addSlides = async (files, hashes) => {
     const cur = await loadSlides();
     const items = cur.items.slice();
     for (let i = 0; i < files.length; i++) {
       const f = files[i];
       if (!f) continue;
-      items.push({ name: typeof f.name === 'string' && f.name ? f.name : `slide-${items.length + 1}`, blob: f });
+      const hash = Array.isArray(hashes) ? (hashes[i] || null) : null;
+      items.push({
+        name: typeof f.name === 'string' && f.name ? f.name : `slide-${items.length + 1}`,
+        blob: f,
+        hash,
+      });
     }
     const epoch = mediaEpoch;
     const rec = { items, index: cur.index };
@@ -164,6 +189,31 @@ const Background = (() => {
       return normalizeSlides(null);
     }
     return normalizeSlides(rec);
+  };
+
+  /* Which of `files` already exist in the slideshow by content hash. Slides that
+     predate hash tagging get hashed on the fly so dedupe still catches them.
+     Resolves { dupes: [{ name, hash }], hashes: [hash|null] aligned with files }.
+     The computed hashes for existing slides are written back too, so the next
+     import finds them without re-hashing. */
+  const findDuplicateSlides = async (files) => {
+    const cur = await loadSlides();
+    let dirty = false;
+    for (const it of cur.items) {
+      if (it.hash) continue;
+      it.hash = await hashBlob(it.blob);
+      dirty = true;
+    }
+    if (dirty) await putItem(KEY_SLIDES, { items: cur.items, index: cur.index });
+    const known = new Set(cur.items.map((it) => it.hash).filter(Boolean));
+    const hashes = [];
+    const dupes = [];
+    for (const f of files) {
+      const h = await hashBlob(f);
+      hashes.push(h);
+      if (h && known.has(h)) dupes.push({ name: (f && f.name) || 'slide', hash: h });
+    }
+    return { dupes, hashes };
   };
 
   const removeSlide = async (index) => {
@@ -1358,6 +1408,6 @@ const Background = (() => {
     setVolume, setMuted, setLoop, setOnEnded,
     saveSlides, addSlides, removeSlide, clearSlides,
     loadSlides, currentSlide, advanceSlide, gotoSlide, migrateSingleImageToSlides,
-    ensureSlidePreviews
+    ensureSlidePreviews, findDuplicateSlides, hashBlob
   };
 })();

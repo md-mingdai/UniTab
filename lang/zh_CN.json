@@ -70,6 +70,7 @@
   "settings.bg.slide.prev": "上一张",
   "settings.bg.slide.next": "下一张",
   "settings.bg.slide.clear": "清空",
+  "settings.bg.slide.duplicate.confirm": "检测到 {1} 张图片已存在于幻灯片列表中（共选了 {2} 张）。仍要全部导入吗？",
   "settings.bg.slide.random": "随机顺序",
   "settings.bg.slide.interval.label": "轮播间隔",
   "settings.bg.slide.interval.newtab": "每次新标签页",

@@ -70,6 +70,7 @@
   "settings.bg.slide.prev": "上一張",
   "settings.bg.slide.next": "下一張",
   "settings.bg.slide.clear": "清空",
+  "settings.bg.slide.duplicate.confirm": "偵測到 {1} 張圖片已存在於幻燈片列表中（共選了 {2} 張）。仍要全部匯入嗎？",
   "settings.bg.slide.random": "隨機順序",
   "settings.bg.slide.interval.label": "輪播間隔",
   "settings.bg.slide.interval.newtab": "每次新分頁",
