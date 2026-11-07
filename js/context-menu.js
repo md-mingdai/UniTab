@@ -268,6 +268,7 @@ const ContextMenu = (() => {
     const source = wallpaperSource();
     try {
       let blob = null;
+      let slideName = null;
       const s = (typeof Settings !== 'undefined' && Settings.getState) ? Settings.getState() : {};
       if (typeof Background !== 'undefined' && Background.getWallpaperBlob) {
         blob = await Background.getWallpaperBlob(source, {
@@ -277,10 +278,15 @@ const ContextMenu = (() => {
         });
       }
       if (!blob) return;
+      /* In slide mode the saved file is the current slide: use its own name. */
+      if (source === 'image' && s.bgSlideMode && typeof Background !== 'undefined' && Background.currentSlide) {
+        const slide = await Background.currentSlide();
+        if (slide && slide.name) slideName = slide.name;
+      }
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = wallpaperFileName(source, s);
+      a.download = wallpaperFileName(source, s, slideName, blob.type);
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -288,11 +294,29 @@ const ContextMenu = (() => {
     } catch { /* download failures are silent — same as the native menu */ }
   }
 
-  function wallpaperFileName(source, s) {
-    const ext = source === 'video' ? 'webm' : (source === 'bing' ? 'jpg' : 'jpg');
-    if (source === 'bing') return 'unitab-bing-' + new Date().toISOString().slice(0, 10) + '.' + ext;
+  /* Pick the download extension from the blob's real MIME type so a png/webp
+     slide saves as .png/.webp instead of being forced to .jpg. */
+  function extForMime(mime, source) {
+    const m = /image\/(png|webp|jpeg|gif|avif|bmp)/i.exec(mime || '');
+    if (m) return m[1] === 'jpeg' ? 'jpg' : m[1];
+    return source === 'video' ? 'webm' : 'jpg';
+  }
+
+  function wallpaperFileName(source, s, slideName, mime) {
+    if (source === 'bing') return 'unitab-bing-' + new Date().toISOString().slice(0, 10) + '.jpg';
+    const ext = extForMime(mime, source);
+    /* Slideshow: the file is the current slide, so keep its real name. */
+    if (source === 'image' && slideName) return appendExt(slideName, ext);
     if (source === 'image') return s.bgImageFileName || 'unitab-wallpaper.' + ext;
     return 'unitab-wallpaper.' + ext;
+  }
+
+  /* Ensure the download name carries the right extension, replacing any the
+     original upload name had (a slide named "foo.png" saved as jpg would
+     otherwise download as "foo.png.jpg"). */
+  function appendExt(name, ext) {
+    const base = name.replace(/\.[^.]+$/, '');
+    return (base || name) + '.' + ext;
   }
 
   function copySolidColor() {

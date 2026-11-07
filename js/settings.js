@@ -1123,8 +1123,10 @@ const Settings = (() => {
       } else {
         await Background.advanceSlide(1);
       }
-      const slide = await Background.currentSlide();
-      if (slide && slide.blob) pickPreview('image', slide.blob, slide.blob);
+      /* gotoSlide/advanceSlide already promoted this slide's own preview into
+         the shared slot (applySlidePreview). Calling pickPreview here would
+         invalidate that fresh slot and regenerate it from scratch, killing the
+         fade — so just repaint from the slide that is now current. */
       applyBackground();
     }, minutes * 60 * 1000);
   }
