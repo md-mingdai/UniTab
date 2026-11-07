@@ -104,7 +104,11 @@ const Bookmarks = (() => {
 
   function saveCache(items) {
     try {
-      const slim = JSON.stringify(items.map((i) => ({ title: i.title || '', url: i.url })));
+      const slim = JSON.stringify(items.map((i) => ({
+        title: i.title || '',
+        url: i.url,
+        favIconUrl: i.favIconUrl || undefined, /* Firefox: real icon survives restarts */
+      })));
       if (localStorage.getItem(CACHE_KEY) !== slim) localStorage.setItem(CACHE_KEY, slim);
     } catch {
       /* storage unavailable: the dock still works, it just is not pre-painted */
@@ -163,22 +167,39 @@ const Bookmarks = (() => {
       const safeTitle = escapeHtml(item.title || getDomain(item.url));
       const safeUrlAttr = escapeAttr(item.url);
       const safeTitleAttr = escapeAttr(item.title || getDomain(item.url));
-      return `<a class="bookmark-item" href="${safeUrlAttr}" title="${safeTitleAttr}" draggable="false">${renderFavicon(item.url)}<span class="bookmark-title">${safeTitle}</span></a>`;
+      return `<a class="bookmark-item" href="${safeUrlAttr}" title="${safeTitleAttr}" draggable="false">${renderFavicon(item)}<span class="bookmark-title">${safeTitle}</span></a>`;
     }).join('');
     bookmarksBar.classList.remove('is-empty');
   }
 
-  /* Render favicon as a colored letter avatar. Works in every browser without
-     any cross-origin requests or chrome:// / edge:// resource loads. */
-  function renderFavicon(url) {
+  /* Real favicon: Chrome serves a browser-cached icon via chrome://favicon/ (no
+     network round-trip, survives restarts); Firefox hands a favIconUrl through
+     the bookmarks/topSites APIs. If neither yields an icon the <img> errors and
+     the delegated error handler below swaps in the letter avatar. */
+  function renderFavicon(item) {
+    const url = item.url;
     const domain = getDomain(url);
     const initial = (domain.charAt(0) || '?').toUpperCase();
-    /* Deterministic background color from domain hash */
     const hue = hashHue(domain);
     const bg = `hsl(${hue} 35% 28%)`;
     const fg = `hsl(${hue} 60% 78%)`;
-    return `<div class="bookmark-favicon-letter" style="background:${bg};color:${fg}">${escapeHtml(initial)}</div>`;
+    const iconUrl = item.favIconUrl || `chrome://favicon/${url}`;
+    return `<img class="bookmark-favicon" src="${escapeAttr(iconUrl)}" draggable="false" data-fb-bg="${escapeAttr(bg)}" data-fb-fg="${escapeAttr(fg)}" data-fb-initial="${escapeHtml(initial)}">`;
   }
+
+  /* favicon load failed (site has no icon / chrome://favicon rejected): swap the
+     <img> for the letter avatar encoded in its data-* attributes. 'error' does
+     not bubble, so listen in the capture phase on the shared list. */
+  bookmarksList.addEventListener('error', (e) => {
+    const img = e.target;
+    if (!(img instanceof HTMLImageElement) || !img.classList.contains('bookmark-favicon')) return;
+    const div = document.createElement('div');
+    div.className = 'bookmark-favicon-letter';
+    div.style.background = img.dataset.fbBg || '';
+    div.style.color = img.dataset.fbFg || '';
+    div.textContent = img.dataset.fbInitial || '?';
+    img.replaceWith(div);
+  }, true);
 
   function hashHue(str) {
     let h = 0;
