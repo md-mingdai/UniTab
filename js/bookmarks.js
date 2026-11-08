@@ -172,10 +172,12 @@ const Bookmarks = (() => {
     bookmarksBar.classList.remove('is-empty');
   }
 
-  /* Real favicon: Chrome serves a browser-cached icon via chrome://favicon/ (no
-     network round-trip, survives restarts); Firefox hands a favIconUrl through
-     the bookmarks/topSites APIs. If neither yields an icon the <img> errors and
-     the delegated error handler below swaps in the letter avatar. */
+  /* Real favicon via the official MV3 favicon resource:
+     chrome-extension://<id>/_favicon/?pageUrl=<url>&size=<px> (declared by the
+     "favicon" permission in manifest.json). Firefox has no such resource, but
+     its bookmarks/topSites APIs hand back favIconUrl, which is preferred above.
+     If neither yields an icon the <img> errors and the delegated error handler
+     below swaps in the letter avatar encoded in its data-* attributes. */
   function renderFavicon(item) {
     const url = item.url;
     const domain = getDomain(url);
@@ -183,13 +185,27 @@ const Bookmarks = (() => {
     const hue = hashHue(domain);
     const bg = `hsl(${hue} 35% 28%)`;
     const fg = `hsl(${hue} 60% 78%)`;
-    const iconUrl = item.favIconUrl || `chrome://favicon/${url}`;
+    const iconUrl = item.favIconUrl || faviconResourceUrl(url);
     return `<img class="bookmark-favicon" src="${escapeAttr(iconUrl)}" draggable="false" data-fb-bg="${escapeAttr(bg)}" data-fb-fg="${escapeAttr(fg)}" data-fb-initial="${escapeHtml(initial)}">`;
   }
 
-  /* favicon load failed (site has no icon / chrome://favicon rejected): swap the
-     <img> for the letter avatar encoded in its data-* attributes. 'error' does
-     not bubble, so listen in the capture phase on the shared list. */
+  /* Build the official favicon URL. Empty string when the runtime API is
+     unavailable — the <img> then errors out into the letter avatar. */
+  function faviconResourceUrl(pageUrl) {
+    try {
+      if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.getURL) return '';
+      const u = new URL(chrome.runtime.getURL('/_favicon/'));
+      u.searchParams.set('pageUrl', pageUrl);
+      u.searchParams.set('size', '32');
+      return u.toString();
+    } catch {
+      return '';
+    }
+  }
+
+  /* favicon load failed (site has no icon / favicon resource could not serve
+     it): swap the <img> for the letter avatar encoded in its data-* attributes.
+     'error' does not bubble, so listen in the capture phase on the shared list. */
   bookmarksList.addEventListener('error', (e) => {
     const img = e.target;
     if (!(img instanceof HTMLImageElement) || !img.classList.contains('bookmark-favicon')) return;

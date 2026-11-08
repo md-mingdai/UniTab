@@ -15,7 +15,8 @@
   "permissions": [
     "storage",
     "bookmarks",
-    "topSites"
+    "topSites",
+    "favicon"
   ],
   "host_permissions": [
     "https://suggestqueries.google.com/*",
