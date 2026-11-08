@@ -506,6 +506,29 @@ body {
   padding: 14px 16px;
   padding-bottom: max(14px, env(safe-area-inset-bottom));
   pointer-events: none;
+  /* Auto-hide slides the whole bar down/up with a slight overshoot — a springy
+     "jump", deliberately different from the settings gear's opacity fade. */
+  transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Auto-hide dock: parked below the viewport until the pointer reaches the
+   bottom strip (bookmarks.js adds .dock-peeking). The attribute is set from
+   saved settings in boot.js, before the first paint. */
+html[data-dock-autohide="true"] .bookmarks-bar:not(.dock-peeking) {
+  transform: translateY(calc(100% + 40px));
+}
+
+/* No hovering pointer (touch): keep the dock parked in view. */
+@media (hover: none) {
+  html[data-dock-autohide="true"] .bookmarks-bar:not(.dock-peeking) {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bookmarks-bar {
+    transition: none;
+  }
 }
 
 .bookmarks-container {

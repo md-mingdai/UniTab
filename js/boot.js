@@ -81,6 +81,13 @@
       }
     }
 
+    /* Bottom dock auto-hide: park it below the viewport from the very first
+       frame so it never flashes in before sliding down. Requires the dock
+       itself to be enabled; settings.js keeps the attribute in sync later. */
+    if (saved.showBookmarks !== false && saved.autoHideBookmarks === true) {
+      root.dataset.dockAutohide = 'true';
+    }
+
     /* Liquid glass: replay what js/liquid-glass.js measured for this wallpaper last
        time (light or dark glass, tint strength per pane), so the first frame is
        already right. The key must equal cacheKey() in that file. */

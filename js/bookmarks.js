@@ -34,6 +34,46 @@ const Bookmarks = (() => {
     }
   }
 
+  /* --- Auto-hide (slide the dock down until the pointer nears the bottom) ---
+     This is a positional slide with a springy easing, deliberately distinct
+     from the settings gear's opacity fade. settings.js only switches it on
+     when the dock itself is enabled; the <html data-dock-autohide> attribute
+     (set before first paint in boot.js) drives the CSS. */
+  const DOCK_HOT_ZONE_PX = 110;  /* bottom strip that summons the dock */
+  const DOCK_HIDE_DELAY_MS = 300; /* grace period before it slides back down */
+  let autoHide = false;
+  let peekTimer = 0;
+
+  function setAutoHide(on) {
+    autoHide = !!on;
+    if (!autoHide) {
+      clearTimeout(peekTimer);
+      bookmarksBar.classList.remove('dock-peeking');
+    }
+  }
+
+  /* Touch screens have no hovering pointer to summon the dock with, so the
+     auto-hide stays inert there (matches the settings-gear behaviour). */
+  function hoverCapable() {
+    return !window.matchMedia || !window.matchMedia('(hover: none)').matches;
+  }
+
+  document.addEventListener('mousemove', (e) => {
+    if (!autoHide || bookmarksBar.hidden || !hoverCapable()) return;
+    const inZone = e.clientY >= window.innerHeight - DOCK_HOT_ZONE_PX;
+    if (inZone) {
+      clearTimeout(peekTimer);
+      peekTimer = 0;
+      bookmarksBar.classList.add('dock-peeking');
+    } else if (bookmarksBar.classList.contains('dock-peeking')) {
+      if (peekTimer) return; /* already counting down */
+      peekTimer = setTimeout(() => {
+        peekTimer = 0;
+        bookmarksBar.classList.remove('dock-peeking');
+      }, DOCK_HIDE_DELAY_MS);
+    }
+  });
+
   function load() {
     /* Dock switched off: nothing to show, so do not ask the browser for the data until
        it is switched on. */
@@ -246,5 +286,5 @@ const Bookmarks = (() => {
     return escapeHtml(str).replace(/"/g, QUOT_ENTITY);
   }
 
-  return { load, setVisible };
+  return { load, setVisible, setAutoHide };
 })();

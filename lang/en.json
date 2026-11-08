@@ -120,6 +120,7 @@
   "settings.display.clock": "Clock",
   "settings.display.seconds": "Clock Shows Seconds",
   "settings.display.bookmarks": "Bookmarks Dock",
+  "settings.display.autoHideBookmarks": "Auto-hide Dock",
   "settings.display.contextMenu": "Custom right-click menu",
   "settings.display.autoHideSettings": "Auto-hide settings icon",
   "settings.display.autoHideSettings.strength": "Hide strength",

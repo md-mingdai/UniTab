@@ -31,6 +31,7 @@ const Settings = (() => {
     showClock: true,     // 时钟总控（关闭则整个时钟隐藏，秒数子项随之隐藏）
     showSeconds: true,
     showBookmarks: true,  // 底部常用网址 Dock 栏开关
+    autoHideBookmarks: false, // 自动收起 Dock 栏：只在鼠标接近底部时滑出（需先开启 Dock 栏）
     showContextMenu: true, // 主界面自定义右键菜单（按壁纸类型提供操作）
     autoHideSettingsIcon: false, // 自动隐藏设置图标：开启后仅在悬停其位置时显示
     settingsIconHideStrength: 50, // 自动隐藏强度 0-100（越低越容易浮现，0=不隐藏）
@@ -153,6 +154,7 @@ const Settings = (() => {
   let showClockToggle, showSecondsGroup;
   let showSecondsToggle;
   let showBookmarksToggle;
+  let autoHideBookmarksToggle, autoHideBookmarksGroup;
   let showContextMenuToggle;
   let autoHideSettingsIconToggle;
   let autoHideSettingsStrengthGroup, autoHideSettingsStrengthSlider, autoHideSettingsStrengthDisplay;
@@ -319,6 +321,8 @@ const Settings = (() => {
     showSecondsGroup = document.getElementById('show-seconds-group');
     showSecondsToggle = document.getElementById('show-seconds-toggle');
     showBookmarksToggle = document.getElementById('show-bookmarks-toggle');
+    autoHideBookmarksToggle = document.getElementById('auto-hide-bookmarks-toggle');
+    autoHideBookmarksGroup = document.getElementById('auto-hide-bookmarks-group');
     showContextMenuToggle = document.getElementById('show-context-menu-toggle');
     autoHideSettingsIconToggle = document.getElementById('auto-hide-settings-toggle');
     autoHideSettingsStrengthGroup = document.getElementById('auto-hide-strength-group');
@@ -750,8 +754,11 @@ const Settings = (() => {
     setShowSecondsGroupVisible(state.showClock);
     updateShowSecondsToggle(state.showSeconds);
 
-    /* Bookmarks bar toggle */
+    /* Bookmarks bar toggle + its auto-hide sub-option (only meaningful while
+       the dock itself is on). */
     updateShowBookmarksToggle(state.showBookmarks);
+    updateAutoHideBookmarksToggle(state.autoHideBookmarks);
+    setGroupHidden(autoHideBookmarksGroup, !state.showBookmarks);
 
     /* Right-click menu toggle */
     updateShowContextMenuToggle(state.showContextMenu);
@@ -985,6 +992,10 @@ const Settings = (() => {
         if (typeof Bookmarks !== 'undefined' && Bookmarks.setVisible) {
           Bookmarks.setVisible(value);
         }
+        syncDockAutoHide(); /* the dock being off also disarms auto-hide */
+        break;
+      case 'autoHideBookmarks':
+        syncDockAutoHide();
         break;
       case 'autoHideSettingsIcon':
         root.dataset.hideSettingsIcon = value ? 'true' : 'false';
@@ -1024,6 +1035,7 @@ const Settings = (() => {
     applyToDom('showClock', state.showClock);
     applyToDom('showSeconds', state.showSeconds);
     applyToDom('showBookmarks', state.showBookmarks);
+    applyToDom('autoHideBookmarks', state.autoHideBookmarks);
     applyToDom('showContextMenu', state.showContextMenu);
     applyToDom('autoHideSettingsIcon', state.autoHideSettingsIcon);
     applyToDom('showCursorEffect', state.showCursorEffect);
@@ -1421,6 +1433,23 @@ const Settings = (() => {
     if (!showBookmarksToggle) return;
     showBookmarksToggle.classList.toggle('on', !!on);
     showBookmarksToggle.setAttribute('aria-checked', on ? 'true' : 'false');
+  }
+
+  function updateAutoHideBookmarksToggle(on) {
+    if (!autoHideBookmarksToggle) return;
+    autoHideBookmarksToggle.classList.toggle('on', !!on);
+    autoHideBookmarksToggle.setAttribute('aria-checked', on ? 'true' : 'false');
+  }
+
+  /* Dock auto-hide requires BOTH switches: the dock itself and the auto-hide
+     option. The html attribute drives the CSS slide; Bookmarks.setAutoHide
+     arms the bottom hot-zone that summons the dock. */
+  function syncDockAutoHide() {
+    const on = !!state.showBookmarks && !!state.autoHideBookmarks;
+    document.documentElement.dataset.dockAutohide = on ? 'true' : 'false';
+    if (typeof Bookmarks !== 'undefined' && Bookmarks.setAutoHide) {
+      Bookmarks.setAutoHide(on);
+    }
   }
 
   /* Right-click menu switch. The menu reads the state on demand, so this only
@@ -2197,6 +2226,8 @@ const Settings = (() => {
       state.showBookmarks = !state.showBookmarks;
       updateShowBookmarksToggle(state.showBookmarks);
       applyToDom('showBookmarks', state.showBookmarks);
+      /* The auto-hide option only exists while the dock itself is on. */
+      morphPanel(() => setGroupHidden(autoHideBookmarksGroup, !state.showBookmarks));
       saveSettings();
     });
     showBookmarksToggle.addEventListener('keydown', (e) => {
@@ -2205,6 +2236,22 @@ const Settings = (() => {
         showBookmarksToggle.click();
       }
     });
+
+    /* --- Auto-hide dock toggle (requires the dock to be enabled) --- */
+    if (autoHideBookmarksToggle) {
+      autoHideBookmarksToggle.addEventListener('click', () => {
+        state.autoHideBookmarks = !state.autoHideBookmarks;
+        updateAutoHideBookmarksToggle(state.autoHideBookmarks);
+        applyToDom('autoHideBookmarks', state.autoHideBookmarks);
+        saveSettings();
+      });
+      autoHideBookmarksToggle.addEventListener('keydown', (e) => {
+        if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          autoHideBookmarksToggle.click();
+        }
+      });
+    }
 
     /* --- Right-click menu toggle --- */
     if (showContextMenuToggle) {

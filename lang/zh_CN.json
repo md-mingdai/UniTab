@@ -120,6 +120,7 @@
   "settings.display.clock": "时钟",
   "settings.display.seconds": "时钟显示秒",
   "settings.display.bookmarks": "常用网址 Dock 栏",
+  "settings.display.autoHideBookmarks": "自动收起 Dock 栏",
   "settings.display.contextMenu": "自定义右键菜单",
   "settings.display.autoHideSettings": "自动隐藏设置图标",
   "settings.display.autoHideSettings.strength": "隐藏强度",
