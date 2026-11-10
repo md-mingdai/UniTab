@@ -963,13 +963,13 @@ const Settings = (() => {
       const range = scheduleSlotRange(sched.items, i);
       const row = document.createElement('div');
       row.className = 'bg-slide-item' + (active && active.index === i ? ' is-current' : '');
-      row.dataset.slotIndex = String(i);
+      row.dataset.slotId = item.id;
 
       const time = document.createElement('input');
       time.type = 'time';
       time.className = 'setting-input bg-schedule-time';
       time.value = minutesToTimeInput(item.start);
-      time.dataset.slotTime = String(i);
+      time.dataset.slotTime = item.id;
       time.setAttribute('aria-label', I18n.t('settings.bg.schedule.slotTime'));
       row.appendChild(time);
 
@@ -991,7 +991,7 @@ const Settings = (() => {
       const rm = document.createElement('button');
       rm.className = 'bg-slide-item-remove';
       rm.type = 'button';
-      rm.dataset.slotRemove = String(i);
+      rm.dataset.slotRemove = item.id;
       rm.setAttribute('aria-label', I18n.t('settings.bg.schedule.remove', [minutesToTimeInput(item.start)]));
       rm.textContent = '×';
       row.appendChild(rm);
@@ -2221,25 +2221,28 @@ const Settings = (() => {
       refreshScheduleSummary();
       applyBackground();
     });
-    /* Row interactions: change a slot's start time, or remove the slot. */
+    /* Row interactions: change a slot's start time, or remove the slot.
+       A time input fires change while the user is still typing (each field
+       commit), so the change handler must NOT rebuild the row list — that
+       destroys the input and drops focus mid-edit. It updates the record by the
+       slot's stable id, refreshes the summary, and leaves the DOM alone. */
     if (bgScheduleRows) bgScheduleRows.addEventListener('change', async (e) => {
       const input = e.target && e.target.closest ? e.target.closest('[data-slot-time]') : null;
       if (!input) return;
-      const index = parseInt(input.dataset.slotTime, 10);
-      if (!Number.isFinite(index)) return;
+      const id = input.dataset.slotTime;
+      if (!id) return;
       const minutes = timeInputToMinutes(input.value);
       if (minutes == null) return;
-      await Background.updateScheduleEntryStart(index, minutes);
-      await refreshScheduleInfo();
+      await Background.updateScheduleEntryStart(id, minutes);
       refreshScheduleSummary();
       if (state.bgImageMode === 'schedule') applyBackground();
     });
     if (bgScheduleRows) bgScheduleRows.addEventListener('click', async (e) => {
       const btn = e.target && e.target.closest ? e.target.closest('[data-slot-remove]') : null;
       if (!btn) return;
-      const index = parseInt(btn.dataset.slotRemove, 10);
-      if (!Number.isFinite(index)) return;
-      await Background.removeScheduleEntry(index);
+      const id = btn.dataset.slotRemove;
+      if (!id) return;
+      await Background.removeScheduleEntry(id);
       await refreshScheduleInfo();
       refreshScheduleSummary();
       if (state.bgImageMode === 'schedule') applyBackground();

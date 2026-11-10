@@ -341,6 +341,9 @@ const Background = (() => {
     const items = rec.items
       .filter((it) => it && typeof it === 'object' && it.blob instanceof Blob)
       .map((it, i) => ({
+        /* Stable id: rows in the editor address slots by id, so re-sorting on a
+           time edit never redirects an update to the wrong slot. */
+        id: typeof it.id === 'string' && it.id ? it.id : null,
         name: typeof it.name === 'string' ? it.name : `slot-${i + 1}`,
         blob: it.blob,
         hash: typeof it.hash === 'string' ? it.hash : null,
@@ -351,7 +354,19 @@ const Background = (() => {
     return { items };
   }
 
-  const loadSchedule = async () => normalizeSchedule(await getItem(KEY_SCHEDULED));
+  const genSlotId = () => 'slot-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+
+  /* Every slot gets an id on first read; legacy records are backfilled once and
+     written back so ids stay stable across sessions. */
+  const loadSchedule = async () => {
+    const norm = normalizeSchedule(await getItem(KEY_SCHEDULED));
+    let dirty = false;
+    for (const it of norm.items) {
+      if (!it.id) { it.id = genSlotId(); dirty = true; }
+    }
+    if (dirty) { try { await putItem(KEY_SCHEDULED, { items: norm.items }); } catch { /* next read retries */ } }
+    return norm;
+  };
 
   const saveScheduleRecord = async (items) => {
     const epoch = mediaEpoch;
@@ -389,6 +404,7 @@ const Background = (() => {
     let hash = null;
     try { hash = await hashBlob(file); } catch { hash = null; }
     items.push({
+      id: genSlotId(),
       name: (file && typeof file.name === 'string' && file.name) ? file.name : `slot-${items.length + 1}`,
       blob: file,
       hash,
@@ -399,18 +415,23 @@ const Background = (() => {
     return saved;
   };
 
-  const updateScheduleEntryStart = async (index, startMin) => {
+  /* Slots are addressed by their stable id — the editor's rows deliberately keep
+     their on-screen order while a slot's start time is being edited, so an index
+     would point at the wrong slot after the record re-sorts. */
+  const updateScheduleEntryStart = async (id, startMin) => {
     const cur = await loadSchedule();
-    if (index < 0 || index >= cur.items.length) return cur;
+    const index = cur.items.findIndex((it) => it.id === id);
+    if (index === -1) return cur;
     const start = Math.min(1439, Math.max(0, Number.isInteger(startMin) ? startMin : 0));
     const items = cur.items.slice();
     items[index] = { ...items[index], start };
     return saveScheduleRecord(items); /* normalizeSchedule re-sorts */
   };
 
-  const removeScheduleEntry = async (index) => {
+  const removeScheduleEntry = async (id) => {
     const cur = await loadSchedule();
-    if (index < 0 || index >= cur.items.length) return cur;
+    const index = cur.items.findIndex((it) => it.id === id);
+    if (index === -1) return cur;
     const items = cur.items.slice();
     items.splice(index, 1);
     return saveScheduleRecord(items);
