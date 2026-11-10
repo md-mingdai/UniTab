@@ -15,7 +15,8 @@ const Settings = (() => {
     bgImageStored: false, // 上传的自定义图片已保存在 IndexedDB（image_blob）
     bgImageFileName: '',  // 上传图片的原始文件名（仅用于显示和导出命名）
     bgImageUrl: null,     // 自定义图片 URL（仅当 bgSource === 'image' 且用户填了链接时使用）
-    bgSlideMode: false,   // 自定义图片：幻灯片轮播（多图/文件夹），关闭则用单图
+    bgImageMode: 'single', // 'single' 单张 | 'slide' 幻灯片轮播 | 'schedule' 定时壁纸
+    bgSlideMode: false,   // bgImageMode 的派生镜像（右键上一张/下一张等既有逻辑使用）
     bgSlideInterval: 0,   // 轮播间隔分钟数（0 = 每次打开新标签页换一张）
     bgSlideRandom: false, // 幻灯片随机顺序
     bgBingUrl: null,      // 必应壁纸 URL（仅 bgSource === 'bing' 时使用）
@@ -129,7 +130,10 @@ const Settings = (() => {
 
   /* Form elements */
   let bgFileInput, bgFileName, bgUrlInput, bgUrlApply, bgUrlError;
-  let bgSlideModeInput, bgSlideAddInput, bgSlideDirInput, bgSlideThumbs;
+  let bgImageModeWrapper, bgImageModeTrigger, bgImageModeDropdown, bgImageModeLabel, bgImageModeSelect;
+  let bgScheduleSummary, bgScheduleListBtn, bgScheduleOptions, scheduleListDialog, scheduleListClose;
+  let bgScheduleRows, bgScheduleCount, bgScheduleAddInput;
+  let bgSlideAddInput, bgSlideDirInput, bgSlideThumbs;
   let bgSlideIntervalInput, bgSlideRandomToggle, bgSlideCount, bgSlideOptions;
   let bgSlideIntervalWrapper, bgSlideIntervalLabel;
   let bgSlideIntervalTrigger, bgSlideIntervalDropdown;
@@ -246,8 +250,24 @@ const Settings = (() => {
     bgUrlApply = document.getElementById('bg-url-apply');
     bgUrlError = document.getElementById('bg-url-error');
 
+    /* Image mode dropdown (single / slide / schedule) */
+    bgImageModeWrapper = document.getElementById('bg-image-mode-wrapper');
+    bgImageModeTrigger = document.getElementById('bg-image-mode-trigger');
+    bgImageModeDropdown = document.getElementById('bg-image-mode-dropdown');
+    bgImageModeLabel = document.getElementById('bg-image-mode-label');
+    bgImageModeSelect = document.getElementById('bg-image-mode-select');
+
+    /* Schedule controls */
+    bgScheduleSummary = document.getElementById('bg-schedule-summary');
+    bgScheduleListBtn = document.getElementById('bg-schedule-list-btn');
+    bgScheduleOptions = document.getElementById('bg-schedule-options');
+    scheduleListDialog = document.getElementById('schedule-list-dialog');
+    scheduleListClose = document.getElementById('schedule-list-close');
+    bgScheduleRows = document.getElementById('bg-schedule-rows');
+    bgScheduleCount = document.getElementById('bg-schedule-count');
+    bgScheduleAddInput = document.getElementById('bg-schedule-add-input');
+
     /* Slideshow controls (inside the image sub-panel) */
-    bgSlideModeInput = document.getElementById('bg-slide-mode');
     bgSlideAddInput = document.getElementById('bg-slide-add-input');
     bgSlideDirInput = document.getElementById('bg-slide-dir-input');
     bgSlideThumbs = document.getElementById('bg-slide-thumbs');
@@ -509,7 +529,7 @@ const Settings = (() => {
 
   /* Name for the Advanced tab's "export current wallpaper" action. The
      extension comes from the real blob MIME whenever one is available. */
-  function buildExportName(blob, source, url) {
+  function buildExportName(blob, source, url, preferredName) {
     if (source === 'video') {
       const raw = sanitizeFileName(state.bgVideoFileName || I18n.t('export.filename.video', ['mp4'])) || I18n.t('export.filename.video', ['mp4']);
       if (/\.(mp4|webm|mov|mkv|avi|ogv|flv|wmv|m4v|3gp)$/i.test(raw)) return raw;
@@ -526,7 +546,8 @@ const Settings = (() => {
       return I18n.t('export.filename.bing', [stamp, mimeExtension(blob, 'jpg')]);
     }
 
-    let raw = sanitizeFileName(state.bgImageFileName || nameFromUrl(url) || I18n.t('export.filename.image', ['jpg']));
+    /* preferredName: the current slide / schedule slot's own file name. */
+    let raw = sanitizeFileName(preferredName || state.bgImageFileName || nameFromUrl(url) || I18n.t('export.filename.image', ['jpg']));
     if (!raw) raw = I18n.t('export.filename.image', ['jpg']);
 
     const ext = mimeExtension(blob, 'jpg');
@@ -659,6 +680,16 @@ const Settings = (() => {
         state.bgThemeColor = state[activeColorKey];
         migrated = true;
       }
+    }
+    /* 图片模式迁移：旧版只有 bgSlideMode 布尔；新版是 bgImageMode，
+       bgSlideMode 保留为派生镜像。 */
+    if (state.bgImageMode !== 'single' && state.bgImageMode !== 'slide' && state.bgImageMode !== 'schedule') {
+      state.bgImageMode = state.bgSlideMode ? 'slide' : 'single';
+      migrated = true;
+    }
+    if (state.bgSlideMode !== (state.bgImageMode === 'slide')) {
+      state.bgSlideMode = state.bgImageMode === 'slide';
+      migrated = true;
     }
     if (migrated) saveSettings();
     syncFormToState();
@@ -810,16 +841,15 @@ const Settings = (() => {
     }
     setBingMeta(state.bgBingCopyright || '');
 
-    /* Slideshow controls (image sub-panel). The single-image controls are
-       hidden while slideshow mode is on, and the slideshow block is hidden
-       while it's off. Thumbnails are (re)rendered separately on demand. */
-    updateSlideModeToggle(state.bgSlideMode);
+    /* Image mode dropdown + sub-panels (single / slide / schedule). Only the
+       active mode's block is shown; the others' data is kept untouched. */
+    updateImageModeLabel(state.bgImageMode);
     updateSlideRandomToggle(state.bgSlideRandom);
     updateSlideIntervalLabel(state.bgSlideInterval || 0);
-    /* The single-image slot and the slideshow block are mutually exclusive;
-       the thumbnails are (re)rendered separately on demand. */
-    if (bgSingleImage) setGroupHidden(bgSingleImage, !!state.bgSlideMode);
-    if (bgSlideOptions) setGroupHidden(bgSlideOptions, !state.bgSlideMode);
+    if (bgSingleImage) setGroupHidden(bgSingleImage, state.bgImageMode !== 'single');
+    if (bgSlideOptions) setGroupHidden(bgSlideOptions, state.bgImageMode !== 'slide');
+    if (bgScheduleOptions) setGroupHidden(bgScheduleOptions, state.bgImageMode !== 'schedule');
+    refreshScheduleSummary();
 
     /* Video settings */
     updateVideoSoundToggle(state.bgVideoSoundOn);
@@ -862,6 +892,112 @@ const Settings = (() => {
   function revokeSlideThumbs() {
     slideThumbUrls.forEach((u) => { try { URL.revokeObjectURL(u); } catch { /* gone */ } });
     slideThumbUrls = [];
+  }
+
+  /* --- Time-scheduled wallpapers ---
+     Time input <-> minutes since midnight, plus the row renderer and the
+     one-line summary shown in the main panel. */
+  function minutesToTimeInput(min) {
+    const m = Math.min(1439, Math.max(0, min | 0));
+    return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+  }
+
+  function timeInputToMinutes(value) {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(String(value || '').trim());
+    if (!m) return null;
+    const h = parseInt(m[1], 10);
+    const mi = parseInt(m[2], 10);
+    if (h > 23 || mi > 59) return null;
+    return h * 60 + mi;
+  }
+
+  /* A slot's end may be the end of day (1440), displayed as 24:00. */
+  function formatSlotEnd(end) {
+    return end >= 1440 ? '24:00' : minutesToTimeInput(end);
+  }
+
+  /* End of a slot = the next slot's start (the last slot runs to midnight). */
+  function scheduleSlotRange(items, index) {
+    const start = items[index].start;
+    const end = index + 1 < items.length ? items[index + 1].start : 1440;
+    return { start, end };
+  }
+
+  async function refreshScheduleSummary() {
+    if (!bgScheduleSummary) return;
+    const active = await Background.activeScheduleEntry();
+    if (!active) {
+      bgScheduleSummary.textContent = I18n.t('settings.bg.schedule.empty');
+      return;
+    }
+    const sched = await Background.loadSchedule();
+    const range = scheduleSlotRange(sched.items, active.index);
+    bgScheduleSummary.textContent = I18n.t('settings.bg.schedule.current', [
+      minutesToTimeInput(range.start),
+      formatSlotEnd(range.end),
+      active.item.name || '',
+    ]);
+  }
+
+  let scheduleThumbUrls = [];
+  function revokeScheduleThumbs() {
+    scheduleThumbUrls.forEach((u) => { try { URL.revokeObjectURL(u); } catch { /* gone */ } });
+    scheduleThumbUrls = [];
+  }
+
+  async function refreshScheduleInfo() {
+    if (!bgScheduleRows) return;
+    const sched = await Background.loadSchedule();
+    const n = sched.items.length;
+    revokeScheduleThumbs();
+    bgScheduleRows.textContent = '';
+    if (!n) {
+      if (bgScheduleCount) bgScheduleCount.textContent = I18n.t('settings.bg.schedule.empty');
+      return;
+    }
+    if (bgScheduleCount) {
+      bgScheduleCount.textContent = I18n.t('settings.bg.schedule.slotCount', [String(n)]);
+    }
+    const active = await Background.activeScheduleEntry();
+    sched.items.forEach((item, i) => {
+      const range = scheduleSlotRange(sched.items, i);
+      const row = document.createElement('div');
+      row.className = 'bg-slide-item' + (active && active.index === i ? ' is-current' : '');
+      row.dataset.slotIndex = String(i);
+
+      const time = document.createElement('input');
+      time.type = 'time';
+      time.className = 'setting-input bg-schedule-time';
+      time.value = minutesToTimeInput(item.start);
+      time.dataset.slotTime = String(i);
+      time.setAttribute('aria-label', I18n.t('settings.bg.schedule.slotTime'));
+      row.appendChild(time);
+
+      const img = document.createElement('img');
+      img.className = 'bg-slide-item-thumb';
+      img.alt = item.name || `slot-${i + 1}`;
+      const url = URL.createObjectURL(item.blob);
+      scheduleThumbUrls.push(url);
+      img.src = url;
+      img.loading = 'lazy';
+      row.appendChild(img);
+
+      const name = document.createElement('span');
+      name.className = 'bg-slide-item-name';
+      name.textContent = item.name || `slot-${i + 1}`;
+      name.title = `${item.name || `slot-${i + 1}`}  ${minutesToTimeInput(range.start)} – ${formatSlotEnd(range.end)}`;
+      row.appendChild(name);
+
+      const rm = document.createElement('button');
+      rm.className = 'bg-slide-item-remove';
+      rm.type = 'button';
+      rm.dataset.slotRemove = String(i);
+      rm.setAttribute('aria-label', I18n.t('settings.bg.schedule.remove', [minutesToTimeInput(item.start)]));
+      rm.textContent = '×';
+      row.appendChild(rm);
+
+      bgScheduleRows.appendChild(row);
+    });
   }
 
   async function refreshSlideInfo() {
@@ -1048,7 +1184,8 @@ const Settings = (() => {
      mode the wallpaper is the current slide (background.js reads KEY_SLIDES);
      otherwise it is the single uploaded Blob or an image URL. */
   function customImageOpts() {
-    if (state.bgSlideMode) return { slideMode: true };
+    if (state.bgImageMode === 'slide') return { slideMode: true };
+    if (state.bgImageMode === 'schedule') return { scheduleMode: true };
     return {
       imageStored: !!state.bgImageStored,
       imageData: state.bgImageData || state.bgImageUrl
@@ -1059,7 +1196,7 @@ const Settings = (() => {
     const behavior = state.bgVideoOnEnded;
     if (behavior === 'customimage') {
       return () => {
-        if (state.bgSlideMode || state.bgImageStored || state.bgImageData || state.bgImageUrl) {
+        if (state.bgImageMode !== 'single' || state.bgImageStored || state.bgImageData || state.bgImageUrl) {
           bgLoad({ source: 'image', ...customImageOpts(), color: state.bgColor });
         }
       };
@@ -1101,6 +1238,7 @@ const Settings = (() => {
     if (state.bgSource === 'image') {
       bgLoad({ source: 'image', ...customImageOpts(), color: state.bgColor });
       restartSlideTimer();
+      restartScheduleTimer();
       return;
     }
     bgLoad({
@@ -1109,6 +1247,7 @@ const Settings = (() => {
       color: state.bgColor
     });
     restartSlideTimer();
+    restartScheduleTimer();
   }
 
   /* --- Slideshow timer ---
@@ -1141,6 +1280,42 @@ const Settings = (() => {
          fade — so just repaint from the slide that is now current. */
       applyBackground();
     }, minutes * 60 * 1000);
+  }
+
+  /* --- Time-scheduled wallpapers timer ---
+     While the tab stays open, wake up exactly when the next slot starts and
+     repaint. The delay is recomputed from the schedule on every call, so an
+     edited list (new slot, changed time) reschedules correctly. */
+  let scheduleTimer = null;
+
+  function restartScheduleTimer() {
+    if (scheduleTimer) { clearTimeout(scheduleTimer); scheduleTimer = null; }
+    if (state.bgSource !== 'image' || state.bgImageMode !== 'schedule') return;
+    /* Warm the previews of any newly added entries in the background. */
+    if (Background.ensureSchedulePreviews) Background.ensureSchedulePreviews();
+    (async () => {
+      const sched = await Background.loadSchedule();
+      if (!sched.items.length) return;
+      const now = new Date();
+      const nowMs = now.getTime();
+      const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+      let next = Infinity;
+      for (const it of sched.items) {
+        const at = midnight + it.start * 60000;
+        if (at > nowMs && at < next) next = at;
+      }
+      if (!Number.isFinite(next)) {
+        /* All starts have passed today: the next boundary is tomorrow's first. */
+        next = midnight + 86400000 + sched.items[0].start * 60000;
+      }
+      const delay = Math.max(1000, next - nowMs + 500);
+      scheduleTimer = setTimeout(() => {
+        scheduleTimer = null;
+        if (state.bgImageMode !== 'schedule') return;
+        applyBackground(); /* repaint for the new slot; reschedules itself */
+        refreshScheduleSummary();
+      }, delay);
+    })().catch(() => {});
   }
 
   /* --- Sub-panel visibility --- */
@@ -1510,10 +1685,23 @@ const Settings = (() => {
     bgBingAutoRefreshToggle.setAttribute('aria-checked', on ? 'true' : 'false');
   }
 
-  function updateSlideModeToggle(on) {
-    if (!bgSlideModeInput) return;
-    bgSlideModeInput.classList.toggle('on', !!on);
-    bgSlideModeInput.setAttribute('aria-checked', on ? 'true' : 'false');
+  /* Image mode dropdown mirrors the custom-select pattern used elsewhere:
+     label text + "selected" highlight per option. */
+  const IMAGE_MODE_KEY = {
+    single: 'settings.bg.mode.single',
+    slide: 'settings.bg.mode.slide',
+    schedule: 'settings.bg.mode.schedule',
+  };
+
+  function updateImageModeLabel(mode) {
+    const key = IMAGE_MODE_KEY[mode] || IMAGE_MODE_KEY.single;
+    if (bgImageModeLabel) bgImageModeLabel.textContent = I18n.t(key);
+    if (bgImageModeSelect) bgImageModeSelect.value = mode;
+    if (bgImageModeWrapper) {
+      bgImageModeWrapper.querySelectorAll('.custom-select-option').forEach((opt) => {
+        opt.classList.toggle('selected', opt.dataset.value === mode);
+      });
+    }
   }
 
   function updateSlideRandomToggle(on) {
@@ -1835,9 +2023,9 @@ const Settings = (() => {
       if (bgUrlError && !bgUrlError.hidden) showUrlError('');
     });
 
-    /* --- Slideshow (custom image source) ---
-       The slideshow and the single image are two sub-modes of the same source;
-       entering one clears the other so they never fight for the paint. */
+    /* --- Image mode (custom image source) ---
+       single / slide / schedule share the 'image' wallpaper source; only the
+       active mode's controls are shown and only it drives the wallpaper. */
 
     /* Slideshow list opens as an independent dialog layered above the settings
        panel (same .confirm-dialog pattern as the confirm/export dialogs), so the
@@ -1852,33 +2040,45 @@ const Settings = (() => {
     function openSlideList() { setSlideView('list'); }
     function closeSlideList() { setSlideView('main'); }
 
-    async function toggleSlideMode() {
-      const on = !state.bgSlideMode;
-      state.bgSlideMode = on;
-      updateSlideModeToggle(on);
-      if (on) {
-        /* Seed the list with the current single image (if any). The single-image
-           slot is kept intact — turning slide mode off falls back to it. */
-        await Background.migrateSingleImageToSlides();
-      }
-      /* Leaving slide mode keeps the list intact — toggling back on restores it
-         (and re-seeds the single image only if the list is still empty). */
-      saveSettings();
-      syncFormToState();
-      morphPanel(() => {
-        if (bgSingleImage) setGroupHidden(bgSingleImage, on);
-        if (bgSlideOptions) setGroupHidden(bgSlideOptions, !on);
-      });
-      applyBackground();
-      await refreshSlideInfo();
+    /* Schedule editor: same second-level dialog pattern as the slideshow list. */
+    function openScheduleList() {
+      if (!scheduleListDialog) return;
+      scheduleListDialog.hidden = false;
+      refreshScheduleInfo();
     }
-    bgSlideModeInput.addEventListener('click', toggleSlideMode);
-    bgSlideModeInput.addEventListener('keydown', (e) => {
-      if (e.key === ' ' || e.key === 'Enter') {
-        e.preventDefault();
-        toggleSlideMode();
+    function closeScheduleList() {
+      if (scheduleListDialog) scheduleListDialog.hidden = true;
+    }
+
+    let imageModeBusy = false;
+    async function setImageMode(mode) {
+      const next = (mode === 'slide' || mode === 'schedule') ? mode : 'single';
+      if (imageModeBusy) return;
+      imageModeBusy = true;
+      try {
+        state.bgImageMode = next;
+        state.bgSlideMode = next === 'slide'; /* keep the derived mirror in sync */
+        if (next === 'slide') {
+          /* Seed the list with the current single image (if any). The single-image
+             slot is kept intact — switching back still falls back to it. */
+          await Background.migrateSingleImageToSlides();
+        }
+        updateImageModeLabel(next);
+        saveSettings();
+        syncFormToState();
+        morphPanel(() => {
+          if (bgSingleImage) setGroupHidden(bgSingleImage, next !== 'single');
+          if (bgSlideOptions) setGroupHidden(bgSlideOptions, next !== 'slide');
+          if (bgScheduleOptions) setGroupHidden(bgScheduleOptions, next !== 'schedule');
+        });
+        applyBackground();
+        if (next === 'slide') await refreshSlideInfo();
+        else if (next === 'schedule') await refreshScheduleInfo();
+        else closeScheduleList();
+      } finally {
+        imageModeBusy = false;
       }
-    });
+    }
 
     /* Both multi-file and folder pickers funnel through one handler. The file
        list lives for the duration of the await only; it is drained into
@@ -1925,8 +2125,9 @@ const Settings = (() => {
         if (bgSlideCount) bgSlideCount.textContent = I18n.t('settings.bg.file.loadFailed');
         return;
       }
+      state.bgImageMode = 'slide';
       state.bgSlideMode = true;
-      updateSlideModeToggle(true);
+      updateImageModeLabel('slide');
       /* Point at the first newly added slide and show it now. */
       if (slides.items.length) {
         await Background.gotoSlide(slides.items.length - files.length);
@@ -1994,6 +2195,56 @@ const Settings = (() => {
       if (e.target === slideListDialog) closeSlideList();
     });
 
+    /* Image mode dropdown (single / slide / schedule). */
+    initCustomSelect(bgImageModeWrapper, (val) => setImageMode(val));
+
+    /* Schedule list dialog: same open/close contract as the slideshow list. */
+    if (bgScheduleListBtn) bgScheduleListBtn.addEventListener('click', openScheduleList);
+    if (scheduleListClose) scheduleListClose.addEventListener('click', closeScheduleList);
+    if (scheduleListDialog) scheduleListDialog.addEventListener('click', (e) => {
+      if (e.target === scheduleListDialog) closeScheduleList();
+    });
+    /* Add a slot: pick one image, append it with an automatic start time (first
+       slot 08:00, then one hour after the latest; the user can tweak the time
+       inline afterwards). */
+    if (bgScheduleAddInput) bgScheduleAddInput.addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0];
+      e.target.value = '';
+      if (!file || !file.type || !file.type.startsWith('image/')) return;
+      const cur = await Background.loadSchedule();
+      let start = 480; /* 08:00 */
+      if (cur.items.length) {
+        start = Math.min(1439, cur.items[cur.items.length - 1].start + 60);
+      }
+      await Background.addScheduleEntry(file, start);
+      await refreshScheduleInfo();
+      refreshScheduleSummary();
+      applyBackground();
+    });
+    /* Row interactions: change a slot's start time, or remove the slot. */
+    if (bgScheduleRows) bgScheduleRows.addEventListener('change', async (e) => {
+      const input = e.target && e.target.closest ? e.target.closest('[data-slot-time]') : null;
+      if (!input) return;
+      const index = parseInt(input.dataset.slotTime, 10);
+      if (!Number.isFinite(index)) return;
+      const minutes = timeInputToMinutes(input.value);
+      if (minutes == null) return;
+      await Background.updateScheduleEntryStart(index, minutes);
+      await refreshScheduleInfo();
+      refreshScheduleSummary();
+      if (state.bgImageMode === 'schedule') applyBackground();
+    });
+    if (bgScheduleRows) bgScheduleRows.addEventListener('click', async (e) => {
+      const btn = e.target && e.target.closest ? e.target.closest('[data-slot-remove]') : null;
+      if (!btn) return;
+      const index = parseInt(btn.dataset.slotRemove, 10);
+      if (!Number.isFinite(index)) return;
+      await Background.removeScheduleEntry(index);
+      await refreshScheduleInfo();
+      refreshScheduleSummary();
+      if (state.bgImageMode === 'schedule') applyBackground();
+    });
+
     bgSlideRandomToggle.addEventListener('click', () => {
       state.bgSlideRandom = !state.bgSlideRandom;
       updateSlideRandomToggle(state.bgSlideRandom);
@@ -2011,12 +2262,8 @@ const Settings = (() => {
       revokeSlideThumbs();
       /* An emptied slideshow has nothing to paint; fall back to the single-image
          slot and close the dialog — there's no list to look at any more. */
-      state.bgSlideMode = false;
-      updateSlideModeToggle(false);
       closeSlideList();
-      saveSettings();
-      syncFormToState();
-      applyBackground();
+      await setImageMode('single');
       await refreshSlideInfo();
     });
 
@@ -2034,9 +2281,8 @@ const Settings = (() => {
         /* Removing the last slide leaves nothing to paint; fall back to the
            single-image slot and close the dialog. */
         if (!slides.items.length) {
-          state.bgSlideMode = false;
-          updateSlideModeToggle(false);
           closeSlideList();
+          await setImageMode('single');
         }
       } else {
         /* Select this slide as the current one. */
@@ -2507,7 +2753,8 @@ const Settings = (() => {
     }
     if (source === 'image') {
       const opts = customImageOpts();
-      if (opts.imageStored) {
+      /* slideMode / scheduleMode resolve to a blob even without imageStored. */
+      if (opts.imageStored || opts.slideMode || opts.scheduleMode) {
         let blob = null;
         try { blob = await Background.getWallpaperBlob('image', opts); } catch { blob = null; }
         if (blob) return { source, src: blob };
@@ -2719,6 +2966,7 @@ const Settings = (() => {
 
     let url = '';
     let opts = {};
+    let exportName = '';
     if (source === 'bing') {
       url = state.bgBingUrl || '';
       opts = { url };
@@ -2726,6 +2974,16 @@ const Settings = (() => {
       opts = customImageOpts();
       url = state.bgImageUrl || (state.bgImageData && !state.bgImageData.startsWith('data:')
         ? state.bgImageData : '');
+      /* File name follows the image actually being shown (slide / time slot). */
+      try {
+        if (opts.scheduleMode) {
+          const active = await Background.activeScheduleEntry();
+          if (active && active.item.name) exportName = active.item.name;
+        } else if (opts.slideMode) {
+          const slide = await Background.currentSlide();
+          if (slide && slide.name) exportName = slide.name;
+        }
+      } catch { /* keep the generic fallback name */ }
     }
 
     try {
@@ -2733,7 +2991,7 @@ const Settings = (() => {
       try { blob = await Background.getWallpaperBlob(source, opts); } catch { blob = null; }
 
       if (blob && blob.size) {
-        const fileName = buildExportName(blob, source, url);
+        const fileName = buildExportName(blob, source, url, exportName);
         await downloadBlob(blob, fileName);
         await showExportDialog({
           ok: true,

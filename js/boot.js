@@ -123,17 +123,61 @@
 
      Slideshow ("every new tab" interval=0) is special: the index is advanced HERE
      (before first paint), and the current slide's own preview is used directly —
-     giving each slide its own placeholder colour and preview image. */
+     giving each slide its own placeholder colour and preview image.
+     Scheduled wallpapers pick the slot covering the current clock time the same
+     way, so the first frame already shows the right slot's preview and colour. */
   try {
     var source = saved.bgSource;
-    var isSlide = source === 'image' && saved.bgSlideMode;
+    var isScheduled = source === 'image' && saved.bgImageMode === 'schedule';
+    var isSlide = source === 'image' && !isScheduled && saved.bgSlideMode;
     var previewKey = source === 'bing' ? 'preview_bing'
       : source === 'image' ? 'preview_image'
       : source === 'video' ? 'preview_video'
       : null;
     if (previewKey && window.indexedDB) {
       var warm;
-      if (isSlide) {
+      if (isScheduled) {
+        /* Scheduled wallpapers: read the slot table, pick the entry covering
+           "now" (wrapping to the previous evening's last slot), use its pv. */
+        warm = new Promise(function (resolve) {
+          var req = indexedDB.open('unitab_bg', 1);
+          req.onupgradeneeded = function () {
+            if (!req.result.objectStoreNames.contains('media')) {
+              req.result.createObjectStore('media');
+            }
+          };
+          req.onerror = function () { resolve(null); };
+          req.onsuccess = function () {
+            var db = req.result;
+            try {
+              var tx = db.transaction('media', 'readonly');
+              var get = tx.objectStore('media').get('image_scheduled');
+              get.onsuccess = function () {
+                var rec = get.result;
+                if (!rec || !Array.isArray(rec.items) || !rec.items.length) { resolve(null); return; }
+                var now = new Date();
+                var nowMin = now.getHours() * 60 + now.getMinutes();
+                var pick = -1;
+                for (var i = 0; i < rec.items.length; i++) {
+                  if (rec.items[i].start <= nowMin) pick = i;
+                  else break;
+                }
+                if (pick === -1) pick = rec.items.length - 1;
+                var entry = rec.items[pick];
+                resolve(entry && entry.pv && entry.pv.blob
+                  ? { blob: entry.pv.blob, color: entry.pv.color, time: Date.now() }
+                  : null);
+              };
+              get.onerror = function () { resolve(null); };
+              tx.oncomplete = function () { db.close(); };
+              tx.onerror = tx.onabort = function () { db.close(); };
+            } catch (err) {
+              db.close();
+              resolve(null);
+            }
+          };
+        });
+      } else if (isSlide) {
         /* Slideshow: read the slide list, advance for interval=0, then use the
            current slide's own preview (pv) directly as the warm record. */
         warm = new Promise(function (resolve) {

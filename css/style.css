@@ -1460,6 +1460,12 @@ html[data-hide-settings-icon="true"] .settings-toggle:focus-visible {
   margin-bottom: 6px;
 }
 
+/* Breathing room between the image-mode dropdown and whichever mode's controls
+   follow it (single-image upload row / slideshow block / schedule summary). */
+#bg-image-mode-wrapper {
+  margin-bottom: 14px;
+}
+
 /* The slideshow custom-interval input reuses the engine-url row, but must start
    hidden and gain spacing below the interval dropdown when revealed. */
 #bg-slide-interval-custom {
@@ -2030,6 +2036,26 @@ html[data-hide-settings-icon="true"] .settings-toggle:focus-visible {
 
 .bg-slide-item:hover {
   background: rgb(var(--fg-rgb) / 0.14);
+}
+
+/* Time-of-day picker on a scheduled-wallpaper row. Compact, same height as the
+   row's other controls; the row itself must not act like a clickable slide. */
+.bg-slide-item .bg-schedule-time {
+  flex: 0 0 auto;
+  width: 112px;
+  margin-bottom: 0;
+  padding: 6px 8px;
+  font-size: 13px;
+  cursor: default;
+}
+
+/* Schedule rows are editors, not slide pickers: no pointer affordance/hover. */
+#bg-schedule-rows .bg-slide-item {
+  cursor: default;
+}
+
+#bg-schedule-rows .bg-slide-item:hover {
+  background: rgb(var(--fg-rgb) / 0.08);
 }
 
 .bg-slide-item.is-current {

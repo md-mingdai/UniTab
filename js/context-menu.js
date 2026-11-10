@@ -268,18 +268,23 @@ const ContextMenu = (() => {
     const source = wallpaperSource();
     try {
       let blob = null;
-      let slideName = null;
+      let slideName = null; /* current slide / schedule slot's own file name */
       const s = (typeof Settings !== 'undefined' && Settings.getState) ? Settings.getState() : {};
+      const scheduleMode = s.bgImageMode === 'schedule';
       if (typeof Background !== 'undefined' && Background.getWallpaperBlob) {
         blob = await Background.getWallpaperBlob(source, {
           url: s.bgBingUrl || s.bgImageUrl || '',
           slideMode: !!s.bgSlideMode,
+          scheduleMode,
           imageStored: !!s.bgImageStored,
         });
       }
       if (!blob) return;
-      /* In slide mode the saved file is the current slide: use its own name. */
-      if (source === 'image' && s.bgSlideMode && typeof Background !== 'undefined' && Background.currentSlide) {
+      /* The saved file is the image actually on screen: use its own name. */
+      if (source === 'image' && scheduleMode && typeof Background !== 'undefined' && Background.activeScheduleEntry) {
+        const active = await Background.activeScheduleEntry();
+        if (active && active.item.name) slideName = active.item.name;
+      } else if (source === 'image' && s.bgSlideMode && typeof Background !== 'undefined' && Background.currentSlide) {
         const slide = await Background.currentSlide();
         if (slide && slide.name) slideName = slide.name;
       }

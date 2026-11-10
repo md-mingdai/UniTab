@@ -164,15 +164,26 @@
 
         <!-- 自定义图片 子面板 -->
         <div class="setting-group bg-sub-panel setting-fade" data-panel="image" id="bg-image-panel" hidden>
-          <!-- 幻灯片总开关（开启后单图控件换成幻灯片控件） -->
-          <label class="setting-label setting-label-row" for="bg-slide-mode">
-            <span data-i18n="settings.bg.slide.mode">幻灯片轮播</span>
-            <span class="switch" role="switch" aria-checked="false" tabindex="0" id="bg-slide-mode">
-              <span class="switch-knob"></span>
-            </span>
-          </label>
+          <!-- 图片模式：单张 / 幻灯片 / 定时壁纸 -->
+          <label class="setting-label setting-label-sub" for="bg-image-mode-select"><span data-i18n="settings.bg.mode.label">图片模式</span></label>
+          <div class="custom-select-wrapper" id="bg-image-mode-wrapper">
+            <button class="custom-select-trigger" id="bg-image-mode-trigger" type="button">
+              <span id="bg-image-mode-label">单张图片</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <div class="custom-select-dropdown" id="bg-image-mode-dropdown" hidden>
+              <button class="custom-select-option" data-value="single" data-i18n="settings.bg.mode.single">单张图片</button>
+              <button class="custom-select-option" data-value="slide" data-i18n="settings.bg.mode.slide">幻灯片轮播</button>
+              <button class="custom-select-option" data-value="schedule" data-i18n="settings.bg.mode.schedule">定时壁纸</button>
+            </div>
+          </div>
+          <select id="bg-image-mode-select" class="setting-select-hidden" hidden>
+            <option value="single">单张图片</option>
+            <option value="slide">幻灯片轮播</option>
+            <option value="schedule">定时壁纸</option>
+          </select>
 
-          <!-- 单图控件：幻灯片关闭时显示 -->
+          <!-- 单图控件：模式为"单张图片"时显示 -->
           <div id="bg-single-image" class="setting-fade">
             <div class="file-upload-wrapper">
               <input type="file" id="bg-file-input" class="file-input" accept="image/*">
@@ -183,6 +194,12 @@
             <input type="url" id="bg-url-input" class="setting-input" data-i18n-placeholder="settings.bg.url.placeholder" autocomplete="off">
             <button id="bg-url-apply" class="setting-btn-secondary" data-i18n="settings.bg.url.apply">应用</button>
             <div id="bg-url-error" class="setting-meta setting-meta-error" role="alert" aria-live="polite" hidden></div>
+          </div>
+
+          <!-- 定时壁纸控件：模式为"定时壁纸"时显示 -->
+          <div id="bg-schedule-options" class="setting-fade" hidden>
+            <span id="bg-schedule-summary" class="file-name" data-i18n="settings.bg.schedule.empty">尚未配置时段</span>
+            <button id="bg-schedule-list-btn" class="setting-btn-secondary bg-slide-list-btn" data-i18n="settings.bg.schedule.list">定时壁纸列表</button>
           </div>
 
           <!-- 幻灯片控件：幻灯片开启时显示 -->
@@ -806,6 +823,22 @@
       </label>
       <div class="bg-slide-nav">
         <button id="bg-slide-clear" class="setting-btn-danger" data-i18n="settings.bg.slide.clear">清空</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 定时壁纸列表（二级对话框，与幻灯片列表同款） -->
+  <div id="schedule-list-dialog" class="confirm-dialog slide-list-dialog" hidden>
+    <div class="confirm-dialog-body slide-list-dialog-body">
+      <div class="slide-list-head">
+        <p class="slide-list-title" data-i18n="settings.bg.schedule.list">定时壁纸列表</p>
+        <button id="schedule-list-close" class="confirm-dialog-btn confirm-dialog-btn--ghost" data-i18n="settings.bg.slide.back">返回</button>
+      </div>
+      <span id="bg-schedule-count" class="file-name" data-i18n="settings.bg.schedule.empty">尚未配置时段</span>
+      <div id="bg-schedule-rows" class="bg-slide-thumbs" hidden></div>
+      <div class="bg-slide-nav">
+        <input type="file" id="bg-schedule-add-input" class="file-input" accept="image/*">
+        <label for="bg-schedule-add-input" class="file-upload-btn" data-i18n="settings.bg.schedule.add">添加时段</label>
       </div>
     </div>
   </div>

@@ -30,6 +30,10 @@ const Background = (() => {
   /* Slideshow record: { items: [{ name, blob }], index } — written atomically so a
      slide change never leaves the count and the position out of sync. */
   const KEY_SLIDES = 'image_slides';
+  /* Time-scheduled wallpapers: { items: [{ name, blob, hash, pv, start }] } where
+     start is minutes since midnight. Sorted by start; each entry covers
+     [start, next start), wrapping across midnight. */
+  const KEY_SCHEDULED = 'image_scheduled';
   /* Preview slots — one small image per source, stored separately so a switch
      between sources can always find the matching preview. */
   const PREVIEW_KEYS = {
@@ -326,6 +330,120 @@ const Background = (() => {
     return seeded.items.length;
   };
 
+  /* --- Time-scheduled wallpapers (分时段壁纸) ---
+     { items: [{ name, blob, hash, pv, start }] }, start = minutes since midnight.
+     Sorted by start; the active entry at time T is the one with the greatest
+     start <= T, wrapping to the last entry of the previous evening when T comes
+     before the first start. Each entry therefore covers [start, next start). */
+
+  function normalizeSchedule(rec) {
+    if (!rec || !Array.isArray(rec.items)) return { items: [] };
+    const items = rec.items
+      .filter((it) => it && typeof it === 'object' && it.blob instanceof Blob)
+      .map((it, i) => ({
+        name: typeof it.name === 'string' ? it.name : `slot-${i + 1}`,
+        blob: it.blob,
+        hash: typeof it.hash === 'string' ? it.hash : null,
+        start: Number.isInteger(it.start) ? Math.min(1439, Math.max(0, it.start)) : 0,
+        pv: it.pv && it.pv.blob instanceof Blob && it.pv.color ? { blob: it.pv.blob, color: it.pv.color } : null,
+      }))
+      .sort((a, b) => a.start - b.start);
+    return { items };
+  }
+
+  const loadSchedule = async () => normalizeSchedule(await getItem(KEY_SCHEDULED));
+
+  const saveScheduleRecord = async (items) => {
+    const epoch = mediaEpoch;
+    const rec = { items };
+    await putItem(KEY_SCHEDULED, rec);
+    if (epoch !== mediaEpoch) {
+      await deleteItem(KEY_SCHEDULED);
+      return normalizeSchedule(null);
+    }
+    return normalizeSchedule(rec);
+  };
+
+  /* Active entry for a local time of day, in minutes since midnight. Pass
+     nowMin explicitly in tests; the app calls it with no argument. */
+  const activeScheduleEntry = async (nowMin) => {
+    const cur = await loadSchedule();
+    if (!cur.items.length) return null;
+    const now = Number.isFinite(nowMin) ? nowMin : (() => {
+      const d = new Date();
+      return d.getHours() * 60 + d.getMinutes();
+    })();
+    let pick = -1;
+    for (let i = 0; i < cur.items.length; i++) {
+      if (cur.items[i].start <= now) pick = i;
+      else break; /* sorted ascending */
+    }
+    if (pick === -1) pick = cur.items.length - 1; /* before the first start: wrap */
+    return { item: cur.items[pick], index: pick };
+  };
+
+  const addScheduleEntry = async (file, startMin) => {
+    const cur = await loadSchedule();
+    const items = cur.items.slice();
+    const start = Number.isInteger(startMin) ? Math.min(1439, Math.max(0, startMin)) : 0;
+    let hash = null;
+    try { hash = await hashBlob(file); } catch { hash = null; }
+    items.push({
+      name: (file && typeof file.name === 'string' && file.name) ? file.name : `slot-${items.length + 1}`,
+      blob: file,
+      hash,
+      start,
+    });
+    const saved = await saveScheduleRecord(items);
+    ensureSchedulePreviews();
+    return saved;
+  };
+
+  const updateScheduleEntryStart = async (index, startMin) => {
+    const cur = await loadSchedule();
+    if (index < 0 || index >= cur.items.length) return cur;
+    const start = Math.min(1439, Math.max(0, Number.isInteger(startMin) ? startMin : 0));
+    const items = cur.items.slice();
+    items[index] = { ...items[index], start };
+    return saveScheduleRecord(items); /* normalizeSchedule re-sorts */
+  };
+
+  const removeScheduleEntry = async (index) => {
+    const cur = await loadSchedule();
+    if (index < 0 || index >= cur.items.length) return cur;
+    const items = cur.items.slice();
+    items.splice(index, 1);
+    return saveScheduleRecord(items);
+  };
+
+  const clearSchedule = () => deleteItem(KEY_SCHEDULED).catch(() => {});
+
+  /* Per-entry previews, mirroring ensureSlidePreviews (incremental, with a
+     blob-identity guard so concurrent edits are never clobbered). */
+  let previewGenScheduleInflight = null;
+  const ensureSchedulePreviews = async () => {
+    if (previewGenScheduleInflight) return previewGenScheduleInflight;
+    previewGenScheduleInflight = (async () => {
+      for (;;) {
+        const cur = await loadSchedule();
+        const missingIdx = cur.items.findIndex((it) => !it.pv);
+        if (missingIdx === -1) break;
+        let pv = null;
+        try {
+          const p = await imagePreview(cur.items[missingIdx].blob);
+          if (p && p.blob && p.blob.size) pv = { blob: p.blob, color: p.color };
+        } catch { /* leave pv null: one bad image must not abort the rest */ }
+        const latest = await loadSchedule();
+        const target = latest.items[missingIdx];
+        if (!target || target.pv) continue;
+        if (target.blob !== cur.items[missingIdx].blob) continue; /* list changed */
+        target.pv = pv || { blob: new Blob([]), color: '#808080' };
+        await putItem(KEY_SCHEDULED, { items: latest.items });
+      }
+    })().finally(() => { previewGenScheduleInflight = null; });
+    return previewGenScheduleInflight;
+  };
+
   /* Bumped whenever cached wallpaper bytes are cleared: an in-flight Bing
      download that started before the clear must not write the cache back. */
   let cacheEpoch = 0;
@@ -349,6 +467,11 @@ const Background = (() => {
       }
 
       if (source === 'image') {
+        if (opts.scheduleMode) {
+          const active = await activeScheduleEntry();
+          if (active && active.item.blob && active.item.blob.size) return active.item.blob;
+          return null;
+        }
         if (opts.slideMode) {
           const slide = await currentSlide();
           if (slide && slide.blob && slide.blob.size) return slide.blob;
@@ -721,15 +844,35 @@ const Background = (() => {
 
   /* --- Custom image ---
      In slideMode the wallpaper is the slideshow's current slide (KEY_SLIDES);
-     otherwise it is the single uploaded Blob or an image URL, as before. The
+     in scheduleMode it is the time slot that covers the current clock time
+     (KEY_SCHEDULED); otherwise the single uploaded Blob or an image URL. The
      preview slot is shared ('image'), so whichever blob paints also feeds the
      preview and its colour. */
   async function showImage(opts, token) {
     /* The stored image preview first (a few ms), then the wallpaper below it. */
     const preview = paintPreviewFromStore('image', token);
 
-    /* 0. Slideshow: paint the current slide. Falls through to the single-image
-          paths if the slideshow is empty, so a cleared list never blanks the tab. */
+    /* 0a. Scheduled wallpapers: paint the slot active right now. Falls through
+           to the single-image paths when no slots exist, like slide mode. */
+    if (opts.scheduleMode) {
+      const active = await activeScheduleEntry();
+      if (token !== loadToken) return;
+      if (active && active.item.blob) {
+        const entry = active.item;
+        if (entry.pv) {
+          paintPreviewBlob('image', entry.pv, token);
+        } else {
+          backfillPreview('image', preview, entry.blob);
+          ensureSchedulePreviews();
+        }
+        const objectUrl = URL.createObjectURL(entry.blob);
+        if (await displayPhoto(objectUrl, objectUrl, token) === 'failed') clearPhoto();
+        return;
+      }
+    }
+
+    /* 0b. Slideshow: paint the current slide. Falls through to the single-image
+           paths if the slideshow is empty, so a cleared list never blanks the tab. */
     if (opts.slideMode) {
       const slide = await currentSlide();
       if (token !== loadToken) return;
@@ -1408,6 +1551,8 @@ const Background = (() => {
     setVolume, setMuted, setLoop, setOnEnded,
     saveSlides, addSlides, removeSlide, clearSlides,
     loadSlides, currentSlide, advanceSlide, gotoSlide, migrateSingleImageToSlides,
-    ensureSlidePreviews, findDuplicateSlides, hashBlob
+    ensureSlidePreviews, findDuplicateSlides, hashBlob,
+    loadSchedule, activeScheduleEntry, addScheduleEntry, updateScheduleEntryStart,
+    removeScheduleEntry, clearSchedule, ensureSchedulePreviews
   };
 })();
