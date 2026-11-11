@@ -198,6 +198,8 @@ const Settings = (() => {
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) flushSettings();
     });
+    /* Settings changed in another tab: adopt them live (see onStorageSync). */
+    window.addEventListener('storage', onStorageSync);
 
     /* Auto-fetch Bing wallpaper when the active source has no image yet
        (first-time install), or when daily auto-refresh is on and today's
@@ -620,6 +622,15 @@ const Settings = (() => {
         saved = null;
       }
     }
+    if (applySavedSettings(saved, true)) saveSettings();
+    syncFormToState();
+  }
+
+  /* Merge a saved blob over DEFAULTS, clamp/normalize legacy values and run the
+     migrations. Returns true when a migration changed the state. `persist` is
+     false when re-applying another tab's write — echoing it back is pointless
+     and could fight that tab's own batched save. */
+  function applySavedSettings(saved, persist) {
     /* Keys missing from an older save fall back to DEFAULTS through the spread. */
     state = saved && typeof saved === 'object' ? { ...DEFAULTS, ...saved } : { ...DEFAULTS };
 
@@ -691,8 +702,7 @@ const Settings = (() => {
       state.bgSlideMode = state.bgImageMode === 'slide';
       migrated = true;
     }
-    if (migrated) saveSettings();
-    syncFormToState();
+    return migrated;
   }
 
   /* Persisting is deferred and batched: saveSettings() marks the state dirty and a
@@ -724,6 +734,40 @@ const Settings = (() => {
       saveTimer = 0;
     }
     saveDirty = false;
+  }
+
+  /* --- Cross-tab sync ---
+     Another tab writing the settings blob arrives as a storage event (writes
+     never fire the event in the tab that made them). Adopt that state live:
+     re-merge, re-render the panel and repaint the wallpaper — no reload, and no
+     echo write back, since the writer's value is already the newest truth. */
+  function onStorageSync(e) {
+    /* This tab is mid-reset (it just wiped storage): the writes are ours. */
+    if (isResetting) return;
+
+    if (e.key === STORAGE_KEY) {
+      let saved = null;
+      try {
+        saved = e.newValue ? JSON.parse(e.newValue) : null;
+      } catch { return; }
+      /* A pending local flush could overwrite the value we just adopted. */
+      cancelPendingSave();
+      applySavedSettings(saved, false);
+      syncFormToState();
+      applyAllToDom();
+      /* Panels whose content is derived from storage render asynchronously. */
+      if (state.bgSource === 'video') refreshVideoInfo();
+      refreshSlideInfo();
+      refreshScheduleInfo();
+      applyBackground();
+      return;
+    }
+
+    /* The language choice lives under its own key; mirror the other tab. */
+    if (e.key === 'unitab_locale') {
+      const val = e.newValue && I18n.getSupportedLocales().includes(e.newValue) ? e.newValue : 'auto';
+      setLocale(val);
+    }
   }
 
   /* Force a write now, even if nothing went through the batched saveSettings()

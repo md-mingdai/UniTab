@@ -40,7 +40,8 @@ const ContextMenu = (() => {
     volume: '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>',
     mute: '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>',
     prev: '<polyline points="15 18 9 12 15 6"/>',
-    next: '<polyline points="9 18 15 12 9 6"/>'
+    next: '<polyline points="9 18 15 12 9 6"/>',
+    copy: '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>'
   };
 
   /* --- small helpers ----------------------------------------------------- */
@@ -200,6 +201,25 @@ const ContextMenu = (() => {
     return items;
   }
 
+  /* Items for a bookmark in the bottom dock. Left-click already opens the link
+     in this tab, so the menu offers the other two common actions. */
+  function buildDockItems(link) {
+    const href = link.getAttribute('href') || '';
+    if (!href) return [];
+    return [
+      {
+        icon: 'external',
+        labelKey: 'contextmenu.dock.open',
+        action: () => window.open(href, '_blank', 'noopener,noreferrer')
+      },
+      {
+        icon: 'copy',
+        labelKey: 'contextmenu.dock.copy',
+        action: () => copyText(href, I18n.t('contextmenu.dock.copied'))
+      }
+    ];
+  }
+
   /* --- item actions ------------------------------------------------------ */
 
   function refreshBing() {
@@ -324,15 +344,18 @@ const ContextMenu = (() => {
     return (base || name) + '.' + ext;
   }
 
+  function copyText(text, doneLabel) {
+    const done = () => showToast(doneLabel);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+    } else {
+      fallbackCopy(text, done);
+    }
+  }
+
   function copySolidColor() {
     const s = (typeof Settings !== 'undefined' && Settings.getState) ? Settings.getState() : {};
-    const hex = s.bgColor || '#000000';
-    const done = () => showToast(I18n.t('contextmenu.color.copied'));
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(hex).then(done).catch(() => fallbackCopy(hex, done));
-    } else {
-      fallbackCopy(hex, done);
-    }
+    copyText(s.bgColor || '#000000', I18n.t('contextmenu.color.copied'));
   }
 
   function fallbackCopy(text, done) {
@@ -371,10 +394,15 @@ const ContextMenu = (() => {
 
   /* --- open / close / positioning ---------------------------------------- */
 
-  function openMenu(clientX, clientY) {
+  function openMenu(clientX, clientY, dockLink) {
     buildRoot();
     currentSource = wallpaperSource();
-    items = buildItems(currentSource);
+    /* A dock bookmark prepends its own link actions as an extra group; the
+       wallpaper options stay exactly as they are everywhere else. */
+    const wallpaperItems = buildItems(currentSource);
+    items = dockLink
+      ? [...buildDockItems(dockLink), { type: 'separator' }, ...wallpaperItems]
+      : wallpaperItems;
     renderItems();
     if (!items.length) return;
 
@@ -493,7 +521,11 @@ const ContextMenu = (() => {
       }
       e.preventDefault();
       closeMenu();
-      openMenu(e.clientX, e.clientY);
+      /* A bookmark in the bottom dock gets its own link actions. */
+      const dockLink = e.target && e.target.closest
+        ? e.target.closest('#bookmarks-bar .bookmark-item')
+        : null;
+      openMenu(e.clientX, e.clientY, dockLink);
     });
 
     document.addEventListener('click', (e) => {
