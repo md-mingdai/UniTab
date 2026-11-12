@@ -202,10 +202,24 @@ const Settings = (() => {
     /* Make sure the latest changes reach localStorage when the tab goes away. */
     window.addEventListener('pagehide', flushSettings);
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden) flushSettings();
+      if (document.hidden) {
+        flushSettings();
+        return;
+      }
+      /* IndexedDB changes fire no storage event: on returning to this tab,
+         re-read the slide / schedule lists and repaint only if they changed
+         (or, for schedule mode, if the active time slot changed while away). */
+      refreshIdbListsOnVisible().catch(() => {});
     });
     /* Settings changed in another tab: adopt them live (see onStorageSync). */
     window.addEventListener('storage', onStorageSync);
+
+    /* Seed the list signatures so the first visibility check compares against
+       what this tab actually painted, not against "nothing seen yet". */
+    Background.loadSlides().then((s) => { lastSlideListSig = slideListSig(s); }).catch(() => {});
+    Promise.all([Background.loadSchedule(), Background.activeScheduleEntry()])
+      .then(([sched, active]) => { lastScheduleSig = scheduleSig(sched, active); })
+      .catch(() => {});
 
     /* Auto-fetch Bing wallpaper when the active source has no image yet
        (first-time install), or when daily auto-refresh is on and today's
@@ -776,6 +790,32 @@ const Settings = (() => {
     }
   }
 
+  /* Returning to this tab: IndexedDB lists cannot notify across tabs, so compare
+     a fresh snapshot against the signatures recorded when the UI last rendered.
+     Only a real change triggers the (visibly re-fading) repaint. */
+  async function refreshIdbListsOnVisible() {
+    if (state.bgSource !== 'image') return;
+    if (state.bgImageMode === 'slide') {
+      const slides = await Background.loadSlides();
+      const sig = slideListSig(slides);
+      if (sig === lastSlideListSig) return;
+      lastSlideListSig = sig;
+      await refreshSlideInfo();
+      applyBackground();
+    } else if (state.bgImageMode === 'schedule') {
+      const [sched, active] = await Promise.all([
+        Background.loadSchedule(),
+        Background.activeScheduleEntry(),
+      ]);
+      const sig = scheduleSig(sched, active);
+      if (sig === lastScheduleSig) return;
+      lastScheduleSig = sig;
+      await refreshScheduleInfo();
+      refreshScheduleSummary();
+      applyBackground();
+    }
+  }
+
   /* Force a write now, even if nothing went through the batched saveSettings()
      path. External code that mutates the state object directly (the context
      menu's play/pause and sound toggles, the video playback synced back from
@@ -995,9 +1035,27 @@ const Settings = (() => {
     scheduleThumbUrls = [];
   }
 
+  /* Signatures of the IndexedDB-backed lists as last seen by this tab. Storage
+     events do not fire for IndexedDB, so on returning to this tab we compare a
+     fresh snapshot against these to decide whether a repaint is needed — an
+     unconditional repaint would visibly re-fade the same wallpaper. */
+  let lastSlideListSig = null;
+  let lastScheduleSig = null;
+
+  function slideListSig(slides) {
+    return slides.items.map((it) => it.name).join('|') + '#' + slides.index;
+  }
+
+  function scheduleSig(sched, active) {
+    return sched.items.map((it) => it.id + ':' + it.start + ':' + it.name).join('|')
+      + '@' + (active ? active.item.id : '');
+  }
+
   async function refreshScheduleInfo() {
     if (!bgScheduleRows) return;
     const sched = await Background.loadSchedule();
+    const activeForSig = await Background.activeScheduleEntry();
+    lastScheduleSig = scheduleSig(sched, activeForSig);
     const n = sched.items.length;
     revokeScheduleThumbs();
     bgScheduleRows.textContent = '';
@@ -1008,7 +1066,7 @@ const Settings = (() => {
     if (bgScheduleCount) {
       bgScheduleCount.textContent = I18n.t('settings.bg.schedule.slotCount', [String(n)]);
     }
-    const active = await Background.activeScheduleEntry();
+    const active = activeForSig;
     sched.items.forEach((item, i) => {
       const range = scheduleSlotRange(sched.items, i);
       const row = document.createElement('div');
@@ -1053,6 +1111,7 @@ const Settings = (() => {
   async function refreshSlideInfo() {
     if (!bgSlideThumbs) return;
     const slides = await Background.loadSlides();
+    lastSlideListSig = slideListSig(slides);
     const n = slides.items.length;
     if (!n) {
       revokeSlideThumbs();

@@ -26,7 +26,7 @@ A visually appealing, highly customizable new tab extension compatible with all 
 - **Video wallpaper** — Sound, volume and loop options; when playback ends, show black, hold the last frame, or switch to a custom image / Bing wallpaper
 - **Wallpaper previews** — Per-type low-resolution WebP previews and preview colors; startup fades in placeholder color → preview → full wallpaper
 - **Bottom dock** — Bookmarks bar and top sites merged and deduplicated, up to 6 items, showing each site's real favicon (letter avatar as fallback); supports auto-hide (slides out when the pointer nears the bottom) and per-bookmark right-click actions (open in new tab / copy link)
-- **Cross-tab sync** — Changing a setting in one tab applies live to every other open tab (language included)
+- **Cross-tab sync** — Changing a setting in one tab applies live to every other open tab (language included); slideshow and scheduled-wallpaper list edits sync when you return to a tab
 - **Display & effects** — Clock seconds, dock toggle, and 5 cursor effects (confetti / rain / bubble / star / Kivotos)
 - **Advanced tools** — Export the current wallpaper, maintain or clear previews, clear the Bing cache, and wipe all data behind a typed confirmation
 - **Dark mode** — Follows the system theme and respects `prefers-reduced-motion` and `prefers-reduced-transparency`
