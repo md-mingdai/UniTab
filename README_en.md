@@ -61,7 +61,7 @@ UniTab is available on the [Microsoft Edge Add-ons](https://microsoftedge.micros
 - **Suggestions** — Start typing to see suggestions; ↑ / ↓ to navigate, Enter to select, Esc to dismiss
 - **Background** — Settings → Background: choose Bing wallpaper of the day, upload an image, paste an image URL, use a solid color, or upload a video
 - **Image modes** — Custom images offer three modes: single image / slideshow / time-scheduled. Switching modes never clears the others' data
-- **Slideshow** — Open "Slideshow list": add multiple files or a whole folder, remove entries individually, and click any entry to make it the wallpaper. Configure the rotation interval (6 s – 1 h, or a custom number of minutes) and random order
+- **Slideshow** — Open "Slideshow list": add multiple files or a whole folder, remove entries individually, and click any entry to make it the wallpaper. Configure the rotation interval (6 s – 1 h, or a custom number of minutes) and random order. Oversized images or very large batches ask for confirmation before importing
 - **Scheduled wallpapers** — In the "Scheduled wallpapers" list, add time slots and adjust their start times; the slot covering the current clock time is shown automatically. Each slot runs until the next one starts, wrapping across midnight
 - **Video wallpaper** — After choosing a local video, configure sound, volume, looping, and what happens when playback ends
 - **Appearance** — Settings → Background for blur and overlay; Settings → Display for glass style and corner radius

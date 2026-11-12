@@ -30,6 +30,10 @@ const Background = (() => {
   /* Slideshow record: { items: [{ name, blob }], index } — written atomically so a
      slide change never leaves the count and the position out of sync. */
   const KEY_SLIDES = 'image_slides';
+  /* The current position lives in its own tiny key so advancing a slide writes a
+     few bytes instead of re-storing the whole item array (50 slides ≈ 35ms per
+     step when bundled). The record's own `index` is only a legacy fallback. */
+  const KEY_SLIDE_INDEX = 'image_slide_index';
   /* Time-scheduled wallpapers: { items: [{ name, blob, hash, pv, start }] } where
      start is minutes since midnight. Sorted by start; each entry covers
      [start, next start), wrapping across midnight. */
@@ -132,7 +136,18 @@ const Background = (() => {
     return { items, index: items.length ? Math.min(Math.max(index, 0), items.length - 1) : 0 };
   }
 
-  const loadSlides = async () => normalizeSlides(await getItem(KEY_SLIDES));
+  const saveSlideIndex = (index) => putItem(KEY_SLIDE_INDEX, index).catch(() => {});
+
+  const loadSlides = async () => {
+    const norm = normalizeSlides(await getItem(KEY_SLIDES));
+    let index = await getItem(KEY_SLIDE_INDEX);
+    if (!Number.isInteger(index)) {
+      index = norm.index; /* legacy record without the standalone index key */
+      if (norm.items.length) saveSlideIndex(index);
+    }
+    norm.index = norm.items.length ? Math.min(Math.max(index, 0), norm.items.length - 1) : 0;
+    return norm;
+  };
 
   /* SHA-256 hex of a blob's bytes — the fingerprint used to spot duplicate
      images across imports. Returns null when SubtleCrypto is unavailable
@@ -166,6 +181,7 @@ const Background = (() => {
       await deleteItem(KEY_SLIDES);
       return normalizeSlides(null);
     }
+    saveSlideIndex(0);
     return normalizeSlides(rec);
   };
 
@@ -192,6 +208,7 @@ const Background = (() => {
       await deleteItem(KEY_SLIDES);
       return normalizeSlides(null);
     }
+    saveSlideIndex(cur.index);
     return normalizeSlides(rec);
   };
 
@@ -230,10 +247,14 @@ const Background = (() => {
     if (next < 0) next = 0;
     const rec = { items, index: next };
     await putItem(KEY_SLIDES, rec);
+    saveSlideIndex(next);
     return normalizeSlides(rec);
   };
 
-  const clearSlides = () => deleteItem(KEY_SLIDES).catch(() => {});
+  const clearSlides = () => {
+    deleteItem(KEY_SLIDE_INDEX).catch(() => {});
+    return deleteItem(KEY_SLIDES).catch(() => {});
+  };
 
   /* Move the index by `delta` and return the image to show at the new position.
      With a single slide this is a no-op that still resolves to that slide. After
@@ -245,7 +266,7 @@ const Background = (() => {
     if (index < 0) index += cur.items.length;
     if (index >= cur.items.length) index -= cur.items.length;
     index = Math.min(Math.max(index, 0), cur.items.length - 1);
-    await putItem(KEY_SLIDES, { items: cur.items, index });
+    saveSlideIndex(index); /* tiny write — never re-store the item array here */
     await applySlidePreview(cur.items[index]);
     return cur.items[index];
   };
@@ -255,7 +276,7 @@ const Background = (() => {
     const cur = await loadSlides();
     if (!cur.items.length) return null;
     index = Math.min(Math.max(index, 0), cur.items.length - 1);
-    await putItem(KEY_SLIDES, { items: cur.items, index });
+    saveSlideIndex(index);
     await applySlidePreview(cur.items[index]);
     return cur.items[index];
   };
@@ -286,30 +307,45 @@ const Background = (() => {
      Each write re-reads the latest record and only attaches a pv at a given
      index — a concurrent addSlides / advanceSlide that appended or moved the
      index must not be clobbered by a stale snapshot. */
+  /* Did the item at this index change between our snapshot and the write-back?
+     IndexedDB returns a fresh Blob object on every read, so comparing object
+     identity is always "different" — compare the stable fields instead. */
+  const sameSlot = (a, b) => !!a && !!b
+    && a.name === b.name
+    && a.blob.size === b.blob.size
+    && a.blob.type === b.blob.type;
+
   let previewGenInflight = null;
   const ensureSlidePreviews = async () => {
     if (previewGenInflight) return previewGenInflight;
     previewGenInflight = (async () => {
       for (;;) {
         const cur = await loadSlides();
-        const missingIdx = cur.items.findIndex((it) => !it.pv);
-        if (missingIdx === -1) break;
-        let pv = null;
-        try {
-          const p = await imagePreview(cur.items[missingIdx].blob);
-          if (p && p.blob && p.blob.size) pv = { blob: p.blob, color: p.color };
-        } catch { /* leave pv null: one bad image must not abort the rest */ }
-        /* Re-read the latest list and attach pv at that index only when the item
-           at that index is the very blob we generated for. A concurrent
+        /* Up to 3 missing previews per round, generated concurrently — a large
+           folder import spends its time decoding, so serial was needlessly slow. */
+        const pending = [];
+        for (let i = 0; i < cur.items.length && pending.length < 3; i++) {
+          if (!cur.items[i].pv) pending.push(i);
+        }
+        if (!pending.length) break;
+        const built = await Promise.all(pending.map((i) =>
+          imagePreview(cur.items[i].blob).then((p) => [i, p]).catch(() => [i, null])
+        ));
+        /* Re-read the latest list and attach pv only where the item at that
+           index is still the very blob we generated for. A concurrent
            addSlides / removeSlide that changed the list means our snapshot is
-           stale — skip the write rather than clobber the newer list (the next
-           loop pass re-scans whatever is current). */
+           stale — skip that entry rather than clobber the newer list (the next
+           round re-scans whatever is current). */
         const latest = await loadSlides();
-        const target = latest.items[missingIdx];
-        if (!target || target.pv) continue;
-        if (target.blob !== cur.items[missingIdx].blob) continue; /* list changed */
-        target.pv = pv || { blob: new Blob([]), color: '#808080' };
-        await putItem(KEY_SLIDES, { items: latest.items, index: latest.index });
+        let wrote = false;
+        for (const [i, p] of built) {
+          const target = latest.items[i];
+          if (!target || target.pv) continue;
+          if (!sameSlot(target, cur.items[i])) continue; /* list changed */
+          target.pv = (p && p.blob && p.blob.size) ? { blob: p.blob, color: p.color } : { blob: new Blob([]), color: '#808080' };
+          wrote = true;
+        }
+        if (wrote) await putItem(KEY_SLIDES, { items: latest.items, index: latest.index });
       }
     })().finally(() => { previewGenInflight = null; });
     return previewGenInflight;
@@ -447,19 +483,24 @@ const Background = (() => {
     previewGenScheduleInflight = (async () => {
       for (;;) {
         const cur = await loadSchedule();
-        const missingIdx = cur.items.findIndex((it) => !it.pv);
-        if (missingIdx === -1) break;
-        let pv = null;
-        try {
-          const p = await imagePreview(cur.items[missingIdx].blob);
-          if (p && p.blob && p.blob.size) pv = { blob: p.blob, color: p.color };
-        } catch { /* leave pv null: one bad image must not abort the rest */ }
+        const pending = [];
+        for (let i = 0; i < cur.items.length && pending.length < 3; i++) {
+          if (!cur.items[i].pv) pending.push(i);
+        }
+        if (!pending.length) break;
+        const built = await Promise.all(pending.map((i) =>
+          imagePreview(cur.items[i].blob).then((p) => [i, p]).catch(() => [i, null])
+        ));
         const latest = await loadSchedule();
-        const target = latest.items[missingIdx];
-        if (!target || target.pv) continue;
-        if (target.blob !== cur.items[missingIdx].blob) continue; /* list changed */
-        target.pv = pv || { blob: new Blob([]), color: '#808080' };
-        await putItem(KEY_SCHEDULED, { items: latest.items });
+        let wrote = false;
+        for (const [i, p] of built) {
+          const target = latest.items[i];
+          if (!target || target.pv) continue;
+          if (!sameSlot(target, cur.items[i])) continue; /* list changed */
+          target.pv = (p && p.blob && p.blob.size) ? { blob: p.blob, color: p.color } : { blob: new Blob([]), color: '#808080' };
+          wrote = true;
+        }
+        if (wrote) await putItem(KEY_SCHEDULED, { items: latest.items });
       }
     })().finally(() => { previewGenScheduleInflight = null; });
     return previewGenScheduleInflight;

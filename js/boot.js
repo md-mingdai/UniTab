@@ -197,11 +197,15 @@
               var tx = db.transaction('media', 'readwrite');
               var store = tx.objectStore('media');
               var slidesReq = store.get('image_slides');
+              var idxReq = store.get('image_slide_index');
+              var rec2 = null;
+              var idxVal = null;
+              var got = 0;
               var pvRecord = null; /* captured current slide's pv, resolved on commit */
-              slidesReq.onsuccess = function () {
-                var rec2 = slidesReq.result;
+              var pick = function () {
+                if (++got < 2) return;
                 if (!rec2 || !Array.isArray(rec2.items) || rec2.items.length === 0) { finish(null); return; }
-                var idx = rec2.index || 0;
+                var idx = Number.isInteger(idxVal) ? idxVal : (rec2.index || 0);
                 var interval = typeof saved.bgSlideInterval === 'number' ? saved.bgSlideInterval : 0;
                 var random = !!saved.bgSlideRandom;
                 if (interval === 0 && rec2.items.length > 1) {
@@ -212,18 +216,19 @@
                   } else {
                     idx = (idx + 1) % rec2.items.length;
                   }
-                  rec2.index = idx;
-                  store.put(rec2, 'image_slides');
+                  store.put(idx, 'image_slide_index'); /* tiny index-only write */
                 }
-                var slide = rec2.items[idx];
+                var slide = rec2.items[Math.min(Math.max(idx, 0), rec2.items.length - 1)];
                 if (slide && slide.pv && slide.pv.blob) {
                   pvRecord = { blob: slide.pv.blob, color: slide.pv.color, time: Date.now() };
                 }
               };
-              slidesReq.onerror = function () { finish(null); };
+              slidesReq.onsuccess = function () { rec2 = slidesReq.result; pick(); };
+              idxReq.onsuccess = function () { idxVal = idxReq.result; pick(); };
+              slidesReq.onerror = idxReq.onerror = function () { finish(null); };
               /* Resolve on tx.oncomplete: the advanced index write is committed
-                 before background.js reads KEY_SLIDES, and pvRecord is already
-                 captured from the get above. */
+                 before background.js reads the index key, and pvRecord is
+                 already captured from the gets above. */
               tx.oncomplete = function () { finish(pvRecord); };
               tx.onerror = tx.onabort = function () { finish(null); };
             } catch (err) { try { db.close(); } catch (_) {} resolve(null); }

@@ -109,6 +109,12 @@ const Settings = (() => {
   let saveTimer = 0;
   let saveDirty = false;
 
+  /* Slideshow / scheduled-wallpaper import guardrails: an accidental folder of
+     huge photos can exhaust IndexedDB quota and stall the preview pipeline.
+     Crossing these asks once (not a hard block). */
+  const MAX_BG_IMAGE_BYTES = 25 * 1024 * 1024;
+  const MAX_SLIDE_COUNT = 200;
+
   const reduceMotionQuery = window.matchMedia
     ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
 
@@ -2160,6 +2166,19 @@ const Settings = (() => {
       }
       if (bgSlideCount) bgSlideCount.textContent = I18n.t('settings.bg.slide.importing', [String(files.length)]);
 
+      /* Oversized images / a runaway count: ask once before doing expensive work. */
+      const oversized = files.filter((f) => f.size > MAX_BG_IMAGE_BYTES).length;
+      const existingCount = (await Background.loadSlides()).items.length;
+      if (oversized || existingCount + files.length > MAX_SLIDE_COUNT) {
+        const proceed = await showConfirmDialog(I18n.t('settings.bg.slide.limit.confirm', [
+          String(oversized), String(existingCount + files.length), String(MAX_SLIDE_COUNT),
+        ]));
+        if (!proceed) {
+          if (bgSlideCount) bgSlideCount.textContent = I18n.t('settings.bg.slide.count', [String(existingCount)]);
+          return;
+        }
+      }
+
       /* Fingerprint the incoming files and check them against the existing
          slideshow. When any are already present, ask once whether to import
          them anyway (duplicates) or cancel the whole batch. */
@@ -2273,6 +2292,12 @@ const Settings = (() => {
       const file = e.target.files && e.target.files[0];
       e.target.value = '';
       if (!file || !file.type || !file.type.startsWith('image/')) return;
+      if (file.size > MAX_BG_IMAGE_BYTES) {
+        const proceed = await showConfirmDialog(
+          I18n.t('settings.bg.schedule.limit.confirm', [file.name || ''])
+        );
+        if (!proceed) return;
+      }
       const cur = await Background.loadSchedule();
       let start = 480; /* 08:00 */
       if (cur.items.length) {
