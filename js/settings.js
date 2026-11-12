@@ -1942,6 +1942,24 @@ const Settings = (() => {
     closeBtn.addEventListener('click', closePanel);
     overlayEl.addEventListener('click', closePanel);
 
+    /* Keyboard focus containment: Tab / Shift+Tab wrap at the panel's edges so
+       focus cannot escape to the page behind the dialog. */
+    panel.addEventListener('keydown', (e) => {
+      if (e.key !== 'Tab' || !panel.classList.contains('open')) return;
+      const focusables = panelFocusables();
+      if (!focusables.length) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && (active === first || !panel.contains(active))) {
+        e.preventDefault();
+        last.focus({ preventScroll: true });
+      } else if (!e.shiftKey && (active === last || !panel.contains(active))) {
+        e.preventDefault();
+        first.focus({ preventScroll: true });
+      }
+    });
+
     /* Collapsible setting categories: click the header to fold/unfold. */
     settingCategories.forEach(cat => {
       const header = cat.querySelector('.setting-category-header');
@@ -3697,7 +3715,20 @@ const Settings = (() => {
   /* --- Panel state --- */
   /* Closed means `visibility: hidden` in css (no backdrop blur kept alive, nothing
      focusable), so there are no `hidden` flips or timeouts to coordinate here. */
+
+  /* Focus containment: while the panel is open, Tab cycles inside it, and
+     closing returns focus to whatever had it before. */
+  let lastFocusedBeforePanel = null;
+
+  function panelFocusables() {
+    const nodes = panel.querySelectorAll(
+      'button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    return [...nodes].filter((el) => !el.disabled && el.offsetParent !== null);
+  }
+
   function openPanel() {
+    lastFocusedBeforePanel = document.activeElement;
     panel.classList.add('open');
     panel.setAttribute('aria-hidden', 'false');
     overlayEl.classList.add('open');
@@ -3709,6 +3740,8 @@ const Settings = (() => {
     toggle.style.pointerEvents = 'none';
     if (state.bgSource === 'video') refreshVideoInfo();
     if (getActiveTab() === 'advanced') refreshAdvancedInfo();
+    /* Move focus into the dialog so keyboard users land inside it. */
+    if (closeBtn) closeBtn.focus({ preventScroll: true });
   }
 
   function closePanel() {
@@ -3719,6 +3752,12 @@ const Settings = (() => {
     toggle.style.pointerEvents = '';
     closeAllDropdowns();
     if (window.ColorPicker) window.ColorPicker.close();
+    /* Return focus to the trigger (the toggle is visible again by now). */
+    const back = lastFocusedBeforePanel;
+    lastFocusedBeforePanel = null;
+    if (back && typeof back.focus === 'function' && document.contains(back)) {
+      back.focus({ preventScroll: true });
+    }
   }
 
   return {
