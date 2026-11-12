@@ -177,6 +177,7 @@ const Settings = (() => {
   let advancedExportBtn, advancedExportHint;
   let advancedPreviewStatus, advancedClearPreviews, advancedRegenPreview, advancedRepickColor;
   let advancedStorageInfo, advancedClearBingCache, advancedResetAll;
+  let advancedExportSettingsBtn, advancedImportSettingsInput;
 
   /* Typed confirmation dialog */
   let resetAllDialog, resetAllInput, resetAllConfirm, resetAllCancel, resetAllError, resetAllPhrase;
@@ -398,6 +399,8 @@ const Settings = (() => {
     advancedStorageInfo = document.getElementById('advanced-storage-info');
     advancedClearBingCache = document.getElementById('advanced-clear-bing-cache');
     advancedResetAll = document.getElementById('advanced-reset-all');
+    advancedExportSettingsBtn = document.getElementById('advanced-export-settings');
+    advancedImportSettingsInput = document.getElementById('advanced-import-settings-input');
 
     /* Typed confirmation dialog */
     resetAllDialog = document.getElementById('reset-all-dialog');
@@ -2858,6 +2861,16 @@ const Settings = (() => {
     if (advancedResetAll) {
       advancedResetAll.addEventListener('click', resetAllConfiguration);
     }
+    if (advancedExportSettingsBtn) {
+      advancedExportSettingsBtn.addEventListener('click', exportSettingsBackup);
+    }
+    if (advancedImportSettingsInput) {
+      advancedImportSettingsInput.addEventListener('change', async (e) => {
+        const file = e.target.files && e.target.files[0];
+        e.target.value = '';
+        if (file) await importSettingsBackup(file);
+      });
+    }
   }
 
   /* ================================================================
@@ -3091,6 +3104,85 @@ const Settings = (() => {
         if (seq === advancedRefreshSeq) advancedStorageInfo.textContent = I18n.t('settings.advanced.storage.status.readFailed');
       }
     }
+  }
+
+  /* --- Settings backup (JSON) ---
+     Only the settings blob + language preference are exported; wallpaper and
+     slideshow files live in IndexedDB and are intentionally left out. */
+  const BACKUP_APP = 'unitab';
+  const BACKUP_SCHEMA = 1;
+
+  function buildSettingsBackup() {
+    let locale = null;
+    try { locale = localStorage.getItem('unitab_locale'); } catch { /* unavailable */ }
+    return JSON.stringify({
+      app: BACKUP_APP,
+      schema: BACKUP_SCHEMA,
+      exportedAt: new Date().toISOString(),
+      settings: state,
+      locale,
+    }, null, 2);
+  }
+
+  async function exportSettingsBackup() {
+    if (!advancedExportSettingsBtn) return;
+    const originalLabel = advancedExportSettingsBtn.textContent;
+    advancedExportSettingsBtn.disabled = true;
+    advancedExportSettingsBtn.textContent = I18n.t('dialog.export.exporting');
+    try {
+      const json = buildSettingsBackup();
+      const stamp = new Date().toISOString().slice(0, 10);
+      const fileName = `unitab-settings-${stamp}.json`;
+      const blob = new Blob([json], { type: 'application/json' });
+      await downloadBlob(blob, fileName);
+      await showExportDialog({
+        ok: true,
+        title: I18n.t('settings.advanced.backup.export.done.title'),
+        detail: `${fileName}（${formatBytes(blob.size)}）`,
+      });
+    } catch { /* download failures are silent, same as the wallpaper export */ }
+    finally {
+      advancedExportSettingsBtn.disabled = false;
+      advancedExportSettingsBtn.textContent = originalLabel;
+    }
+  }
+
+  async function importSettingsBackup(file) {
+    let data = null;
+    try {
+      data = JSON.parse(await file.text());
+    } catch { data = null; }
+    if (!data || data.app !== BACKUP_APP || !data.settings || typeof data.settings !== 'object') {
+      await showExportDialog({
+        ok: false,
+        title: I18n.t('settings.advanced.backup.import.invalid.title'),
+        detail: I18n.t('settings.advanced.backup.import.invalid.desc'),
+      });
+      return;
+    }
+    const proceed = await showConfirmDialog(I18n.t('settings.advanced.backup.import.confirm'));
+    if (!proceed) return;
+
+    /* Adopt the file's settings wholesale, then force-write them (the import is
+       exactly the case where the batched save would lose a closing tab). */
+    cancelPendingSave();
+    applySavedSettings(data.settings, false);
+    if (typeof data.locale === 'string' && I18n.getSupportedLocales().includes(data.locale)) {
+      try { localStorage.setItem('unitab_locale', data.locale); } catch { /* unavailable */ }
+      await setLocale(data.locale);
+    }
+    persist();
+    syncFormToState();
+    applyAllToDom();
+    refreshVideoInfo();
+    refreshSlideInfo();
+    refreshScheduleInfo();
+    applyBackground();
+    await showExportDialog({
+      ok: true,
+      title: I18n.t('settings.advanced.backup.import.done.title'),
+      detail: I18n.t('settings.advanced.backup.import.done.desc'),
+    });
   }
 
   async function exportCurrentWallpaper() {

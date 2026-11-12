@@ -2230,6 +2230,14 @@ html[data-hide-settings-icon="true"] .settings-toggle:focus-visible {
   border-bottom: 1px solid rgb(var(--fg-rgb) / 0.06);
 }
 
+/* Import-settings label doubles as a button; keep it shrink-proof and clickable. */
+.advanced-import-row {
+  flex-shrink: 0;
+}
+.advanced-import-row .setting-btn-secondary {
+  cursor: pointer;
+}
+
 .advanced-action:last-child {
   padding-bottom: 0;
   border-bottom: 0;

@@ -718,6 +718,34 @@
           </div>
         </section>
 
+        <!-- 设置备份（导出 / 导入 JSON，不含壁纸文件） -->
+        <section class="advanced-section setting-category" data-group="adv-backup" aria-labelledby="advanced-backup-title">
+          <button type="button" class="setting-category-header advanced-section-title" id="advanced-backup-title" aria-expanded="true">
+            <svg class="setting-category-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            <span data-i18n="settings.advanced.backup.title">设置备份</span>
+          </button>
+          <div class="setting-category-body">
+          <div class="advanced-action">
+            <div class="advanced-action-copy">
+              <div class="advanced-action-title" data-i18n="settings.advanced.backup.export.title">导出设置</div>
+              <p class="advanced-action-desc" data-i18n="settings.advanced.backup.export.desc">把全部设置与语言偏好保存为 JSON 文件，便于换浏览器或换机后恢复。壁纸文件本身不包含在内。</p>
+            </div>
+            <button id="advanced-export-settings" class="setting-btn-secondary" type="button" data-i18n="settings.advanced.backup.export.btn">导出</button>
+          </div>
+
+          <div class="advanced-action">
+            <div class="advanced-action-copy">
+              <div class="advanced-action-title" data-i18n="settings.advanced.backup.import.title">导入设置</div>
+              <p class="advanced-action-desc" data-i18n="settings.advanced.backup.import.desc">从备份文件恢复设置，将覆盖当前设置（壁纸文件不受影响）。</p>
+            </div>
+            <div class="advanced-import-row">
+              <input type="file" id="advanced-import-settings-input" class="file-input" accept="application/json,.json">
+              <label for="advanced-import-settings-input" class="setting-btn-secondary" data-i18n="settings.advanced.backup.import.btn">导入</label>
+            </div>
+          </div>
+          </div>
+        </section>
+
         <section class="advanced-section setting-category" data-group="adv-danger" aria-labelledby="advanced-danger-title">
           <button type="button" class="setting-category-header advanced-section-title advanced-section-title--danger" id="advanced-danger-title" aria-expanded="true">
             <svg class="setting-category-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>

@@ -67,7 +67,7 @@ UniTab is available on the [Microsoft Edge Add-ons](https://microsoftedge.micros
 - **Appearance** — Settings → Background for blur and overlay; Settings → Display for glass style and corner radius
 - **Display & effects** — Settings → Display: clock seconds, dock, cursor effects and style
 - **Dock** — Automatically merges the bookmarks bar with top sites (up to 6 items). With "auto-hide" on, the dock slides out only when the pointer nears the bottom of the screen. Right-click a bookmark to open it in a new tab or copy its link
-- **Advanced tools** — Settings → Advanced: export the current wallpaper, clear / regenerate previews, re-pick the preview color, clear the Bing cache
+- **Advanced tools** — Settings → Advanced: export the current wallpaper, clear / regenerate previews, re-pick the preview color, clear the Bing cache, and export / import a settings backup (JSON, wallpaper files excluded)
 - **Reset** — The footer's "Restore defaults" only resets the active tab. To delete every setting, wallpaper, preview and cache entry, use Advanced → Danger Zone → Clear All Configuration and type the warning phrase by hand (pasting is blocked)
 
 ## Keyboard Shortcuts
