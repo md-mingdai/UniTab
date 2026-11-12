@@ -22,9 +22,11 @@ A visually appealing, highly customizable new tab extension compatible with all 
 - **Multi-engine search** — Google, Bing, Sogou and Baidu; live suggestions for Google / Bing / Baidu (Sogou has no public suggestion API)
 - **Smart suggestions** — 150ms debounce, LRU cache, keyboard navigation (↑ / ↓ / Enter / Esc), Baidu JSONP and GBK support
 - **Custom backgrounds** — Bing wallpaper of the day, uploaded image or image URL, solid color, or video; blur 0–50px, overlay 0–100% with 8 presets plus a custom color
+- **Three image modes** — Single image / slideshow / time-scheduled. A slideshow can import multiple files or a whole folder, gives every image its own preview and theme color, rotates every 6 s – 1 h (or a custom interval), supports random order, and switches instantly when you click a list entry. Scheduled wallpapers change automatically by time slot (e.g. 08:00–12:00), wrap across midnight, and rotate while the tab stays open
 - **Video wallpaper** — Sound, volume and loop options; when playback ends, show black, hold the last frame, or switch to a custom image / Bing wallpaper
 - **Wallpaper previews** — Per-type low-resolution WebP previews and preview colors; startup fades in placeholder color → preview → full wallpaper
-- **Bottom dock** — Browser bookmarks and top sites merged and deduplicated, up to 6 items, with letter-avatar favicons
+- **Bottom dock** — Bookmarks bar and top sites merged and deduplicated, up to 6 items, showing each site's real favicon (letter avatar as fallback); supports auto-hide (slides out when the pointer nears the bottom) and per-bookmark right-click actions (open in new tab / copy link)
+- **Cross-tab sync** — Changing a setting in one tab applies live to every other open tab (language included)
 - **Display & effects** — Clock seconds, dock toggle, and 5 cursor effects (confetti / rain / bubble / star / Kivotos)
 - **Advanced tools** — Export the current wallpaper, maintain or clear previews, clear the Bing cache, and wipe all data behind a typed confirmation
 - **Dark mode** — Follows the system theme and respects `prefers-reduced-motion` and `prefers-reduced-transparency`
@@ -58,10 +60,13 @@ UniTab is available on the [Microsoft Edge Add-ons](https://microsoftedge.micros
 - **Search** — Type a query and press Enter or click the arrow button; the default engine can be changed in Settings → Search and is persisted
 - **Suggestions** — Start typing to see suggestions; ↑ / ↓ to navigate, Enter to select, Esc to dismiss
 - **Background** — Settings → Background: choose Bing wallpaper of the day, upload an image, paste an image URL, use a solid color, or upload a video
+- **Image modes** — Custom images offer three modes: single image / slideshow / time-scheduled. Switching modes never clears the others' data
+- **Slideshow** — Open "Slideshow list": add multiple files or a whole folder, remove entries individually, and click any entry to make it the wallpaper. Configure the rotation interval (6 s – 1 h, or a custom number of minutes) and random order
+- **Scheduled wallpapers** — In the "Scheduled wallpapers" list, add time slots and adjust their start times; the slot covering the current clock time is shown automatically. Each slot runs until the next one starts, wrapping across midnight
 - **Video wallpaper** — After choosing a local video, configure sound, volume, looping, and what happens when playback ends
 - **Appearance** — Settings → Background for blur and overlay; Settings → Display for glass style and corner radius
 - **Display & effects** — Settings → Display: clock seconds, dock, cursor effects and style
-- **Dock** — Automatically merges the bookmarks bar with top sites (up to 6 items)
+- **Dock** — Automatically merges the bookmarks bar with top sites (up to 6 items). With "auto-hide" on, the dock slides out only when the pointer nears the bottom of the screen. Right-click a bookmark to open it in a new tab or copy its link
 - **Advanced tools** — Settings → Advanced: export the current wallpaper, clear / regenerate previews, re-pick the preview color, clear the Bing cache
 - **Reset** — The footer's "Restore defaults" only resets the active tab. To delete every setting, wallpaper, preview and cache entry, use Advanced → Danger Zone → Clear All Configuration and type the warning phrase by hand (pasting is blocked)
 
@@ -90,7 +95,7 @@ UniTab/
 │   ├── main.js             # Entry point, Clock module, init order
 │   ├── search.js           # Search engines, cached suggestions, JSONP parsing
 │   ├── settings.js         # Settings panel, controls, persistence and advanced tools
-│   ├── bookmarks.js        # Bookmarks + top sites, letter-avatar favicons
+│   ├── bookmarks.js        # Bookmarks + top sites, real site icons (letter-avatar fallback), auto-hide
 │   ├── background.js       # Wallpaper / video / blur / overlay (IndexedDB)
 │   ├── cursor.js           # Cursor effects (canvas and listeners created on demand)
 │   └── effect-kivotos.js   # Kivotos effect (loaded only when selected)
