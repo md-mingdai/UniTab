@@ -5,7 +5,21 @@
 const Bookmarks = (() => {
   const bookmarksList = document.getElementById('bookmarks-list');
   const bookmarksBar = document.getElementById('bookmarks-bar');
-  const MAX_ITEMS = 6;
+  const DEFAULT_MAX_ITEMS = 6;
+  const MAX_MAX_ITEMS = 10;
+
+  /* How many items the dock shows (设置 → 显示 → Dock 数量, 1–10). Read on every
+     render so a slider change re-slices the list without a reload. */
+  function maxItems() {
+    try {
+      const s = (typeof Settings !== 'undefined' && Settings.getState)
+        ? Settings.getState()
+        : null;
+      const n = s ? parseInt(s.dockCount, 10) : NaN;
+      if (Number.isFinite(n)) return Math.min(MAX_MAX_ITEMS, Math.max(1, n));
+    } catch {}
+    return DEFAULT_MAX_ITEMS;
+  }
 
   /* The list shown last time (title + url, a few hundred bytes). It is painted straight
      away on the next new tab; the browser's answer then only touches the DOM if it
@@ -24,6 +38,16 @@ const Bookmarks = (() => {
     e.preventDefault();
     window.location.href = item.href;
   });
+
+  /* Settings → Dock 数量 changed: paint the cached list at the new size right
+     away, then ask the browser again (lowering the count only needs the cache,
+     raising it may need items the cache never held). */
+  function setMaxItems() {
+    renderedKey = null;
+    renderFromCache();
+    loadPromise = null;
+    load();
+  }
 
   function setVisible(visible) {
     if (!bookmarksBar) return;
@@ -93,7 +117,7 @@ const Bookmarks = (() => {
       const [bookmarks, topSites] = await Promise.all([readBookmarksBar(), readTopSites()]);
 
       /* Combine: bookmarks first, then top sites to fill remaining slots */
-      const combined = mergeUnique(bookmarks, topSites).slice(0, MAX_ITEMS);
+      const combined = mergeUnique(bookmarks, topSites).slice(0, maxItems());
       render(combined);
       saveCache(combined);
     } catch (err) {
@@ -135,7 +159,7 @@ const Bookmarks = (() => {
       if (!Array.isArray(items)) return;
       const valid = items
         .filter((i) => i && typeof i.url === 'string' && i.url && typeof i.title === 'string')
-        .slice(0, MAX_ITEMS);
+        .slice(0, maxItems());
       if (valid.length) render(valid);
     } catch {
       /* missing or corrupt cache: wait for the real data */
@@ -286,5 +310,5 @@ const Bookmarks = (() => {
     return escapeHtml(str).replace(/"/g, QUOT_ENTITY);
   }
 
-  return { load, setVisible, setAutoHide };
+  return { load, setVisible, setAutoHide, setMaxItems };
 })();

@@ -25,6 +25,7 @@ const ContextMenu = (() => {
   let built = false;
   let open = false;
   let hideTimer = 0;
+  let pendingOpenTimer = 0;     /* deferred re-open after the exit animation */
   let items = [];               /* items of the currently open menu */
   let focusIndex = -1;
   let currentSource = null;
@@ -449,6 +450,12 @@ const ContextMenu = (() => {
   }
 
   function closeMenu() {
+    /* A deferred re-open (right-click while the menu was still up) must not
+       pop the card back open after this close. */
+    if (pendingOpenTimer) {
+      clearTimeout(pendingOpenTimer);
+      pendingOpenTimer = 0;
+    }
     if (!built || !open) return;
     open = false;
     root.dataset.open = 'false';
@@ -520,15 +527,34 @@ const ContextMenu = (() => {
         return;
       }
       e.preventDefault();
-      closeMenu();
       /* A bookmark in the bottom dock gets its own link actions. */
       const dockLink = e.target && e.target.closest
         ? e.target.closest('#bookmarks-bar .bookmark-item')
         : null;
+
+      /* Menu already on screen: play its exit first, then open a fresh card at
+         the new spot. Re-opening in place only moves the visible card, which
+         reads as a teleport instead of a new menu. */
+      if (open) {
+        const x = e.clientX, y = e.clientY;
+        closeMenu();
+        pendingOpenTimer = setTimeout(() => {
+          pendingOpenTimer = 0;
+          openMenu(x, y, dockLink);
+        }, FADE_MS + 20);
+        return;
+      }
+
+      closeMenu();
       openMenu(e.clientX, e.clientY, dockLink);
     });
 
     document.addEventListener('click', (e) => {
+      /* A left-click during the re-open gap means "dismiss", not "reopen". */
+      if (pendingOpenTimer) {
+        clearTimeout(pendingOpenTimer);
+        pendingOpenTimer = 0;
+      }
       if (!open) return;
       if (root && (root === e.target || root.contains(e.target))) return;
       closeMenu();

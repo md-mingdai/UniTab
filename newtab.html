@@ -28,7 +28,10 @@
   </div>
 
   <!-- Clock -->
-  <div id="clock" class="clock" data-i18n-aria-label="clock.ariaLabel"></div>
+  <div id="clock" class="clock" data-i18n-aria-label="clock.ariaLabel">
+    <div class="clock-time" id="clock-time"></div>
+    <div class="clock-date" id="clock-date" hidden></div>
+  </div>
 
   <!-- Main Search Area -->
   <main class="main-content">
@@ -102,6 +105,12 @@
       <button class="settings-tab" role="tab" id="tab-display" data-tab="display" aria-selected="false" aria-controls="tab-panel-display" tabindex="-1" type="button" data-i18n="settings.tabs.display">显示</button>
       <button class="settings-tab" role="tab" id="tab-advanced" data-tab="advanced" aria-selected="false" aria-controls="tab-panel-advanced" tabindex="-1" type="button" data-i18n="settings.tabs.advanced">高级</button>
       <div class="settings-tab-indicator" aria-hidden="true"></div>
+    </div>
+
+    <!-- 设置搜索：过滤当前 tab 内的设置项 -->
+    <div class="settings-search-row">
+      <input type="search" id="settings-search" class="setting-input settings-search" data-i18n-placeholder="settings.search.placeholder" placeholder="搜索设置" aria-label="搜索设置" autocomplete="off" spellcheck="false">
+      <p id="settings-search-empty" class="settings-search-empty" data-i18n="settings.search.empty" hidden>未找到匹配的设置项</p>
     </div>
 
     <div class="settings-body">
@@ -479,6 +488,24 @@
           </label>
         </div>
 
+        <div class="setting-group setting-fade" id="show-date-group">
+          <label class="setting-label setting-label-row" for="show-date-toggle">
+            <span data-i18n="settings.display.date">时钟显示日期</span>
+            <span class="switch" role="switch" aria-checked="false" tabindex="0" id="show-date-toggle">
+              <span class="switch-knob"></span>
+            </span>
+          </label>
+        </div>
+
+        <div class="setting-group setting-fade" id="hour12-group">
+          <label class="setting-label setting-label-row" for="hour12-toggle">
+            <span data-i18n="settings.display.hour12">12 小时制</span>
+            <span class="switch" role="switch" aria-checked="false" tabindex="0" id="hour12-toggle">
+              <span class="switch-knob"></span>
+            </span>
+          </label>
+        </div>
+
           </div>
         </div>
 
@@ -505,6 +532,11 @@
               <span class="switch-knob"></span>
             </span>
           </label>
+        </div>
+
+        <div class="setting-group setting-fade" id="dock-count-group">
+          <label class="setting-label" for="dock-count-slider"><span data-i18n="settings.display.dockCount">Dock 栏显示数量</span> <span id="dock-count-display">6</span></label>
+          <input type="range" id="dock-count-slider" class="setting-slider" min="1" max="10" value="6" step="1">
         </div>
 
         <div class="setting-group">
@@ -849,6 +881,23 @@
           <span class="switch-knob"></span>
         </span>
       </label>
+      <div class="setting-group" style="margin-top:12px">
+        <label class="setting-label" for="bg-slide-transition-select" data-i18n="settings.bg.slide.transition">切换效果</label>
+        <div class="custom-select-wrapper" id="bg-slide-transition-wrapper">
+          <button class="custom-select-trigger" id="bg-slide-transition-trigger" type="button">
+            <span id="bg-slide-transition-label">淡入淡出</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <div class="custom-select-dropdown" id="bg-slide-transition-dropdown" hidden>
+            <button class="custom-select-option" data-value="fade" data-i18n="settings.bg.slide.transition.fade">淡入淡出</button>
+            <button class="custom-select-option" data-value="zoom" data-i18n="settings.bg.slide.transition.zoom">缓慢缩放</button>
+          </div>
+        </div>
+        <select id="bg-slide-transition-select" class="setting-select-hidden" hidden>
+          <option value="fade">淡入淡出</option>
+          <option value="zoom">缓慢缩放</option>
+        </select>
+      </div>
       <div class="bg-slide-nav">
         <button id="bg-slide-clear" class="setting-btn-danger" data-i18n="settings.bg.slide.clear">清空</button>
       </div>

@@ -119,6 +119,21 @@ body {
   opacity: 1;
 }
 
+/* Slideshow "slow zoom" switch: the new photo settles from a slight overscale
+   while its opacity fades in. One-shot, removed by background.js. */
+@keyframes bg-zoom-in {
+  from { transform: scale(1.06); }
+  to { transform: scale(1); }
+}
+
+.background-photo.bg-zoom-in {
+  animation: bg-zoom-in 0.8s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .background-photo.bg-zoom-in { animation: none; }
+}
+
 /* The stored preview (tiny WebP per wallpaper type) sits under the photo: it is
    decoded in a few ms and fades in over the colour placeholder as soon as the
    page has the blob, then the full wallpaper fades in above it. Same sizing as
@@ -219,6 +234,20 @@ body {
   /* Master clock switch fades it in/out. visibility flips after the fade on
      the way out (so it leaves the a11y tree) and immediately on the way in. */
   transition: opacity 0.35s ease, visibility 0s 0s;
+}
+
+.clock-time {
+  line-height: 1;
+}
+
+/* Optional second line: the date, in the interface language. */
+.clock-date {
+  margin-top: 14px;
+  font-size: 0.24em;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  opacity: 0.72;
 }
 
 .clock.clock--hidden {
@@ -1081,6 +1110,23 @@ html[data-hide-settings-icon="true"] .settings-toggle:focus-visible {
   background: rgba(248, 113, 113, 0.87);
   border-color: rgba(252, 165, 165, 0.92);
   color: #fef3f3;
+}
+
+/* Settings search — filters the active tab as you type. */
+.settings-search-row {
+  padding: 10px 24px 0;
+}
+.settings-search {
+  width: 100%;
+  margin-bottom: 0;
+}
+.settings-search-empty {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+.setting-search-hidden {
+  display: none !important;
 }
 
 /* Settings Tabs */

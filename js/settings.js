@@ -19,6 +19,7 @@ const Settings = (() => {
     bgSlideMode: false,   // bgImageMode 的派生镜像（右键上一张/下一张等既有逻辑使用）
     bgSlideInterval: 0,   // 轮播间隔分钟数（0 = 每次打开新标签页换一张）
     bgSlideRandom: false, // 幻灯片随机顺序
+    bgSlideTransition: 'fade', // 幻灯片切换效果：'fade' | 'zoom'
     bgBingUrl: null,      // 必应壁纸 URL（仅 bgSource === 'bing' 时使用）
     bgBingCopyright: '',  // 必应壁纸标题 + 版权信息（持久化，刷新页面也显示）
     bgBingCopyrightLink: '', // 必应版权词条链接（API 的 copyrightlink，右键"打开来源页面"用）
@@ -29,10 +30,13 @@ const Settings = (() => {
     bgThemeColorBing: '', // 必应壁纸的预览色
     bgThemeColorImage: '',// 自定义图片的预览色
     bgThemeColorVideo: '',// 视频壁纸（首帧）的预览色
-    showClock: true,     // 时钟总控（关闭则整个时钟隐藏，秒数子项随之隐藏）
+    showClock: true,     // 时钟总控（关闭则整个时钟隐藏，格式子项随之隐藏）
     showSeconds: true,
+    showDate: false,     // 时钟第二行显示日期（按当前语言格式化）
+    hour12: false,       // 12 小时制（默认 24 小时制）
     showBookmarks: true,  // 底部常用网址 Dock 栏开关
     autoHideBookmarks: false, // 自动收起 Dock 栏：只在鼠标接近底部时滑出（需先开启 Dock 栏）
+    dockCount: 6,        // Dock 栏显示数量 1-10
     showContextMenu: true, // 主界面自定义右键菜单（按壁纸类型提供操作）
     autoHideSettingsIcon: false, // 自动隐藏设置图标：开启后仅在悬停其位置时显示
     settingsIconHideStrength: 50, // 自动隐藏强度 0-100（越低越容易浮现，0=不隐藏）
@@ -76,6 +80,10 @@ const Settings = (() => {
      removes every unitab_* key, so these are cleared along with everything else. */
   const CUSTOM_URL_KEY = 'unitab_engine_custom_url';
   const CUSTOM_SUGGEST_KEY = 'unitab_engine_custom_suggest';
+  const SLIDE_TRANSITION_LABEL_KEY = {
+    fade: 'settings.bg.slide.transition.fade',
+    zoom: 'settings.bg.slide.transition.zoom'
+  };
   const CURSOR_STYLE_LABEL_KEY = {
     confetti: 'settings.display.cursorStyle.confetti',
     rain: 'settings.display.cursorStyle.rain',
@@ -120,6 +128,7 @@ const Settings = (() => {
 
   /* --- DOM refs --- */
   let panel, toggle, closeBtn, overlayEl;
+  let settingsSearchInput, settingsSearchEmpty;
 
   /* Auto-hide settings gear: the button's opacity follows the pointer's distance
      to its centre (fully visible inside the near radius, gone past the far one). */
@@ -144,6 +153,8 @@ const Settings = (() => {
   let bgSlideIntervalWrapper, bgSlideIntervalLabel;
   let bgSlideIntervalTrigger, bgSlideIntervalDropdown;
   let bgSlideClear, bgSlideListBtn, slideListDialog, slideListClose;
+  let bgSlideTransitionWrapper, bgSlideTransitionTrigger, bgSlideTransitionDropdown, bgSlideTransitionLabel;
+  let bgSlideTransitionSelect;
   let bgSlideIntervalCustom, bgSlideIntervalCustomInput, bgSlideIntervalCustomApply;
   let bgSingleImage;
   let bgBingRefresh, bgBingMeta, bgBingAutoRefreshToggle, bgBingPanel, bgImagePanel, bgColorPanel, bgVideoPanel;
@@ -163,8 +174,10 @@ const Settings = (() => {
   let languageSelectWrapper, languageSelectTrigger, languageSelectDropdown, languageSelectLabel, languageSelectNative;
   let showClockToggle, showSecondsGroup;
   let showSecondsToggle;
+  let showDateToggle, showDateGroup, hour12Toggle, hour12Group;
   let showBookmarksToggle;
   let autoHideBookmarksToggle, autoHideBookmarksGroup;
+  let dockCountGroup, dockCountSlider, dockCountDisplay;
   let showContextMenuToggle;
   let autoHideSettingsIconToggle;
   let autoHideSettingsStrengthGroup, autoHideSettingsStrengthSlider, autoHideSettingsStrengthDisplay;
@@ -235,6 +248,8 @@ const Settings = (() => {
     panel = document.getElementById('settings-panel');
     toggle = document.getElementById('settings-toggle');
     closeBtn = document.getElementById('settings-close');
+    settingsSearchInput = document.getElementById('settings-search');
+    settingsSearchEmpty = document.getElementById('settings-search-empty');
     overlayEl = document.getElementById('settings-overlay');
 
     /* Tabs */
@@ -303,6 +318,11 @@ const Settings = (() => {
     bgSlideIntervalCustomInput = document.getElementById('bg-slide-interval-custom-input');
     bgSlideIntervalCustomApply = document.getElementById('bg-slide-interval-custom-apply');
     bgSlideRandomToggle = document.getElementById('bg-slide-random-toggle');
+    bgSlideTransitionWrapper = document.getElementById('bg-slide-transition-wrapper');
+    bgSlideTransitionTrigger = document.getElementById('bg-slide-transition-trigger');
+    bgSlideTransitionDropdown = document.getElementById('bg-slide-transition-dropdown');
+    bgSlideTransitionLabel = document.getElementById('bg-slide-transition-label');
+    bgSlideTransitionSelect = document.getElementById('bg-slide-transition-select');
     bgSlideCount = document.getElementById('bg-slide-count');
     bgSlideOptions = document.getElementById('bg-slide-options');
     bgSlideClear = document.getElementById('bg-slide-clear');
@@ -363,9 +383,16 @@ const Settings = (() => {
     showClockToggle = document.getElementById('show-clock-toggle');
     showSecondsGroup = document.getElementById('show-seconds-group');
     showSecondsToggle = document.getElementById('show-seconds-toggle');
+    showDateToggle = document.getElementById('show-date-toggle');
+    showDateGroup = document.getElementById('show-date-group');
+    hour12Toggle = document.getElementById('hour12-toggle');
+    hour12Group = document.getElementById('hour12-group');
     showBookmarksToggle = document.getElementById('show-bookmarks-toggle');
     autoHideBookmarksToggle = document.getElementById('auto-hide-bookmarks-toggle');
     autoHideBookmarksGroup = document.getElementById('auto-hide-bookmarks-group');
+    dockCountGroup = document.getElementById('dock-count-group');
+    dockCountSlider = document.getElementById('dock-count-slider');
+    dockCountDisplay = document.getElementById('dock-count-display');
     showContextMenuToggle = document.getElementById('show-context-menu-toggle');
     autoHideSettingsIconToggle = document.getElementById('auto-hide-settings-toggle');
     autoHideSettingsStrengthGroup = document.getElementById('auto-hide-strength-group');
@@ -444,6 +471,8 @@ const Settings = (() => {
        locale's labels; let refreshAdvancedInfo() re-measure it. */
     previewButtonWidthsReserved = false;
     syncFormToState();
+    /* The 12-hour day period and the date line are locale-formatted. */
+    if (typeof Clock !== 'undefined' && Clock.refresh) Clock.refresh();
     refreshVideoInfo();
     refreshAdvancedInfo();
     updateLanguageLabel(languageSelectNative.value || 'auto');
@@ -660,6 +689,11 @@ const Settings = (() => {
     /* The strength slider bottoms out at 5 %; clamp values saved by older builds. */
     state.settingsIconHideStrength = Math.min(100, Math.max(5, state.settingsIconHideStrength));
 
+    /* Dock item count: 1–10, falling back to the default for junk values
+       (hand-edited storage, imported backups). */
+    const dockCount = parseInt(state.dockCount, 10);
+    state.dockCount = Number.isFinite(dockCount) ? Math.min(10, Math.max(1, dockCount)) : 6;
+
     /* Fold state is a plain key -> bool map; ignore anything else from old saves. */
     if (!state.foldedGroups || typeof state.foldedGroups !== 'object') {
       state.foldedGroups = {};
@@ -723,6 +757,11 @@ const Settings = (() => {
     }
     if (state.bgSlideMode !== (state.bgImageMode === 'slide')) {
       state.bgSlideMode = state.bgImageMode === 'slide';
+      migrated = true;
+    }
+    /* Slideshow switch style: only two known values. */
+    if (state.bgSlideTransition !== 'fade' && state.bgSlideTransition !== 'zoom') {
+      state.bgSlideTransition = 'fade';
       migrated = true;
     }
     return migrated;
@@ -875,14 +914,19 @@ const Settings = (() => {
 
     /* Show seconds toggle */
     updateShowClockToggle(state.showClock);
-    setShowSecondsGroupVisible(state.showClock);
+    setClockSubGroupsVisible(state.showClock);
     updateShowSecondsToggle(state.showSeconds);
+    updateShowDateToggle(state.showDate);
+    updateHour12Toggle(state.hour12);
 
     /* Bookmarks bar toggle + its auto-hide sub-option (only meaningful while
        the dock itself is on). */
     updateShowBookmarksToggle(state.showBookmarks);
     updateAutoHideBookmarksToggle(state.autoHideBookmarks);
     setGroupHidden(autoHideBookmarksGroup, !state.showBookmarks);
+    dockCountSlider.value = state.dockCount;
+    dockCountDisplay.textContent = String(state.dockCount);
+    setGroupHidden(dockCountGroup, !state.showBookmarks);
 
     /* Right-click menu toggle */
     updateShowContextMenuToggle(state.showContextMenu);
@@ -938,6 +982,9 @@ const Settings = (() => {
        active mode's block is shown; the others' data is kept untouched. */
     updateImageModeLabel(state.bgImageMode);
     updateSlideRandomToggle(state.bgSlideRandom);
+    if (bgSlideTransitionSelect) bgSlideTransitionSelect.value = state.bgSlideTransition;
+    updateSlideTransitionLabel(state.bgSlideTransition);
+    updateSlideTransitionDropdown(state.bgSlideTransition);
     updateSlideIntervalLabel(state.bgSlideInterval || 0);
     if (bgSingleImage) setGroupHidden(bgSingleImage, state.bgImageMode !== 'single');
     if (bgSlideOptions) setGroupHidden(bgSlideOptions, state.bgImageMode !== 'slide');
@@ -1236,6 +1283,12 @@ const Settings = (() => {
           Clock.setShowSeconds(value);
         }
         break;
+      case 'showDate':
+      case 'hour12':
+        if (typeof Clock !== 'undefined' && Clock.refresh) {
+          Clock.refresh(value);
+        }
+        break;
       case 'showBookmarks':
         if (typeof Bookmarks !== 'undefined' && Bookmarks.setVisible) {
           Bookmarks.setVisible(value);
@@ -1244,6 +1297,11 @@ const Settings = (() => {
         break;
       case 'autoHideBookmarks':
         syncDockAutoHide();
+        break;
+      case 'dockCount':
+        if (typeof Bookmarks !== 'undefined' && Bookmarks.setMaxItems) {
+          Bookmarks.setMaxItems(value);
+        }
         break;
       case 'autoHideSettingsIcon':
         root.dataset.hideSettingsIcon = value ? 'true' : 'false';
@@ -1282,8 +1340,11 @@ const Settings = (() => {
     applyToDom('engine', state.engine);
     applyToDom('showClock', state.showClock);
     applyToDom('showSeconds', state.showSeconds);
+    applyToDom('showDate', state.showDate);
+    applyToDom('hour12', state.hour12);
     applyToDom('showBookmarks', state.showBookmarks);
     applyToDom('autoHideBookmarks', state.autoHideBookmarks);
+    applyToDom('dockCount', state.dockCount);
     applyToDom('showContextMenu', state.showContextMenu);
     applyToDom('autoHideSettingsIcon', state.autoHideSettingsIcon);
     applyToDom('showCursorEffect', state.showCursorEffect);
@@ -1376,13 +1437,10 @@ const Settings = (() => {
     slideTimer = setInterval(async () => {
       if (!state.bgSlideMode || state.bgSource !== 'image') return;
       if (state.bgSlideRandom) {
-        const slides = await Background.loadSlides();
-        if (slides.items.length < 2) return;
-        let next;
-        do {
-          next = Math.floor(Math.random() * slides.items.length);
-        } while (next === slides.index);
-        await Background.gotoSlide(next);
+        /* The no-repeat bag lives in background.js so the first-frame advance
+           in boot.js and the open-tab timer draw from the same round. */
+        if ((await Background.loadSlides()).items.length < 2) return;
+        await Background.randomSlide();
       } else {
         await Background.advanceSlide(1);
       }
@@ -1706,14 +1764,28 @@ const Settings = (() => {
     showClockToggle.setAttribute('aria-checked', on ? 'true' : 'false');
   }
 
-  function setShowSecondsGroupVisible(visible) {
+  function setClockSubGroupsVisible(visible) {
     setGroupHidden(showSecondsGroup, !visible);
+    setGroupHidden(showDateGroup, !visible);
+    setGroupHidden(hour12Group, !visible);
   }
 
   function updateShowSecondsToggle(on) {
     if (!showSecondsToggle) return;
     showSecondsToggle.classList.toggle('on', !!on);
     showSecondsToggle.setAttribute('aria-checked', on ? 'true' : 'false');
+  }
+
+  function updateShowDateToggle(on) {
+    if (!showDateToggle) return;
+    showDateToggle.classList.toggle('on', !!on);
+    showDateToggle.setAttribute('aria-checked', on ? 'true' : 'false');
+  }
+
+  function updateHour12Toggle(on) {
+    if (!hour12Toggle) return;
+    hour12Toggle.classList.toggle('on', !!on);
+    hour12Toggle.setAttribute('aria-checked', on ? 'true' : 'false');
   }
 
   function updateShowBookmarksToggle(on) {
@@ -1814,6 +1886,19 @@ const Settings = (() => {
         opt.classList.toggle('selected', opt.dataset.value === mode);
       });
     }
+  }
+
+  function updateSlideTransitionLabel(val) {
+    if (!bgSlideTransitionLabel) return;
+    const key = SLIDE_TRANSITION_LABEL_KEY[val];
+    bgSlideTransitionLabel.textContent = key ? I18n.t(key) : val;
+  }
+
+  function updateSlideTransitionDropdown(val) {
+    if (!bgSlideTransitionDropdown) return;
+    bgSlideTransitionDropdown.querySelectorAll('.custom-select-option').forEach((opt) => {
+      opt.classList.toggle('selected', opt.dataset.value === val);
+    });
   }
 
   function updateSlideRandomToggle(on) {
@@ -1922,6 +2007,8 @@ const Settings = (() => {
     });
     moveIndicator(tabName);
     if (tabName === 'advanced') refreshAdvancedInfo();
+    /* Keep an active search applied to the newly shown tab. */
+    if (settingsSearchInput && settingsSearchInput.value) filterSettings(settingsSearchInput.value);
   }
 
   function moveIndicator(tabName) {
@@ -2009,6 +2096,19 @@ const Settings = (() => {
     toggle.addEventListener('click', openPanel);
     closeBtn.addEventListener('click', closePanel);
     overlayEl.addEventListener('click', closePanel);
+
+    /* Settings search: filters the active tab as you type; Esc clears it. */
+    if (settingsSearchInput) {
+      settingsSearchInput.addEventListener('input', () => filterSettings(settingsSearchInput.value));
+      settingsSearchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          settingsSearchInput.value = '';
+          filterSettings('');
+          settingsSearchInput.blur();
+        }
+      });
+    }
 
     /* Keyboard focus containment: Tab / Shift+Tab wrap at the panel's edges so
        focus cannot escape to the page behind the dialog. */
@@ -2409,6 +2509,15 @@ const Settings = (() => {
       }
     });
 
+    /* Slideshow switch style (fade / slow zoom). */
+    initCustomSelect(bgSlideTransitionWrapper, (val) => {
+      state.bgSlideTransition = val;
+      if (bgSlideTransitionSelect) bgSlideTransitionSelect.value = val;
+      updateSlideTransitionLabel(val);
+      updateSlideTransitionDropdown(val);
+      saveSettings();
+    });
+
     if (bgSlideClear) bgSlideClear.addEventListener('click', async () => {
       await Background.clearSlides();
       revokeSlideThumbs();
@@ -2593,7 +2702,7 @@ const Settings = (() => {
       showClockToggle.addEventListener('click', () => {
         state.showClock = !state.showClock;
         updateShowClockToggle(state.showClock);
-        setShowSecondsGroupVisible(state.showClock);
+        setClockSubGroupsVisible(state.showClock);
         applyToDom('showClock', state.showClock);
         saveSettings();
       });
@@ -2619,13 +2728,44 @@ const Settings = (() => {
       }
     });
 
+    /* --- Show date toggle --- */
+    showDateToggle.addEventListener('click', () => {
+      state.showDate = !state.showDate;
+      updateShowDateToggle(state.showDate);
+      applyToDom('showDate', state.showDate);
+      saveSettings();
+    });
+    showDateToggle.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        showDateToggle.click();
+      }
+    });
+
+    /* --- 12-hour clock toggle --- */
+    hour12Toggle.addEventListener('click', () => {
+      state.hour12 = !state.hour12;
+      updateHour12Toggle(state.hour12);
+      applyToDom('hour12', state.hour12);
+      saveSettings();
+    });
+    hour12Toggle.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        hour12Toggle.click();
+      }
+    });
+
     /* --- Show bookmarks bar toggle --- */
     showBookmarksToggle.addEventListener('click', () => {
       state.showBookmarks = !state.showBookmarks;
       updateShowBookmarksToggle(state.showBookmarks);
       applyToDom('showBookmarks', state.showBookmarks);
       /* The auto-hide option only exists while the dock itself is on. */
-      morphPanel(() => setGroupHidden(autoHideBookmarksGroup, !state.showBookmarks));
+      morphPanel(() => {
+        setGroupHidden(autoHideBookmarksGroup, !state.showBookmarks);
+        setGroupHidden(dockCountGroup, !state.showBookmarks);
+      });
       saveSettings();
     });
     showBookmarksToggle.addEventListener('keydown', (e) => {
@@ -2738,6 +2878,15 @@ const Settings = (() => {
       updateGlassStyleLabel(val);
       updateGlassStyleDropdown(val);
       applyToDom('glassStyle', val);
+      saveSettings();
+    });
+
+    /* --- Dock item count slider --- */
+    dockCountSlider.addEventListener('input', () => {
+      const val = Math.min(10, Math.max(1, parseInt(dockCountSlider.value, 10) || 6));
+      dockCountDisplay.textContent = String(val);
+      state.dockCount = val;
+      applyToDom('dockCount', val);
       saveSettings();
     });
 
@@ -3886,6 +4035,46 @@ const Settings = (() => {
     hideDropdown(videoOnEndedDropdown, videoOnEndedTrigger);
     hideDropdown(languageSelectDropdown, languageSelectTrigger);
     hideDropdown(bgSlideIntervalDropdown, bgSlideIntervalTrigger);
+    hideDropdown(bgSlideTransitionDropdown, bgSlideTransitionTrigger);
+  }
+
+  /* --- Settings search ---
+     Filters the ACTIVE tab: each visible option block matches on its own text;
+     a category stays visible when its header or any inner block matches.
+     Blocks hidden for another reason (folded category, mode-gated panel) are
+     left alone so search never fights the rest of the UI. */
+  function filterSettings(query) {
+    if (!panel) return;
+    const q = String(query == null ? '' : query).trim().toLowerCase();
+    const activePanel = [...tabPanels].find((p) => !p.hidden);
+    if (!activePanel) return;
+    activePanel.querySelectorAll('.setting-search-hidden')
+      .forEach((el) => el.classList.remove('setting-search-hidden'));
+    activePanel.querySelectorAll('[data-search-hit]')
+      .forEach((el) => { delete el.dataset.searchHit; });
+    if (!q) {
+      if (settingsSearchEmpty) settingsSearchEmpty.hidden = true;
+      return;
+    }
+    /* Only currently-visible blocks are searchable: a block hidden by its mode
+       or a folded category must not match — otherwise its category would stay
+       visible with nothing inside it to show. */
+    const blocks = [...activePanel.querySelectorAll('.setting-group, .advanced-action, .advanced-danger')]
+      .filter((el) => el.offsetParent !== null);
+    let any = false;
+    blocks.forEach((el) => {
+      const match = el.textContent.toLowerCase().includes(q);
+      el.classList.toggle('setting-search-hidden', !match);
+      if (match) { any = true; el.dataset.searchHit = '1'; }
+    });
+    activePanel.querySelectorAll('.setting-category').forEach((cat) => {
+      const header = cat.querySelector('.setting-category-header');
+      const selfMatch = header ? header.textContent.toLowerCase().includes(q) : false;
+      const keep = selfMatch || !!cat.querySelector('[data-search-hit]');
+      cat.classList.toggle('setting-search-hidden', !keep);
+      if (keep) any = true;
+    });
+    if (settingsSearchEmpty) settingsSearchEmpty.hidden = any;
   }
 
   /* --- Panel state --- */
@@ -3928,6 +4117,9 @@ const Settings = (() => {
     toggle.style.pointerEvents = '';
     closeAllDropdowns();
     if (window.ColorPicker) window.ColorPicker.close();
+    /* A close forgets the filter so the panel always reopens complete. */
+    if (settingsSearchInput) settingsSearchInput.value = '';
+    filterSettings('');
     /* Return focus to the trigger (the toggle is visible again by now). */
     const back = lastFocusedBeforePanel;
     lastFocusedBeforePanel = null;

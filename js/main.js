@@ -8,8 +8,13 @@
   /* --- Clock Module --- */
   const Clock = (() => {
     const clockEl = document.getElementById('clock');
+    /* Time and date are separate lines so the date can appear/disappear
+       without re-flowing the digits. */
+    const timeEl = clockEl ? (clockEl.querySelector('.clock-time') || clockEl) : null;
+    const dateEl = clockEl ? clockEl.querySelector('.clock-date') : null;
     let timerId = null;
     let lastText = '';
+    let lastDate = '';
 
     /* Read the current setting directly from Settings so the clock always
        reflects the saved preference, even if the apply path is missed
@@ -38,17 +43,90 @@
       }
     }
 
-    function update() {
-      const now = new Date();
+    function shouldShowDate() {
+      try {
+        const s = (typeof Settings !== 'undefined' && Settings.getState)
+          ? Settings.getState()
+          : null;
+        return !!(s && s.showDate);
+      } catch {
+        return false;
+      }
+    }
+
+    function shouldUse12Hour() {
+      try {
+        const s = (typeof Settings !== 'undefined' && Settings.getState)
+          ? Settings.getState()
+          : null;
+        return !!(s && s.hour12);
+      } catch {
+        return false;
+      }
+    }
+
+    /* Locale used for the 12-hour day period and the date line; follow the
+       interface language so the clock speaks the same language as the panel. */
+    function locale() {
+      try {
+        if (typeof I18n !== 'undefined' && I18n.getCurrentLocale) {
+          return (I18n.getCurrentLocale() || 'en').replace('_', '-');
+        }
+      } catch {}
+      return undefined;
+    }
+
+    function formatTime(now) {
+      if (shouldUse12Hour()) {
+        try {
+          const opts = {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+          };
+          if (shouldShowSeconds()) opts.second = '2-digit';
+          return new Intl.DateTimeFormat(locale(), opts).format(now);
+        } catch {}
+      }
       const hh = now.getHours().toString().padStart(2, '0');
       const mm = now.getMinutes().toString().padStart(2, '0');
-      const text = shouldShowSeconds()
+      return shouldShowSeconds()
         ? `${hh}:${mm}:${now.getSeconds().toString().padStart(2, '0')}`
         : `${hh}:${mm}`;
+    }
+
+    /* "2026年11月13日 星期五" / "Friday, November 13, 2026" — CJK locales put
+       the weekday after the date, others before. */
+    function formatDate(now) {
+      const loc = locale();
+      try {
+        const d = new Intl.DateTimeFormat(loc, { year: 'numeric', month: 'long', day: 'numeric' }).format(now);
+        const w = new Intl.DateTimeFormat(loc, { weekday: 'long' }).format(now);
+        return /[\u4e00-\u9fff]/.test(d) ? `${d} ${w}` : `${w}, ${d}`;
+      } catch {
+        return '';
+      }
+    }
+
+    function update() {
+      if (!timeEl) return;
+      const now = new Date();
+      const text = formatTime(now);
       /* Only touch the DOM when the text changes. */
       if (text !== lastText) {
         lastText = text;
-        clockEl.textContent = text;
+        timeEl.textContent = text;
+      }
+      if (dateEl) {
+        const showDate = shouldShowDate();
+        dateEl.hidden = !showDate;
+        if (showDate) {
+          const dateText = formatDate(now);
+          if (dateText !== lastDate) {
+            lastDate = dateText;
+            dateEl.textContent = dateText;
+          }
+        }
       }
     }
 
@@ -102,6 +180,12 @@
       start();
     }
 
+    /* Date / 12-hour switches and language changes reformat immediately
+       instead of waiting for the next tick. */
+    function refresh() {
+      start();
+    }
+
     /* Called by Settings.applyToDom when the master clock switch is toggled:
        hide (and stop) the whole clock, or bring it back and resume ticking. */
     function setShowClock() {
@@ -111,12 +195,14 @@
       } else {
         clearTimer();
         lastText = '';
-        clockEl.textContent = '';
+        lastDate = '';
+        if (timeEl) timeEl.textContent = '';
+        if (dateEl) dateEl.textContent = '';
         clockEl.classList.add('clock--hidden');
       }
     }
 
-    return { start, setShowSeconds, setShowClock };
+    return { start, refresh, setShowSeconds, setShowClock };
   })();
 
   /* Settings.applyToDom() looks for a global `Clock` to retune the clock the moment

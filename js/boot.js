@@ -210,9 +210,22 @@
                 var random = !!saved.bgSlideRandom;
                 if (interval === 0 && rec2.items.length > 1) {
                   if (random) {
-                    var next;
-                    do { next = Math.floor(Math.random() * rec2.items.length); } while (next === idx);
-                    idx = next;
+                    /* No-repeat bag (kept in sync with background.js's
+                       randomSlide): draw from what this round has not shown. */
+                    var bag = [];
+                    try { bag = JSON.parse(localStorage.getItem('unitab_slide_bag')) || []; } catch (_) { bag = []; }
+                    if (!Array.isArray(bag)) bag = [];
+                    bag = bag.filter(function (n) {
+                      return Number.isInteger(n) && n >= 0 && n < rec2.items.length && n !== idx;
+                    });
+                    if (!bag.length) {
+                      for (var bi = 0; bi < rec2.items.length; bi++) {
+                        if (bi !== idx || rec2.items.length === 1) bag.push(bi);
+                      }
+                    }
+                    var bagPos = Math.floor(Math.random() * bag.length);
+                    idx = bag.splice(bagPos, 1)[0];
+                    try { localStorage.setItem('unitab_slide_bag', JSON.stringify(bag)); } catch (_) {}
                   } else {
                     idx = (idx + 1) % rec2.items.length;
                   }

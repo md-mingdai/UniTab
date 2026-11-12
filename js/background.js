@@ -281,6 +281,38 @@ const Background = (() => {
     return cur.items[index];
   };
 
+  /* No-repeat random draws: a persisted bag of not-yet-shown indices. Every tab
+     shares it through its own localStorage key (same idea as the split slide
+     index), so a random slideshow walks the whole list before repeating.
+     A changed list invalidates stale entries as they are filtered out. */
+  const BAG_KEY = 'unitab_slide_bag';
+  const drawRandomIndex = (count, current) => {
+    let bag = [];
+    try {
+      const raw = JSON.parse(localStorage.getItem(BAG_KEY) || '[]');
+      if (Array.isArray(raw)) {
+        bag = raw.filter((n) => Number.isInteger(n) && n >= 0 && n < count && n !== current);
+      }
+    } catch {}
+    if (!bag.length) {
+      /* New round: every slide except the one on screen (unless it is the only one). */
+      for (let i = 0; i < count; i++) {
+        if (i !== current || count === 1) bag.push(i);
+      }
+    }
+    const pos = Math.floor(Math.random() * bag.length);
+    const index = bag.splice(pos, 1)[0];
+    try { localStorage.setItem(BAG_KEY, JSON.stringify(bag)); } catch {}
+    return index;
+  };
+
+  /* Advance to a random slide without repeating a slide from the current round. */
+  const randomSlide = async () => {
+    const cur = await loadSlides();
+    if (!cur.items.length) return null;
+    return gotoSlide(drawRandomIndex(cur.items.length, cur.index));
+  };
+
   /* The current slide, without advancing. */
   const currentSlide = async () => {
     const cur = await loadSlides();
@@ -818,6 +850,29 @@ const Background = (() => {
     return src.replace(/["\\\n\r]/g, (c) => '\\' + c.charCodeAt(0).toString(16) + ' ');
   }
 
+  /* Slideshow switch style. Read straight from the saved settings so it is
+     correct on the first frame and in every tab without an init handshake.
+     'zoom' adds a one-shot scale-in on top of the usual opacity fade; any
+     other value (or a non-slideshow source) keeps the plain fade. */
+  let photoAnimTimer = 0;
+  function slideSwitchEffect() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('unitab_settings') || '{}');
+      if (saved.bgImageMode !== 'slide') return 'fade';
+      return saved.bgSlideTransition === 'zoom' ? 'zoom' : 'fade';
+    } catch {
+      return 'fade';
+    }
+  }
+  function applySlideTransition() {
+    photoEl.classList.remove('bg-zoom-in');
+    if (slideSwitchEffect() !== 'zoom') return;
+    void photoEl.offsetWidth; /* restart the animation when it is still running */
+    photoEl.classList.add('bg-zoom-in');
+    clearTimeout(photoAnimTimer);
+    photoAnimTimer = setTimeout(() => photoEl.classList.remove('bg-zoom-in'), 900);
+  }
+
   /* Resolves 'shown' | 'stale' (superseded while decoding) | 'failed' (undecodable).
      When a wallpaper is already on screen (same-source switch, e.g. a slideshow
      step), fade the old photo out first, then fade the new one in — an instant
@@ -838,6 +893,7 @@ const Background = (() => {
       return token !== loadToken ? 'stale' : 'failed';
     }
     photoEl.style.backgroundImage = 'url("' + cssUrl(src) + '")';
+    applySlideTransition(); /* optional zoom, on top of the opacity fade */
     photoEl.classList.add('is-ready'); /* opacity fade-in (css) */
     releasePhotoUrl();
     photoObjectUrl = objectUrl || null;
@@ -1612,7 +1668,7 @@ const Background = (() => {
     regeneratePreview, readPreviewColor, clearPreview, clearAllPreviews,
     setVolume, setMuted, setLoop, setOnEnded,
     saveSlides, addSlides, removeSlide, clearSlides,
-    loadSlides, currentSlide, advanceSlide, gotoSlide, migrateSingleImageToSlides,
+    loadSlides, currentSlide, advanceSlide, gotoSlide, randomSlide, migrateSingleImageToSlides,
     ensureSlidePreviews, findDuplicateSlides, hashBlob,
     loadSchedule, activeScheduleEntry, addScheduleEntry, updateScheduleEntryStart,
     removeScheduleEntry, clearSchedule, ensureSchedulePreviews
