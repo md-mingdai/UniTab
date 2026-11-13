@@ -4,7 +4,7 @@
 
 # UniTab
 
-A visually appealing, highly customizable new tab extension compatible with all major browsers. It features a centered search bar with real-time suggestions, and supports custom backgrounds, video wallpapers, and mouse cursor effects.
+A visually appealing, highly customizable new tab extension for Chromium browsers such as Chrome and Edge. It features a centered search bar with real-time suggestions, and supports custom backgrounds, video wallpapers, and mouse cursor effects.
 
 [![Author](https://img.shields.io/badge/Author-mingdai-green)](https://github.com/md-mingdai) [![Repo](https://img.shields.io/badge/github-repo-blue?logo=github)](https://github.com/md-mingdai/UniTab) [![License](https://img.shields.io/badge/License-MIT-red)](./LICENSE) [![Version](https://img.shields.io/github/v/release/md-mingdai/UniTab)](https://github.com/md-mingdai/UniTab/releases)
 
@@ -31,7 +31,7 @@ A visually appealing, highly customizable new tab extension compatible with all 
 - **Display & effects** — Clock (seconds, date, 12/24-hour), adjustable dock count, and 5 cursor effects (confetti / rain / bubble / star / Kivotos)
 - **Advanced tools** — Export the current wallpaper, maintain or clear previews, clear the Bing cache, and wipe all data behind a typed confirmation
 - **Dark mode** — Follows the system theme and respects `prefers-reduced-motion` and `prefers-reduced-transparency`
-- **Cross-browser** — Chrome, Edge, Arc, Brave and Firefox, all on Manifest V3
+- **Cross-browser** — Chrome, Edge, Arc, Brave and other Chromium browsers, all on Manifest V3
 
 ## Installation
 
@@ -46,15 +46,6 @@ UniTab is available on the [Microsoft Edge Add-ons](https://microsoftedge.micros
 3. Find and enable **Developer mode**
 4. Drag the Release's `crx` file into the browser window, or click **Load unpacked** and select the `UniTab` folder
 5. Open a new tab
-
-### Firefox
-
-1. Open `about:debugging#/runtime/this-firefox`
-2. Click **Load Temporary Add-on**
-3. Select `manifest.json` in the `UniTab` folder
-4. Open a new tab
-
-> Temporary add-ons are removed when Firefox restarts. For persistent installation, sign or package the extension.
 
 ## Usage
 
@@ -161,13 +152,13 @@ Preview maintenance only touches the `preview_*` slots and never deletes the act
 
 ## Compatibility
 
-| Feature | Chrome / Edge | Firefox |
-| --- | --- | --- |
-| Suggestions (Google / Bing / Baidu) | ✅ via service worker | ✅ via service worker |
-| Bookmarks API | ✅ | ✅ (`browser.bookmarks`) |
-| Top Sites API | ✅ | ⚠️ not available (bookmarks only) |
-| Manifest V3 | ✅ | ✅ (109+) |
-| Liquid-glass edge refraction (SVG filter as `backdrop-filter`) | ✅ | ⚠️ not available; falls back to frosted (adaptive tone and contrast still apply) |
+| Feature | Support |
+| --- | --- |
+| Suggestions (Google / Bing / Baidu) | ✅ via service worker |
+| Bookmarks API | ✅ |
+| Top Sites API | ✅ |
+| Manifest V3 | ✅ |
+| Liquid-glass edge refraction (SVG filter as `backdrop-filter`) | ✅ |
 
 ## License
 

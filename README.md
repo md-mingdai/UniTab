@@ -4,7 +4,7 @@
 
 # UniTab
 
-一款美观，自定义风格的新标签页扩展，兼容主流浏览器。居中搜索框带实时建议，支持自定义背景、视频壁纸与鼠标特效。
+一款美观、可自定义的新标签页扩展，面向 Chrome / Edge 等 Chromium 浏览器。居中搜索框带实时建议，支持自定义背景、视频壁纸与鼠标特效。
 
 [![Author](https://img.shields.io/badge/Author-mingdai-green)](https://github.com/md-mingdai) [![Repo](https://img.shields.io/badge/github-repo-blue?logo=github)](https://github.com/md-mingdai/UniTab) [![License](https://img.shields.io/badge/License-MIT-red)](./LICENSE) [![Version](https://img.shields.io/github/v/release/md-mingdai/UniTab)](https://github.com/md-mingdai/UniTab/releases)
 
@@ -31,7 +31,7 @@
 - **显示与特效** — 时钟（秒数 / 日期 / 12 小时制）、Dock 数量、5 种鼠标特效（彩纸 / 落雨 / 气泡 / 星光 / 基沃托斯）
 - **高级工具** — 导出当前壁纸、维护或清空预览、清除必应缓存，以及手动输入警告语清空全部配置
 - **深色模式** — 自动跟随系统主题，并尊重 `prefers-reduced-motion`、`prefers-reduced-transparency`
-- **跨浏览器** — Chrome、Edge、Arc、Brave、Firefox，均基于 Manifest V3
+- **跨浏览器** — Chrome、Edge、Arc、Brave 等 Chromium 浏览器，均基于 Manifest V3
 
 ## 安装
 
@@ -45,15 +45,6 @@ UniTab 已上架 [Microsoft Edge 加载项](https://microsoftedge.microsoft.com/
 3. 找到并开启**开发者模式**
 4. 将 Release 的 `crx` 文件拖动到浏览器窗口，或者点击**加载已解压的扩展程序**，选择 `UniTab` 文件夹
 5. 打开新标签页即可看到效果
-
-### Firefox
-
-1. 打开 `about:debugging#/runtime/this-firefox`
-2. 点击**临时载入附加组件**
-3. 选择 `UniTab` 文件夹内的 `manifest.json`
-4. 打开新标签页即可看到效果
-
-> Firefox 的临时扩展在浏览器重启后会失效。如需长期使用，需自行签名或打包。
 
 ## 使用说明
 
@@ -160,13 +151,13 @@ UniTab/
 
 ## 兼容性
 
-| 特性 | Chrome / Edge | Firefox |
-| --- | --- | --- |
-| 搜索建议（Google / Bing / 百度） | ✅ 经 Service Worker 代理 | ✅ 经 Service Worker 代理 |
-| 书签 API | ✅ | ✅（`browser.bookmarks`） |
-| 常访问站点 API | ✅ | ⚠️ 不支持（自动仅显示书签） |
-| Manifest V3 | ✅ | ✅（109+） |
-| 液态玻璃边缘折射（SVG 滤镜作 `backdrop-filter`） | ✅ | ⚠️ 不支持，自动退回为磨砂（明暗与对比度自适应仍然生效） |
+| 特性 | 支持情况 |
+| --- | --- |
+| 搜索建议（Google / Bing / 百度） | ✅ 经 Service Worker 代理 |
+| 书签 API | ✅ |
+| 常访问站点 API | ✅ |
+| Manifest V3 | ✅ |
+| 液态玻璃边缘折射（SVG 滤镜作 `backdrop-filter`） | ✅ |
 
 ## 许可证
 
